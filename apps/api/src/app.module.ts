@@ -2,6 +2,13 @@ import { Module } from "@nestjs/common";
 import { ConfigModule } from "@nestjs/config";
 
 import { AuthModule } from "./auth/auth.module";
+import { AuditModule } from "./audit/audit.module";
+import { CategoriesModule } from "./categories/categories.module";
+import { BannersModule } from "./banners/banners.module";
+import { InventoryModule } from "./inventory/inventory.module";
+import { MediaModule } from "./media/media.module";
+import { ProductsModule } from "./products/products.module";
+import { VariantsModule } from "./variants/variants.module";
 import { validateEnvironment } from "./config/environment";
 import { HealthModule } from "./health/health.module";
 import { DatabaseModule } from "./infrastructure/database.module";
@@ -17,6 +24,13 @@ import { RedisModule } from "./infrastructure/redis.module";
     DatabaseModule,
     RedisModule,
     AuthModule,
+    AuditModule,
+    CategoriesModule,
+    MediaModule,
+    BannersModule,
+    ProductsModule,
+    VariantsModule,
+    InventoryModule,
     HealthModule,
   ],
 })

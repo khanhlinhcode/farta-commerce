@@ -13,3 +13,5 @@
 | 009 | FARTA-native design system; TheUI reference only | Accepted |
 | 010 | AI through controlled NestJS tools only          | Accepted |
 | 011 | Phase 1 includes executable security foundation  | Accepted |
+| 012 | Catalog publication and integer VND money        | Accepted |
+| 013 | Signed media finalization and inventory ledger   | Accepted |

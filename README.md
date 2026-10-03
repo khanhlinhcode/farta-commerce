@@ -1,6 +1,6 @@
 # FARTA Commerce
 
-Greenfield production-oriented fashion-commerce monorepo. Phase 0 architecture is approved; Phase 1 provides reproducible application shells, local infrastructure and the executable authentication/session/RBAC/CSRF foundation. Commerce domains are not implemented yet, and the repository is **not production-ready**.
+Greenfield production-oriented fashion-commerce monorepo. Phase 0 architecture is approved; Phase 1 provides the executable security foundation; Phase 2 provides the catalog, variant, inventory-ledger, media and banner domains plus the protected Admin catalog workspace. The repository is **not production-ready**: the premium storefront and transactional commerce phases remain gated work.
 
 ## Stack baseline (verified 2026-10-03)
 
@@ -51,6 +51,8 @@ cd apps/ai-service && uv run ruff check . && uv run pytest
 Start with [`docs/phase-0/README.md`](docs/phase-0/README.md). Important decisions are under `docs/adr/`; the current design threat model is `docs/security/threat-model.md`.
 
 Authentication routes and exact cookie/CSRF behavior are documented in [`docs/api/authentication.md`](docs/api/authentication.md). To create a development OWNER, set the three blank `BOOTSTRAP_OWNER_*` variables locally and run `pnpm --filter @farta/api bootstrap:owner`; the command refuses staging/production and never has a default password.
+
+Catalog endpoints, publication invariants, money representation and Cloudinary finalization are documented in [`docs/api/catalog.md`](docs/api/catalog.md), [`docs/architecture/catalog-inventory.md`](docs/architecture/catalog-inventory.md) and [`docs/architecture/cloudinary-phase-2.md`](docs/architecture/cloudinary-phase-2.md).
 
 Secrets belong in local ignored files or the deployment secret store. Never expose provider/database credentials through `NEXT_PUBLIC_*` or `VITE_*` variables. Production configuration must fail closed and must not use `.env.example` placeholders.
 

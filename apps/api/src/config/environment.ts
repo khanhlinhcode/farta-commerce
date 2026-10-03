@@ -64,6 +64,12 @@ const environmentSchema = z
     CLOUDINARY_CLOUD_NAME: z.string().default(""),
     CLOUDINARY_API_KEY: z.string().default(""),
     CLOUDINARY_API_SECRET: z.string().default(""),
+    CLOUDINARY_UPLOAD_MAX_BYTES: z.coerce
+      .number()
+      .int()
+      .min(1_024)
+      .max(25_000_000)
+      .default(10_000_000),
   })
   .superRefine((environment, context) => {
     const providerGroups = [
@@ -90,6 +96,24 @@ const environmentSchema = z
           message: `${provider.name} OAuth configuration must be complete or disabled.`,
         });
       }
+    }
+    const cloudinaryKeys = [
+      "CLOUDINARY_CLOUD_NAME",
+      "CLOUDINARY_API_KEY",
+      "CLOUDINARY_API_SECRET",
+    ] as const;
+    const cloudinaryConfigured = cloudinaryKeys.filter(
+      (key) => environment[key],
+    );
+    if (
+      cloudinaryConfigured.length > 0 &&
+      cloudinaryConfigured.length !== cloudinaryKeys.length
+    ) {
+      context.addIssue({
+        code: "custom",
+        path: ["CLOUDINARY_CLOUD_NAME"],
+        message: "Cloudinary configuration must be complete or disabled.",
+      });
     }
 
     if (environment.APP_ENV !== "production") return;
