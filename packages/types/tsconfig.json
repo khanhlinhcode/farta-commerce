@@ -1,0 +1,10 @@
+{
+  "extends": "@farta/config/tsconfig/base",
+  "compilerOptions": {
+    "lib": ["ES2023"],
+    "module": "ESNext",
+    "moduleResolution": "Bundler",
+    "target": "ES2022"
+  },
+  "include": ["src"]
+}

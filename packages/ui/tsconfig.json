@@ -1,0 +1,4 @@
+{
+  "extends": "@farta/config/tsconfig/react",
+  "include": ["src"]
+}

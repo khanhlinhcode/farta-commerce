@@ -1,0 +1,1 @@
+"""FARTA AI boundary package."""

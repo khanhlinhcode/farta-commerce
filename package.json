@@ -1,0 +1,34 @@
+{
+  "name": "farta-commerce",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Greenfield FARTA commerce monorepo",
+  "packageManager": "pnpm@10.34.3",
+  "engines": {
+    "node": ">=22.12.0 <23",
+    "pnpm": ">=10.34.0 <11"
+  },
+  "scripts": {
+    "dev": "pnpm --parallel --stream -r --if-present dev",
+    "build": "pnpm -r --if-present build",
+    "lint": "eslint .",
+    "typecheck": "pnpm -r --if-present typecheck",
+    "test": "pnpm -r --if-present test",
+    "test:e2e": "pnpm -r --if-present test:e2e",
+    "format:check": "prettier --check .",
+    "audit:prod": "pnpm audit --prod --audit-level high",
+    "infra:up": "docker compose -f infrastructure/docker/compose.yml up -d --wait",
+    "infra:down": "docker compose -f infrastructure/docker/compose.yml down"
+  },
+  "devDependencies": {
+    "@farta/eslint-config": "workspace:*",
+    "eslint": "10.12.0",
+    "prettier": "3.9.9",
+    "typescript": "5.9.3"
+  },
+  "pnpm": {
+    "onlyBuiltDependencies": [
+      "esbuild"
+    ]
+  }
+}
