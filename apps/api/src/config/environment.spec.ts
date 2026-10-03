@@ -12,6 +12,7 @@ const valid = {
   REDIS_URL: "redis://localhost:6379/0",
   JWT_ACCESS_SECRET: "a".repeat(32),
   JWT_REFRESH_SECRET: "b".repeat(32),
+  CSRF_SECRET: "c".repeat(32),
   JWT_ISSUER: "farta-api",
   JWT_CUSTOMER_AUDIENCE: "farta-storefront",
   JWT_STAFF_AUDIENCE: "farta-admin",
@@ -33,5 +34,17 @@ describe("environment validation", () => {
         JWT_ACCESS_SECRET: "replace".repeat(6),
       }),
     ).toThrow("APP_ORIGIN");
+  });
+  it("rejects partially configured OAuth providers", () => {
+    expect(() =>
+      validateEnvironment({ ...valid, GOOGLE_CLIENT_ID: "client-id" }),
+    ).toThrow("GOOGLE_CLIENT_ID");
+    expect(() =>
+      validateEnvironment({
+        ...valid,
+        APPLE_CLIENT_ID: "com.farta.web",
+        APPLE_TEAM_ID: "team-id",
+      }),
+    ).toThrow("APPLE_CLIENT_ID");
   });
 });

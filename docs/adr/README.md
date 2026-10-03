@@ -12,3 +12,4 @@
 | 008 | Checkout idempotency and state machines          | Accepted |
 | 009 | FARTA-native design system; TheUI reference only | Accepted |
 | 010 | AI through controlled NestJS tools only          | Accepted |
+| 011 | Phase 1 includes executable security foundation  | Accepted |

@@ -17,10 +17,7 @@ export class SafeHttpExceptionFilter implements ExceptionFilter {
       exception instanceof HttpException
         ? exception.getStatus()
         : HttpStatus.INTERNAL_SERVER_ERROR;
-    const code =
-      status === HttpStatus.INTERNAL_SERVER_ERROR
-        ? "INTERNAL_ERROR"
-        : `HTTP_${status}`;
+    const code = this.code(exception, status);
     const safeMessage =
       status === HttpStatus.INTERNAL_SERVER_ERROR
         ? "An unexpected error occurred."
@@ -45,5 +42,21 @@ export class SafeHttpExceptionFilter implements ExceptionFilter {
       if (Array.isArray(message)) return "Request validation failed.";
     }
     return exception.message;
+  }
+
+  private code(exception: unknown, status: number): string {
+    if (!(exception instanceof HttpException)) return "INTERNAL_ERROR";
+    const payload: unknown = exception.getResponse();
+    if (
+      typeof payload === "object" &&
+      payload !== null &&
+      "code" in payload &&
+      typeof (payload as { code?: unknown }).code === "string"
+    ) {
+      return (payload as { code: string }).code;
+    }
+    return status === HttpStatus.INTERNAL_SERVER_ERROR
+      ? "INTERNAL_ERROR"
+      : `HTTP_${status}`;
   }
 }

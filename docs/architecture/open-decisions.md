@@ -6,8 +6,8 @@ These do not block Phase 1 bootstrap. They must be resolved before the named pha
 | ----- | -------------------------------------------------------- | ----------------- | --------------------------------------------------------------------- |
 | OD-01 | production/staging domains and hosting provider          | Phase 2           | placeholders; production config fails closed                          |
 | OD-02 | guest checkout business policy                           | Phase 6           | architecture supports it; feature disabled                            |
-| OD-03 | password policy and bcrypt cost benchmark                | Phase 2           | config placeholder; benchmark before enabling prod                    |
-| OD-04 | JWT asymmetric algorithm/KMS and rotation operator       | Phase 2           | abstraction only; no embedded production key                          |
+| OD-03 | production password policy and bcrypt cost benchmark     | before production | minimum 12 characters; configurable cost 10–15, default 12            |
+| OD-04 | JWT asymmetric algorithm/KMS and rotation operator       | before production | fixed HS256 verifier with independent external secret; no key in code |
 | OD-05 | staff OAuth/SSO and MFA provider                         | admin launch      | password realm with MFA-ready hooks; public OAuth denied              |
 | OD-06 | payment provider, deposits, refund rules                 | Phase 7           | provider-neutral states only; no fake confirmations                   |
 | OD-07 | tax, shipping zones/carriers and currency scope          | Phase 7           | integer VND-ready money model; policy uncommitted                     |

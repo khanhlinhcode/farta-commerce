@@ -2,7 +2,9 @@ name: farta-commerce-local
 
 services:
   mongodb:
-    image: mongo:8.0
+    # MongoDB 8.x currently refuses Docker Desktop's Linux 6.19 kernel.
+    # Pin the supported 7.0 patch line for deterministic local development.
+    image: mongo:7.0.41-jammy
     command: ["mongod", "--replSet", "rs0", "--bind_ip_all"]
     ports:
       - "127.0.0.1:27017:27017"
@@ -18,7 +20,7 @@ services:
     restart: unless-stopped
 
   mongo-init:
-    image: mongo:8.0
+    image: mongo:7.0.41-jammy
     depends_on:
       mongodb:
         condition: service_healthy

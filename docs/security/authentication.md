@@ -1,5 +1,7 @@
 # Authentication architecture
 
+Implementation status (2026-10-03): email/password customer and staff realms, cookies, sessions, CSRF and permission guards are executable. Google/Apple have only the production-oriented boundary described below; no provider callback or successful social login is exposed without a concrete verified adapter.
+
 ## Realms
 
 | Property        | Customer                   | Staff/admin                                              |

@@ -1,6 +1,6 @@
 # FARTA Commerce
 
-Greenfield production-oriented fashion-commerce monorepo. Phase 0 architecture is approved; Phase 1 currently provides reproducible application shells and local infrastructure. It is **not production-ready** and does not yet implement commerce/authentication.
+Greenfield production-oriented fashion-commerce monorepo. Phase 0 architecture is approved; Phase 1 provides reproducible application shells, local infrastructure and the executable authentication/session/RBAC/CSRF foundation. Commerce domains are not implemented yet, and the repository is **not production-ready**.
 
 ## Stack baseline (verified 2026-10-03)
 
@@ -40,6 +40,7 @@ Default local ports: storefront `3000`, API `4000`, admin `5173`, AI service `80
 pnpm lint
 pnpm typecheck
 pnpm test
+pnpm test:e2e
 pnpm build
 pnpm audit:prod
 cd apps/ai-service && uv run ruff check . && uv run pytest
@@ -48,6 +49,8 @@ cd apps/ai-service && uv run ruff check . && uv run pytest
 ## Architecture and security
 
 Start with [`docs/phase-0/README.md`](docs/phase-0/README.md). Important decisions are under `docs/adr/`; the current design threat model is `docs/security/threat-model.md`.
+
+Authentication routes and exact cookie/CSRF behavior are documented in [`docs/api/authentication.md`](docs/api/authentication.md). To create a development OWNER, set the three blank `BOOTSTRAP_OWNER_*` variables locally and run `pnpm --filter @farta/api bootstrap:owner`; the command refuses staging/production and never has a default password.
 
 Secrets belong in local ignored files or the deployment secret store. Never expose provider/database credentials through `NEXT_PUBLIC_*` or `VITE_*` variables. Production configuration must fail closed and must not use `.env.example` placeholders.
 

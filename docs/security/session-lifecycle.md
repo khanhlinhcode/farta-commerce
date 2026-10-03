@@ -48,5 +48,5 @@ MongoDB is durable truth. Redis may cache active/revoked status but cannot resur
 ## Logout
 
 - Current logout atomically revokes the session, clears realm cookies and invalidates cache.
-- Logout-all increments the user's session/token version and revokes all active sessions.
+- Logout-all revokes all active sessions in the realm. Protected requests always consult session state, so previously issued access JWTs fail immediately; a separate global token-version increment is not required by the current model.
 - Access tokens are checked against session status; a revoked session cannot wait out the full JWT lifetime on protected routes.

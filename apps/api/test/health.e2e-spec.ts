@@ -11,6 +11,10 @@ class TestHealthController {
   @Get("live") live() {
     return { status: "ok" };
   }
+
+  @Get("failure") failure(): never {
+    throw new Error("database-internal-secret");
+  }
 }
 
 describe("API HTTP foundation", () => {
@@ -43,5 +47,19 @@ describe("API HTTP foundation", () => {
       .set("x-request-id", "client-request-123")
       .expect(200);
     expect(response.headers["x-request-id"]).toBe("client-request-123");
+  });
+
+  it("does not expose unexpected exception details", async () => {
+    const response = await request(app.getHttpServer())
+      .get("/api/v1/health/failure")
+      .expect(500);
+    expect(response.body.error).toMatchObject({
+      code: "INTERNAL_ERROR",
+      message: "An unexpected error occurred.",
+    });
+    expect(JSON.stringify(response.body)).not.toContain(
+      "database-internal-secret",
+    );
+    expect(response.body.error.requestId).toMatch(/^[A-Za-z0-9-]+$/);
   });
 });
