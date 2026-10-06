@@ -25,7 +25,7 @@ Categories, products, variants, inventory aggregate/ledger, MediaAsset/Cloudinar
 
 ## Phase 3 — Premium fashion storefront
 
-Editorial home, real catalog/search/PDP, authentication/account/session experience, SEO, accessibility and responsive performance using Phase 2 APIs.
+Status: implemented and gated on 2026-10-06. Editorial home, real catalog/search/PDP, authentication/account/session experience, SEO, accessibility and responsive behavior use Phase 2 APIs. See `docs/phase-3/completion-report.md` for evidence and remaining external/provider limitations.
 
 ## Phase 4 — Transactional commerce
 

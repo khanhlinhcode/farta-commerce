@@ -1,6 +1,6 @@
 # FARTA Commerce
 
-Greenfield production-oriented fashion-commerce monorepo. Phase 0 architecture is approved; Phase 1 provides the executable security foundation; Phase 2 provides the catalog, variant, inventory-ledger, media and banner domains plus the protected Admin catalog workspace. The repository is **not production-ready**: the premium storefront and transactional commerce phases remain gated work.
+Greenfield production-oriented fashion-commerce monorepo. Phase 0 architecture is approved; Phase 1 provides the executable security foundation; Phase 2 provides the catalog, variant, inventory-ledger, media and banner domains plus the protected Admin catalog workspace; Phase 3 provides the premium storefront over those real APIs. The repository is **not production-ready**: transactional commerce, production provider configuration and deployment validation remain gated work.
 
 ## Stack baseline (verified 2026-10-03)
 
@@ -54,6 +54,10 @@ Authentication routes and exact cookie/CSRF behavior are documented in [`docs/ap
 
 Catalog endpoints, publication invariants, money representation and Cloudinary finalization are documented in [`docs/api/catalog.md`](docs/api/catalog.md), [`docs/architecture/catalog-inventory.md`](docs/architecture/catalog-inventory.md) and [`docs/architecture/cloudinary-phase-2.md`](docs/architecture/cloudinary-phase-2.md).
 
+The Phase 3 storefront architecture, reviews and completion evidence are under [`docs/phase-3/`](docs/phase-3/). Public catalog reads use a 60-second revalidation window. Set `NEXT_PUBLIC_SITE_URL` to the canonical HTTPS storefront URL and explicitly set `NEXT_PUBLIC_INDEXABLE=true` only for production environments that should be indexed. Staging and development remain `noindex` by default.
+
+Phase 3 deliberately does not simulate Cart, Wishlist, Orders, password recovery or OAuth success. Those surfaces either expose a labelled future boundary or an honest unavailable/empty state until the corresponding server capability exists.
+
 Secrets belong in local ignored files or the deployment secret store. Never expose provider/database credentials through `NEXT_PUBLIC_*` or `VITE_*` variables. Production configuration must fail closed and must not use `.env.example` placeholders.
 
 ## Troubleshooting
@@ -62,4 +66,5 @@ Secrets belong in local ignored files or the deployment secret store. Never expo
 - API configuration error: confirm `apps/api/.env` exists and contains no production placeholders outside development.
 - Mongo readiness failure: ensure Docker is running and `pnpm infra:up` reports healthy services.
 - Replica-set transaction failure: inspect the one-shot `mongo-init` service; Compose initializes it automatically.
+- Local MongoDB connection waiting indefinitely: on hosts where `localhost` resolves to an unreachable IPv6 listener, use `mongodb://127.0.0.1:27017/farta?replicaSet=rs0&directConnection=true` locally.
 - Port collision: change local-only ports consistently in `.env` and proxy configuration.

@@ -12,25 +12,25 @@ export class Session {
   @Prop({ required: true, type: String, enum: REALMS })
   realm!: AuthRealm;
 
-  @Prop({ required: true })
+  @Prop({ required: true, type: String })
   familyId!: string;
 
-  @Prop({ required: true, select: false })
+  @Prop({ required: true, type: String, select: false })
   refreshDigest!: string;
 
-  @Prop({ required: true, min: 0, default: 0 })
+  @Prop({ required: true, type: Number, min: 0, default: 0 })
   rotationCounter!: number;
 
-  @Prop({ required: true, min: 1 })
+  @Prop({ required: true, type: Number, min: 1 })
   rolesVersion!: number;
 
-  @Prop({ required: true })
+  @Prop({ required: true, type: Date })
   lastActivityAt!: Date;
 
-  @Prop({ required: true })
+  @Prop({ required: true, type: Date })
   idleExpiresAt!: Date;
 
-  @Prop({ required: true })
+  @Prop({ required: true, type: Date })
   absoluteExpiresAt!: Date;
 
   @Prop({ type: Date, default: null })

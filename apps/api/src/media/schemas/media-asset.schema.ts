@@ -7,16 +7,22 @@ export class MediaAsset {
   @Prop({ required: true, type: String, enum: ["CLOUDINARY"] })
   provider!: "CLOUDINARY";
 
-  @Prop({ required: true, trim: true, maxlength: 500 })
+  @Prop({ required: true, type: String, trim: true, maxlength: 500 })
   publicId!: string;
 
-  @Prop({ required: true, trim: true, maxlength: 2_000 })
+  @Prop({ required: true, type: String, trim: true, maxlength: 2_000 })
   secureUrl!: string;
 
   @Prop({ required: true, type: String, enum: ["image"] })
   resourceType!: "image";
 
-  @Prop({ required: true, trim: true, lowercase: true, maxlength: 20 })
+  @Prop({
+    required: true,
+    type: String,
+    trim: true,
+    lowercase: true,
+    maxlength: 20,
+  })
   format!: string;
 
   @Prop({ required: true, type: Number, min: 1, max: 12_000 })

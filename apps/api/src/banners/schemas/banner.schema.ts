@@ -9,7 +9,7 @@ import {
 
 @Schema({ collection: "banners", strict: "throw", timestamps: true })
 export class Banner {
-  @Prop({ required: true, trim: true, maxlength: 160 })
+  @Prop({ required: true, type: String, trim: true, maxlength: 160 })
   title!: string;
 
   @Prop({ type: String, default: null, maxlength: 500 })

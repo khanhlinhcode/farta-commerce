@@ -12,16 +12,22 @@ export class ProductVariant {
   @Prop({ required: true, type: mongoose.Schema.Types.ObjectId })
   productId!: Types.ObjectId;
 
-  @Prop({ required: true, trim: true, uppercase: true, maxlength: 80 })
+  @Prop({
+    required: true,
+    type: String,
+    trim: true,
+    uppercase: true,
+    maxlength: 80,
+  })
   sku!: string;
 
-  @Prop({ required: true, trim: true, maxlength: 80 })
+  @Prop({ required: true, type: String, trim: true, maxlength: 80 })
   color!: string;
 
   @Prop({ type: String, default: null, maxlength: 20 })
   colorCode!: string | null;
 
-  @Prop({ required: true, trim: true, maxlength: 40 })
+  @Prop({ required: true, type: String, trim: true, maxlength: 40 })
   size!: string;
 
   @Prop({ required: true, type: Number, min: 0, max: Number.MAX_SAFE_INTEGER })

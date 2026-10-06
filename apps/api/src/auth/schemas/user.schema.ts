@@ -12,13 +12,19 @@ import {
 
 @Schema({ collection: "users", strict: "throw", timestamps: true })
 export class User {
-  @Prop({ required: true, trim: true, lowercase: true })
+  @Prop({ required: true, type: String, trim: true, lowercase: true })
   normalizedEmail!: string;
 
   @Prop({ type: String, default: null, select: false })
   passwordHash!: string | null;
 
-  @Prop({ required: true, trim: true, minlength: 1, maxlength: 100 })
+  @Prop({
+    required: true,
+    type: String,
+    trim: true,
+    minlength: 1,
+    maxlength: 100,
+  })
   displayName!: string;
 
   @Prop({ required: true, type: [String], enum: ROLES })
@@ -35,7 +41,7 @@ export class User {
   })
   status!: UserStatus;
 
-  @Prop({ required: true, min: 1, default: 1 })
+  @Prop({ required: true, type: Number, min: 1, default: 1 })
   rolesVersion!: number;
 
   @Prop({ type: Date, default: null })

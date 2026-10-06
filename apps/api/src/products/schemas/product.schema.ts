@@ -19,10 +19,22 @@ const ProductSeoSchema = SchemaFactory.createForClass(ProductSeo);
 
 @Schema({ collection: "products", strict: "throw", timestamps: true })
 export class Product {
-  @Prop({ required: true, trim: true, minlength: 1, maxlength: 160 })
+  @Prop({
+    required: true,
+    type: String,
+    trim: true,
+    minlength: 1,
+    maxlength: 160,
+  })
   name!: string;
 
-  @Prop({ required: true, trim: true, lowercase: true, maxlength: 120 })
+  @Prop({
+    required: true,
+    type: String,
+    trim: true,
+    lowercase: true,
+    maxlength: 120,
+  })
   slug!: string;
 
   @Prop({ type: String, default: null, maxlength: 500 })

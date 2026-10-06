@@ -20,10 +20,22 @@ const CategorySeoSchema = SchemaFactory.createForClass(CategorySeo);
 
 @Schema({ collection: "categories", strict: "throw", timestamps: true })
 export class Category {
-  @Prop({ required: true, trim: true, minlength: 1, maxlength: 100 })
+  @Prop({
+    required: true,
+    type: String,
+    trim: true,
+    minlength: 1,
+    maxlength: 100,
+  })
   name!: string;
 
-  @Prop({ required: true, trim: true, lowercase: true, maxlength: 120 })
+  @Prop({
+    required: true,
+    type: String,
+    trim: true,
+    lowercase: true,
+    maxlength: 120,
+  })
   slug!: string;
 
   @Prop({ type: String, default: null, maxlength: 2_000 })
