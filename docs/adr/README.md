@@ -15,3 +15,8 @@
 | 011 | Phase 1 includes executable security foundation  | Accepted |
 | 012 | Catalog publication and integer VND money        | Accepted |
 | 013 | Signed media finalization and inventory ledger   | Accepted |
+| 014 | Cart ownership and guest credential              | Accepted |
+| 015 | Reservation lifecycle                            | Accepted |
+| 016 | Order state machine and immutable snapshots      | Accepted |
+| 017 | Payment provider abstraction                     | Accepted |
+| 018 | Payment webhook authenticity and idempotency     | Accepted |

@@ -27,11 +27,9 @@ No read-modify-write in application memory is permitted for stock allocation.
 
 ## Reservation lifecycle
 
-`ACTIVE → CONSUMED` on confirmed sale.  
-`ACTIVE → RELEASED` on cancellation/failure.  
-`ACTIVE → EXPIRED` by an idempotent reconciliation worker.
+Phase 4 uses the lifecycle frozen in ADR-015: `ACTIVE → CONFIRMED` when the order allocation commits; `ACTIVE → RELEASED|EXPIRED|CANCELLED` for pre-confirmation terminal outcomes; and `CONFIRMED → RELEASED` for an allowed cancellation before sale. A later sale is an append-only `SALE` ledger event while the reservation remains the historical confirmed allocation.
 
-Release/consume operations match the current reservation status so retries cannot double-release or double-sell.
+Release/expiry operations match the current reservation status so retries cannot double-release or double-sell. A worker never expires a confirmed reservation.
 
 ## Required concurrency proof
 

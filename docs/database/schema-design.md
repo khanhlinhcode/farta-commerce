@@ -32,21 +32,22 @@ This is a logical Phase 0 model. Field names may be refined through DTO/schema i
 
 ## Commerce collections
 
-| Collection               | Purpose                                | Critical constraints/indexes                           |
-| ------------------------ | -------------------------------------- | ------------------------------------------------------ |
-| `categories`             | hierarchical merchandising taxonomy    | unique slug; bounded acyclic parent chain              |
-| `products`               | product-level editorial/catalog data   | unique slug; status/published indexes                  |
-| `product_variants`       | sellable SKU/color/size combinations   | unique SKU; unique product option signature            |
-| `inventory_items`        | per-variant aggregate stock            | unique variant; nonnegative invariants                 |
-| `inventory_ledger`       | append-only stock events               | unique idempotency/reference key where applicable      |
-| `inventory_reservations` | checkout/order reservations            | unique reservation key; expiry/status indexes          |
-| `carts`                  | guest/customer cart state              | unique active owner key; optimistic version            |
-| `orders`                 | immutable snapshots + controlled state | unique order number and checkout idempotency key       |
-| `payments`               | provider-neutral payment records       | unique provider transaction/event IDs                  |
-| `idempotency_keys`       | mutation replay binding                | unique realm/actor/route/key; TTL after safe retention |
-| `media_assets`           | Cloudinary metadata/reference state    | unique publicId; reference/deletion state indexes      |
-| `banners`                | scheduled campaigns                    | status/position/time indexes                           |
-| `audit_logs`             | append-only privileged event evidence  | actor/action/resource/time/request indexes             |
+| Collection               | Purpose                                | Critical constraints/indexes                          |
+| ------------------------ | -------------------------------------- | ----------------------------------------------------- |
+| `categories`             | hierarchical merchandising taxonomy    | unique slug; bounded acyclic parent chain             |
+| `products`               | product-level editorial/catalog data   | unique slug; status/published indexes                 |
+| `product_variants`       | sellable SKU/color/size combinations   | unique SKU; unique product option signature           |
+| `inventory_items`        | per-variant aggregate stock            | unique variant; nonnegative invariants                |
+| `inventory_ledger`       | append-only stock events               | unique idempotency/reference key where applicable     |
+| `inventory_reservations` | checkout/order reservations            | unique reservation key; expiry/status indexes         |
+| `carts`                  | guest/customer cart state              | unique active owner key; optimistic version           |
+| `orders`                 | immutable snapshots + controlled state | unique order number and checkout idempotency key      |
+| `payments`               | provider-neutral payment records       | unique provider transaction/event IDs                 |
+| `idempotency_records`    | mutation replay binding                | unique realm/owner/operation/key; TTL after retention |
+| `payment_webhook_events` | authenticated provider event evidence  | unique provider/event ID; status/received time        |
+| `media_assets`           | Cloudinary metadata/reference state    | unique publicId; reference/deletion state indexes     |
+| `banners`                | scheduled campaigns                    | status/position/time indexes                          |
+| `audit_logs`             | append-only privileged event evidence  | actor/action/resource/time/request indexes            |
 
 ## General rules
 

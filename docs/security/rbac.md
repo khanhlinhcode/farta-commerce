@@ -31,4 +31,4 @@ Legend: `A` allowed, `S` scoped/assigned, `O` own resources only, `-` denied.
 
 Controllers do not contain scattered role comparisons. They declare required permissions and call policies with the loaded resource. Resource lookup never trusts a `userId` from a customer payload; it derives the principal from the verified session.
 
-Representative invariant: `Customer A` requesting `Customer B`'s order/session/address receives the same safe not-found/denied contract and no resource data. Automated tests cover read, update and cancellation paths.
+Representative invariant: `Customer A` requesting `Customer B`'s order/session/address receives the same safe not-found/denied contract and no resource data. Session object-authorization tests exist in Phase 1. Order read/cancellation tests are required Phase 4 evidence and must not be claimed before the Orders domain is implemented.
