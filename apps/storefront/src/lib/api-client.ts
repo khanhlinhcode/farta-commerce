@@ -23,3 +23,22 @@ export async function apiRequest<T>(
   if (!response.ok) throw new ApiClientError(body as ApiError, response.status);
   return body as T;
 }
+
+export function customerCsrfHeaders(): Record<string, string> {
+  if (typeof document === "undefined") return {};
+  const cookies = Object.fromEntries(
+    document.cookie.split(";").flatMap((entry) => {
+      const separator = entry.indexOf("=");
+      if (separator < 0) return [];
+      return [
+        [
+          decodeURIComponent(entry.slice(0, separator).trim()),
+          decodeURIComponent(entry.slice(separator + 1)),
+        ],
+      ];
+    }),
+  );
+  const token =
+    cookies["__Secure-farta_customer_csrf"] ?? cookies.farta_customer_csrf;
+  return token ? { "x-csrf-token": token } : {};
+}

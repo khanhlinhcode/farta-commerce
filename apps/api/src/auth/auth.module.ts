@@ -50,11 +50,14 @@ import { UsersService } from "./services/users.service";
     { provide: APP_GUARD, useClass: PermissionsGuard },
   ],
   exports: [
+    AuthCookieService,
+    CsrfService,
     OAuthProviderConfigService,
     OAuthTransactionService,
     PasswordService,
     PermissionsService,
     SessionsService,
+    TokenService,
     UsersService,
   ],
 })

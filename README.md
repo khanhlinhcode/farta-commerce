@@ -1,6 +1,6 @@
 # FARTA Commerce
 
-Greenfield production-oriented fashion-commerce monorepo. Phase 0 architecture is approved; Phase 1 provides the executable security foundation; Phase 2 provides the catalog, variant, inventory-ledger, media and banner domains plus the protected Admin catalog workspace; Phase 3 provides the premium storefront over those real APIs. The repository is **not production-ready**: transactional commerce, production provider configuration and deployment validation remain gated work.
+Greenfield production-oriented fashion-commerce monorepo. Phase 0 architecture is approved; Phase 1 provides the executable security foundation; Phase 2 provides the catalog, variant, inventory-ledger, media and banner domains plus the protected Admin catalog workspace; Phase 3 provides the premium storefront over those real APIs; Phase 4A provides the server-authoritative guest/customer Cart and merge flow. The repository is **not production-ready**: Checkout, Orders, production provider configuration and deployment validation remain gated work.
 
 ## Stack baseline (verified 2026-10-03)
 
@@ -56,7 +56,9 @@ Catalog endpoints, publication invariants, money representation and Cloudinary f
 
 The Phase 3 storefront architecture, reviews and completion evidence are under [`docs/phase-3/`](docs/phase-3/). Public catalog reads use a 60-second revalidation window. Set `NEXT_PUBLIC_SITE_URL` to the canonical HTTPS storefront URL and explicitly set `NEXT_PUBLIC_INDEXABLE=true` only for production environments that should be indexed. Staging and development remain `noindex` by default.
 
-Phase 3 deliberately does not simulate Cart, Wishlist, Orders, password recovery or OAuth success. Those surfaces either expose a labelled future boundary or an honest unavailable/empty state until the corresponding server capability exists.
+Cart endpoints and configuration are documented in [`docs/api/cart.md`](docs/api/cart.md) and [`docs/architecture/cart.md`](docs/architecture/cart.md). Supply the independent cart credential secret, line limit, retention and rate-limit values shown in `.env.example`; production has no implicit values for these business/security settings.
+
+Phase 4A deliberately stops before Checkout and Orders. The real Cart page and PDP Add to Cart are enabled, while its checkout action is an honest disabled Phase 4B boundary. Wishlist, password recovery and OAuth success remain unavailable rather than simulated.
 
 Secrets belong in local ignored files or the deployment secret store. Never expose provider/database credentials through `NEXT_PUBLIC_*` or `VITE_*` variables. Production configuration must fail closed and must not use `.env.example` placeholders.
 

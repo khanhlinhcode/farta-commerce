@@ -38,6 +38,10 @@ export class CsrfService {
     this.verifyToken(header, binding);
   }
 
+  verifyOriginOnly(request: Request): void {
+    this.verifyOrigin(request);
+  }
+
   private verifyToken(token: string, binding: string): void {
     const parts = token.split(".");
     if (parts.length !== 4) this.reject();

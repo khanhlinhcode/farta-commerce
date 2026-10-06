@@ -13,9 +13,17 @@ const valid = {
   JWT_ACCESS_SECRET: "a".repeat(32),
   JWT_REFRESH_SECRET: "b".repeat(32),
   CSRF_SECRET: "c".repeat(32),
+  CART_CREDENTIAL_SECRET: "d".repeat(32),
   JWT_ISSUER: "farta-api",
   JWT_CUSTOMER_AUDIENCE: "farta-storefront",
   JWT_STAFF_AUDIENCE: "farta-admin",
+  CART_MAX_ITEM_QUANTITY: "10",
+  GUEST_CART_TTL_SECONDS: "2592000",
+  CUSTOMER_CART_TTL_SECONDS: "7776000",
+  CART_MUTATION_LIMIT: "120",
+  CART_MUTATION_WINDOW_SECONDS: "300",
+  CART_MERGE_LIMIT: "20",
+  CART_MERGE_WINDOW_SECONDS: "300",
 };
 
 describe("environment validation", () => {

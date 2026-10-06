@@ -5,6 +5,7 @@ import { AuthModule } from "./auth/auth.module";
 import { AuditModule } from "./audit/audit.module";
 import { CategoriesModule } from "./categories/categories.module";
 import { BannersModule } from "./banners/banners.module";
+import { CartModule } from "./cart/cart.module";
 import { InventoryModule } from "./inventory/inventory.module";
 import { MediaModule } from "./media/media.module";
 import { ProductsModule } from "./products/products.module";
@@ -28,6 +29,7 @@ import { RedisModule } from "./infrastructure/redis.module";
     CategoriesModule,
     MediaModule,
     BannersModule,
+    CartModule,
     ProductsModule,
     VariantsModule,
     InventoryModule,

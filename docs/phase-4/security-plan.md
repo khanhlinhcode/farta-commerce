@@ -26,3 +26,9 @@
 ## Evidence requirements
 
 Security completion requires negative E2E tests for BOLA, CSRF, RBAC, NoSQL/mass assignment, price/quantity/payment tampering, lookup enumeration, replay/spoofing, rate limits, race conditions and leakage. A local Strix run requires a running API plus explicit test credentials and is supplementary; no scan is claimed if those prerequisites are absent.
+
+## Phase 4A implementation review
+
+Cart ownership has no client-selected object ID. The API verifies a customer session or HMAC guest credential before resolving the one active owner cart. DTO whitelist rejection covers price/total/customer/operator fields and quantity bounds. Guest cross-origin mutation and authenticated missing-CSRF cases are covered by E2E tests. Only the credential digest is stored and neither digest nor raw credential appears in the public read model.
+
+Residual risks for later phases: cart state is not checkout authority; price and stock must be revalidated in Phase 4B. Edge proxy/client-IP trust remains a deployment prerequisite for meaningful distributed rate limiting. Full Strix execution was not performed because no scanner runtime/credentials were configured.

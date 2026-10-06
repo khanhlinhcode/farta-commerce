@@ -1,10 +1,15 @@
 "use client";
 
+import { useMutation, useQueryClient } from "@tanstack/react-query";
+import Link from "next/link";
 import { useMemo, useState } from "react";
 
+import { addCartItem, cartQueryKey } from "@/lib/cart";
 import { formatVnd, type ProductVariant } from "@/lib/catalog";
 
 export function VariantSelector({ variants }: { variants: ProductVariant[] }) {
+  const queryClient = useQueryClient();
+  const [message, setMessage] = useState<string | null>(null);
   const colors = [
     ...new Map(variants.map((variant) => [variant.color, variant])).values(),
   ];
@@ -21,6 +26,21 @@ export function VariantSelector({ variants }: { variants: ProductVariant[] }) {
     variants.find(
       (variant) => variant.color === color && variant.size === size,
     ) ?? availableForColor[0];
+  const add = useMutation({
+    mutationFn: () => {
+      if (!selected) throw new Error("VARIANT_REQUIRED");
+      return addCartItem(selected.id);
+    },
+    onSuccess: (cart) => {
+      queryClient.setQueryData(cartQueryKey, cart);
+      setMessage("Đã thêm lựa chọn này vào giỏ hàng.");
+    },
+    onError: () => {
+      setMessage(
+        "Không thể thêm vào giỏ. Sản phẩm có thể vừa hết hàng, vui lòng thử lại.",
+      );
+    },
+  });
 
   function chooseColor(nextColor: string) {
     setColor(nextColor);
@@ -92,16 +112,25 @@ export function VariantSelector({ variants }: { variants: ProductVariant[] }) {
       </p>
       <button
         className="button button--primary button--wide"
-        disabled
+        disabled={
+          !selected || selected.availability === "OUT_OF_STOCK" || add.isPending
+        }
+        onClick={() => {
+          setMessage(null);
+          add.mutate();
+        }}
         type="button"
-        title="Giỏ hàng được triển khai trong Phase 4"
       >
-        Thêm vào giỏ — sắp khả dụng
+        {add.isPending ? "Đang thêm…" : "Thêm vào giỏ"}
       </button>
-      <p className="feature-boundary">
-        Variant này đã được xác thực từ catalog. Cart chưa được mô phỏng ở Phase
-        3.
-      </p>
+      {message && (
+        <p
+          className={add.isError ? "form-error" : "cart-feedback"}
+          role="status"
+        >
+          {message} {add.isSuccess && <Link href="/cart">Xem giỏ</Link>}
+        </p>
+      )}
     </div>
   );
 }

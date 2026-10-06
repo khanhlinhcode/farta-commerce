@@ -47,6 +47,7 @@ describe("authentication security foundation", () => {
       JWT_ACCESS_SECRET: "a".repeat(32),
       JWT_REFRESH_SECRET: "b".repeat(32),
       CSRF_SECRET: "c".repeat(32),
+      CART_CREDENTIAL_SECRET: "d".repeat(32),
       JWT_ISSUER: "farta-api-test",
       JWT_CUSTOMER_AUDIENCE: "farta-storefront-test",
       JWT_STAFF_AUDIENCE: "farta-admin-test",
@@ -58,6 +59,13 @@ describe("authentication security foundation", () => {
       AUTH_LOGIN_WINDOW_SECONDS: "300",
       AUTH_REFRESH_LIMIT: "50",
       AUTH_REFRESH_WINDOW_SECONDS: "300",
+      CART_MAX_ITEM_QUANTITY: "10",
+      GUEST_CART_TTL_SECONDS: "2592000",
+      CUSTOMER_CART_TTL_SECONDS: "7776000",
+      CART_MUTATION_LIMIT: "120",
+      CART_MUTATION_WINDOW_SECONDS: "300",
+      CART_MERGE_LIMIT: "20",
+      CART_MERGE_WINDOW_SECONDS: "300",
     });
 
     const redisCleanup = new Redis(redisUrl);

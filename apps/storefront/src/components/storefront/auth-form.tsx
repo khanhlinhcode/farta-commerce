@@ -7,6 +7,8 @@ import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 
+import { mergeCart } from "@/lib/cart";
+
 const loginSchema = z.object({
   email: z.email("Email không hợp lệ."),
   password: z.string().min(1, "Nhập mật khẩu.").max(128),
@@ -64,6 +66,8 @@ export function AuthForm({ mode }: { mode: "login" | "register" }) {
           );
         return;
       }
+      const authenticated = (await response.json()) as { csrfToken: string };
+      await mergeCart(authenticated.csrfToken);
       router.push("/account");
       router.refresh();
     } catch {

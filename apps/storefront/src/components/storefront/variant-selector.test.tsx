@@ -1,5 +1,7 @@
-import { fireEvent, render } from "@testing-library/react";
-import { describe, expect, it } from "vitest";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { cleanup, fireEvent, render, waitFor } from "@testing-library/react";
+import type { ReactNode } from "react";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
 import type { ProductVariant } from "@/lib/catalog";
 import { VariantSelector } from "./variant-selector";
@@ -23,8 +25,22 @@ const variant = (
 });
 
 describe("VariantSelector", () => {
+  afterEach(() => {
+    cleanup();
+    vi.restoreAllMocks();
+  });
+
+  function renderSelector(children: ReactNode) {
+    const client = new QueryClient({
+      defaultOptions: { mutations: { retry: false } },
+    });
+    return render(
+      <QueryClientProvider client={client}>{children}</QueryClientProvider>,
+    );
+  }
+
   it("only presents combinations that exist for the selected color", () => {
-    const { container } = render(
+    const { container } = renderSelector(
       <VariantSelector
         variants={[
           variant("black-s", "Black", "S"),
@@ -47,5 +63,43 @@ describe("VariantSelector", () => {
     expect(sizeButtons.map((button) => button.textContent)).toEqual(["S", "M"]);
     expect(sizeButtons[0]).toBeEnabled();
     expect(sizeButtons[1]).toBeDisabled();
+  });
+
+  it("sends the real selected variant to the authoritative cart API", async () => {
+    const fetchMock = vi.spyOn(globalThis, "fetch").mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          id: "cart-id",
+          status: "ACTIVE",
+          currency: "VND",
+          version: 1,
+          itemCount: 1,
+          subtotal: 199000,
+          total: 199000,
+          expiresAt: new Date().toISOString(),
+          conflicts: [],
+          items: [],
+        }),
+        { status: 201, headers: { "content-type": "application/json" } },
+      ),
+    );
+    const { getByRole } = renderSelector(
+      <VariantSelector
+        variants={[
+          variant("black-s", "Black", "S"),
+          variant("cream-m", "Cream", "M"),
+        ]}
+      />,
+    );
+    fireEvent.click(getByRole("button", { name: /Cream/ }));
+    fireEvent.click(getByRole("button", { name: "Thêm vào giỏ" }));
+
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledOnce());
+    expect(fetchMock).toHaveBeenCalledWith(
+      "/api/v1/cart/items",
+      expect.objectContaining({
+        body: JSON.stringify({ variantId: "cream-m", quantity: 1 }),
+      }),
+    );
   });
 });

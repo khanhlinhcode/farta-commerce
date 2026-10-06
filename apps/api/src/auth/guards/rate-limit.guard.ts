@@ -62,18 +62,35 @@ export class RateLimitGuard implements CanActivate {
     limit: number;
     windowSeconds: number;
   } {
-    return policy === "AUTH_LOGIN"
-      ? {
+    switch (policy) {
+      case "AUTH_LOGIN":
+        return {
           limit: this.config.get("AUTH_LOGIN_LIMIT", { infer: true }),
           windowSeconds: this.config.get("AUTH_LOGIN_WINDOW_SECONDS", {
             infer: true,
           }),
-        }
-      : {
+        };
+      case "AUTH_REFRESH":
+        return {
           limit: this.config.get("AUTH_REFRESH_LIMIT", { infer: true }),
           windowSeconds: this.config.get("AUTH_REFRESH_WINDOW_SECONDS", {
             infer: true,
           }),
         };
+      case "CART_MUTATION":
+        return {
+          limit: this.config.get("CART_MUTATION_LIMIT", { infer: true }),
+          windowSeconds: this.config.get("CART_MUTATION_WINDOW_SECONDS", {
+            infer: true,
+          }),
+        };
+      case "CART_MERGE":
+        return {
+          limit: this.config.get("CART_MERGE_LIMIT", { infer: true }),
+          windowSeconds: this.config.get("CART_MERGE_WINDOW_SECONDS", {
+            infer: true,
+          }),
+        };
+    }
   }
 }

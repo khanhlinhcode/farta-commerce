@@ -3,7 +3,10 @@ import { Inject, Injectable, UnauthorizedException } from "@nestjs/common";
 import { Reflector } from "@nestjs/core";
 import type { Request } from "express";
 
-import { AUTH_REALM_KEY } from "../decorators/auth-realm.decorator";
+import {
+  AUTH_REALM_KEY,
+  OPTIONAL_AUTH_REALM_KEY,
+} from "../decorators/auth-realm.decorator";
 import type { AuthRealm } from "../auth.constants";
 import { AuthCookieService } from "../services/cookie.service";
 import { PermissionsService } from "../services/permissions.service";
@@ -24,14 +27,20 @@ export class AuthenticationGuard implements CanActivate {
   ) {}
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
-    const realm = this.reflector.getAllAndOverride<AuthRealm | undefined>(
-      AUTH_REALM_KEY,
-      [context.getHandler(), context.getClass()],
-    );
+    const requiredRealm = this.reflector.getAllAndOverride<
+      AuthRealm | undefined
+    >(AUTH_REALM_KEY, [context.getHandler(), context.getClass()]);
+    const optionalRealm = this.reflector.getAllAndOverride<
+      AuthRealm | undefined
+    >(OPTIONAL_AUTH_REALM_KEY, [context.getHandler(), context.getClass()]);
+    const realm = requiredRealm ?? optionalRealm;
     if (!realm) return true;
     const request = context.switchToHttp().getRequest<Request>();
     const token = this.cookies.read(request, "access", realm);
-    if (!token) throw new UnauthorizedException("Authentication is required.");
+    if (!token) {
+      if (optionalRealm && !requiredRealm) return true;
+      throw new UnauthorizedException("Authentication is required.");
+    }
     const claims = await this.tokens.verifyAccessToken(token, realm);
     await this.sessions.requireActive(claims);
     const user = await this.users.findActiveById(claims.userId);

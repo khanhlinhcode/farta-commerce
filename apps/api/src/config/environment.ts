@@ -16,6 +16,7 @@ const environmentSchema = z
     JWT_ACCESS_SECRET: z.string().min(32),
     JWT_REFRESH_SECRET: z.string().min(32),
     CSRF_SECRET: z.string().min(32),
+    CART_CREDENTIAL_SECRET: z.string().min(32),
     JWT_ISSUER: z.string().min(1),
     JWT_CUSTOMER_AUDIENCE: z.string().min(1),
     JWT_STAFF_AUDIENCE: z.string().min(1),
@@ -52,6 +53,17 @@ const environmentSchema = z
       .min(10)
       .max(3600)
       .default(300),
+    CART_MAX_ITEM_QUANTITY: z.coerce.number().int().min(1).max(100),
+    GUEST_CART_TTL_SECONDS: z.coerce.number().int().min(3600).max(7_776_000),
+    CUSTOMER_CART_TTL_SECONDS: z.coerce
+      .number()
+      .int()
+      .min(86_400)
+      .max(31_536_000),
+    CART_MUTATION_LIMIT: z.coerce.number().int().min(1).max(1000),
+    CART_MUTATION_WINDOW_SECONDS: z.coerce.number().int().min(10).max(3600),
+    CART_MERGE_LIMIT: z.coerce.number().int().min(1).max(300),
+    CART_MERGE_WINDOW_SECONDS: z.coerce.number().int().min(10).max(3600),
     BOOTSTRAP_OWNER_EMAIL: z.string().default(""),
     BOOTSTRAP_OWNER_PASSWORD: z.string().default(""),
     BOOTSTRAP_OWNER_DISPLAY_NAME: z.string().default(""),
@@ -130,6 +142,7 @@ const environmentSchema = z
       "JWT_ACCESS_SECRET",
       "JWT_REFRESH_SECRET",
       "CSRF_SECRET",
+      "CART_CREDENTIAL_SECRET",
     ] as const) {
       if (environment[key].toLowerCase().includes("replace")) {
         context.addIssue({

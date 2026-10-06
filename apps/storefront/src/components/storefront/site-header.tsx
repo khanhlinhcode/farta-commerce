@@ -12,6 +12,7 @@ import {
 } from "react";
 
 import type { Category } from "@/lib/catalog";
+import { cartQueryKey, getCart } from "@/lib/cart";
 
 const links = [
   ["/shop", "Shop"],
@@ -59,6 +60,12 @@ export function SiteHeader() {
     retry: false,
   });
   const categoryItems = categories.data?.items.slice(0, 8) ?? [];
+  const cart = useQuery({
+    queryKey: cartQueryKey,
+    queryFn: getCart,
+    staleTime: 15_000,
+    retry: false,
+  });
 
   function closeMenu(restoreFocus = true) {
     setMenuOpen(false);
@@ -158,13 +165,16 @@ export function SiteHeader() {
             >
               <UserRound aria-hidden="true" size={19} />
             </Link>
-            <span
-              className="icon-button is-disabled"
-              aria-label="Giỏ hàng sẽ khả dụng ở Phase 4"
-              title="Giỏ hàng đang được hoàn thiện"
+            <Link
+              className="icon-button cart-link"
+              href="/cart"
+              aria-label={`Giỏ hàng, ${cart.data?.itemCount ?? 0} sản phẩm`}
             >
               <ShoppingBag aria-hidden="true" size={19} />
-            </span>
+              {(cart.data?.itemCount ?? 0) > 0 && (
+                <span aria-hidden="true">{cart.data?.itemCount}</span>
+              )}
+            </Link>
           </div>
         </div>
       </header>
