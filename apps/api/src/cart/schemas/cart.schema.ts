@@ -60,6 +60,9 @@ export class Cart {
   @Prop({ type: mongoose.Schema.Types.ObjectId, default: null })
   mergedIntoCartId!: Types.ObjectId | null;
 
+  @Prop({ type: mongoose.Schema.Types.ObjectId, default: null })
+  convertedOrderId!: Types.ObjectId | null;
+
   version!: number;
   createdAt!: Date;
   updatedAt!: Date;

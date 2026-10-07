@@ -1,6 +1,6 @@
 import { HttpStatus, Inject, Injectable } from "@nestjs/common";
 import { InjectConnection, InjectModel } from "@nestjs/mongoose";
-import type { Connection, Model } from "mongoose";
+import type { ClientSession, Connection, Model } from "mongoose";
 import mongoose from "mongoose";
 
 import { AuditService } from "../audit/audit.service";
@@ -17,6 +17,15 @@ import {
 import { Inventory, type InventoryDocument } from "./schemas/inventory.schema";
 
 type MutationActor = { userId: string; requestId: string };
+export type InventoryBatchItem = { variantId: string; quantity: number };
+export type InventoryBatchContext = {
+  requestId: string;
+  actorId: string | null;
+  reason: string;
+  referenceType: string;
+  referenceId: string;
+  idempotencyPrefix: string;
+};
 export type InventoryResponse = {
   variantId: string;
   onHand: number;
@@ -221,6 +230,98 @@ export class InventoryService {
       return result;
     } finally {
       await session.endSession();
+    }
+  }
+
+  async reserveBatch(
+    items: ReadonlyArray<InventoryBatchItem>,
+    context: InventoryBatchContext,
+    session: ClientSession,
+  ): Promise<void> {
+    for (const item of items) {
+      if (!Number.isSafeInteger(item.quantity) || item.quantity < 1) {
+        throw new ApiException(
+          HttpStatus.BAD_REQUEST,
+          "INVALID_RESERVATION",
+          "Reservation quantity is invalid.",
+        );
+      }
+      const variantId = objectId(item.variantId);
+      const inventory = await this.inventories.findOneAndUpdate(
+        mongoose.trusted({
+          variantId,
+          $expr: {
+            $gte: [{ $subtract: ["$onHand", "$reserved"] }, item.quantity],
+          },
+        }),
+        { $inc: { reserved: item.quantity } },
+        { returnDocument: "after", session },
+      );
+      if (!inventory) {
+        throw new ApiException(
+          HttpStatus.CONFLICT,
+          "INSUFFICIENT_STOCK",
+          "One or more checkout items are no longer available.",
+        );
+      }
+      await this.transactions.create(
+        [
+          {
+            variantId,
+            type: "RESERVE",
+            quantityDelta: -item.quantity,
+            reason: context.reason,
+            referenceType: context.referenceType,
+            referenceId: context.referenceId,
+            actorId: context.actorId ? objectId(context.actorId) : null,
+            requestId: context.requestId,
+            idempotencyKey: `${context.idempotencyPrefix}:${item.variantId}`,
+            onHandAfter: inventory.onHand,
+            reservedAfter: inventory.reserved,
+          },
+        ],
+        { session },
+      );
+    }
+  }
+
+  async releaseBatch(
+    items: ReadonlyArray<InventoryBatchItem>,
+    context: InventoryBatchContext,
+    session: ClientSession,
+  ): Promise<void> {
+    for (const item of items) {
+      const variantId = objectId(item.variantId);
+      const inventory = await this.inventories.findOneAndUpdate(
+        mongoose.trusted({ variantId, reserved: { $gte: item.quantity } }),
+        { $inc: { reserved: -item.quantity } },
+        { returnDocument: "after", session },
+      );
+      if (!inventory) {
+        throw new ApiException(
+          HttpStatus.CONFLICT,
+          "RESERVATION_RELEASE_CONFLICT",
+          "Reserved inventory could not be released safely.",
+        );
+      }
+      await this.transactions.create(
+        [
+          {
+            variantId,
+            type: "RELEASE",
+            quantityDelta: item.quantity,
+            reason: context.reason,
+            referenceType: context.referenceType,
+            referenceId: context.referenceId,
+            actorId: context.actorId ? objectId(context.actorId) : null,
+            requestId: context.requestId,
+            idempotencyKey: `${context.idempotencyPrefix}:${item.variantId}`,
+            onHandAfter: inventory.onHand,
+            reservedAfter: inventory.reserved,
+          },
+        ],
+        { session },
+      );
     }
   }
 

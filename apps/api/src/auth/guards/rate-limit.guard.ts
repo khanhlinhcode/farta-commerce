@@ -91,6 +91,20 @@ export class RateLimitGuard implements CanActivate {
             infer: true,
           }),
         };
+      case "CHECKOUT":
+        return {
+          limit: this.config.get("CHECKOUT_LIMIT", { infer: true }),
+          windowSeconds: this.config.get("CHECKOUT_WINDOW_SECONDS", {
+            infer: true,
+          }),
+        };
+      case "ORDER_LOOKUP":
+        return {
+          limit: this.config.get("ORDER_LOOKUP_LIMIT", { infer: true }),
+          windowSeconds: this.config.get("ORDER_LOOKUP_WINDOW_SECONDS", {
+            infer: true,
+          }),
+        };
     }
   }
 }

@@ -64,6 +64,36 @@ const environmentSchema = z
     CART_MUTATION_WINDOW_SECONDS: z.coerce.number().int().min(10).max(3600),
     CART_MERGE_LIMIT: z.coerce.number().int().min(1).max(300),
     CART_MERGE_WINDOW_SECONDS: z.coerce.number().int().min(10).max(3600),
+    CHECKOUT_RESERVATION_TTL_SECONDS: z.coerce
+      .number()
+      .int()
+      .min(60)
+      .max(86_400),
+    SHIPPING_FLAT_FEE_VND: z.coerce
+      .number()
+      .int()
+      .min(0)
+      .max(Number.MAX_SAFE_INTEGER),
+    FREE_SHIPPING_THRESHOLD_VND: z
+      .string()
+      .default("")
+      .transform((value, context) => {
+        if (value === "") return null;
+        const parsed = Number(value);
+        if (!Number.isSafeInteger(parsed) || parsed < 0) {
+          context.addIssue({
+            code: "custom",
+            message: "Free shipping threshold must be a non-negative integer.",
+          });
+          return z.NEVER;
+        }
+        return parsed;
+      }),
+    ORDER_LOOKUP_SECRET: z.string().min(32),
+    CHECKOUT_LIMIT: z.coerce.number().int().min(1).max(300),
+    CHECKOUT_WINDOW_SECONDS: z.coerce.number().int().min(10).max(3600),
+    ORDER_LOOKUP_LIMIT: z.coerce.number().int().min(1).max(300),
+    ORDER_LOOKUP_WINDOW_SECONDS: z.coerce.number().int().min(10).max(3600),
     BOOTSTRAP_OWNER_EMAIL: z.string().default(""),
     BOOTSTRAP_OWNER_PASSWORD: z.string().default(""),
     BOOTSTRAP_OWNER_DISPLAY_NAME: z.string().default(""),
@@ -143,6 +173,7 @@ const environmentSchema = z
       "JWT_REFRESH_SECRET",
       "CSRF_SECRET",
       "CART_CREDENTIAL_SECRET",
+      "ORDER_LOOKUP_SECRET",
     ] as const) {
       if (environment[key].toLowerCase().includes("replace")) {
         context.addIssue({

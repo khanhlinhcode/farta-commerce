@@ -66,6 +66,14 @@ describe("authentication security foundation", () => {
       CART_MUTATION_WINDOW_SECONDS: "300",
       CART_MERGE_LIMIT: "20",
       CART_MERGE_WINDOW_SECONDS: "300",
+      CHECKOUT_RESERVATION_TTL_SECONDS: "900",
+      SHIPPING_FLAT_FEE_VND: "30000",
+      FREE_SHIPPING_THRESHOLD_VND: "1000000",
+      ORDER_LOOKUP_SECRET: "e".repeat(32),
+      CHECKOUT_LIMIT: "300",
+      CHECKOUT_WINDOW_SECONDS: "300",
+      ORDER_LOOKUP_LIMIT: "300",
+      ORDER_LOOKUP_WINDOW_SECONDS: "300",
     });
 
     const redisCleanup = new Redis(redisUrl);

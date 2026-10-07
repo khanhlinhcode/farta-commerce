@@ -270,6 +270,7 @@ export class CartService {
             items: [],
             expiresAt: this.expiresAt(owner.type),
             mergedIntoCartId: null,
+            convertedOrderId: null,
           },
         },
         {
@@ -302,6 +303,58 @@ export class CartService {
         };
   }
 
+  async requireForCheckout(request: Request, response: Response) {
+    const owner = this.resolveOwner(request, response, false);
+    return this.loadForCheckout(owner);
+  }
+
+  resolveOwner(
+    request: Request,
+    response: Response,
+    createGuest: boolean,
+  ): CartOwner {
+    return this.owner(request, response, createGuest);
+  }
+
+  async loadForCheckout(owner: CartOwner, session?: ClientSession) {
+    const cart = await this.carts
+      .findOne(this.ownerFilter(owner))
+      .select("+guestCredentialDigest")
+      .session(session ?? null)
+      .exec();
+    if (!cart || cart.items.length === 0) this.cartNotFound();
+    return {
+      cart,
+      owner,
+      readModel: await this.readModel(cart, session),
+      guestOwnerDigest: owner.type === "GUEST" ? owner.credentialDigest : null,
+    };
+  }
+
+  async convert(
+    cartId: string,
+    orderId: string,
+    session: ClientSession,
+  ): Promise<void> {
+    const result = await this.carts.updateOne(
+      { _id: objectId(cartId), status: "ACTIVE" },
+      {
+        $set: {
+          status: "CONVERTED",
+          convertedOrderId: objectId(orderId),
+        },
+      },
+      { session },
+    );
+    if (result.modifiedCount !== 1) {
+      throw new ApiException(
+        HttpStatus.CONFLICT,
+        "CART_ALREADY_CONVERTED",
+        "The cart has already been checked out.",
+      );
+    }
+  }
+
   private async assertSellable(variantId: string, quantity: number) {
     const variant = await this.variants.findOne({
       _id: objectId(variantId),
@@ -327,22 +380,26 @@ export class CartService {
     }
   }
 
-  private async readModel(cart: CartDocument) {
+  private async readModel(cart: CartDocument, session?: ClientSession) {
     const variantIds = cart.items.map((item) => item.variantId);
-    const variants = await this.variants.find({ _id: { $in: variantIds } });
-    const products = await this.products.find({
-      _id: { $in: variants.map((variant) => variant.productId) },
-    });
-    const inventory = await this.inventories.find({
-      variantId: { $in: variantIds },
-    });
+    const variants = await this.variants
+      .find({ _id: { $in: variantIds } })
+      .session(session ?? null);
+    const products = await this.products
+      .find({ _id: { $in: variants.map((variant) => variant.productId) } })
+      .session(session ?? null);
+    const inventory = await this.inventories
+      .find({ variantId: { $in: variantIds } })
+      .session(session ?? null);
     const mediaIds = products
       .flatMap((product) =>
         product.coverMediaId ? [product.coverMediaId] : [],
       )
       .concat(variants.flatMap((variant) => variant.mediaIds.slice(0, 1)));
     const media = mediaIds.length
-      ? await this.media.find({ _id: { $in: mediaIds }, archivedAt: null })
+      ? await this.media
+          .find({ _id: { $in: mediaIds }, archivedAt: null })
+          .session(session ?? null)
       : [];
     const variantById = new Map(variants.map((item) => [item.id, item]));
     const productById = new Map(products.map((item) => [item.id, item]));

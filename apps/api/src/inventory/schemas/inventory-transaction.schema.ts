@@ -38,8 +38,8 @@ export class InventoryTransaction {
   @Prop({ type: String, default: null, maxlength: 120 })
   referenceId!: string | null;
 
-  @Prop({ required: true, type: mongoose.Schema.Types.ObjectId })
-  actorId!: Types.ObjectId;
+  @Prop({ type: mongoose.Schema.Types.ObjectId, default: null })
+  actorId!: Types.ObjectId | null;
 
   @Prop({ required: true, type: String, maxlength: 100 })
   requestId!: string;

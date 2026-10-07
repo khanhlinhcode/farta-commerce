@@ -1,6 +1,6 @@
 # FARTA Commerce
 
-Greenfield production-oriented fashion-commerce monorepo. Phase 0 architecture is approved; Phase 1 provides the executable security foundation; Phase 2 provides the catalog, variant, inventory-ledger, media and banner domains plus the protected Admin catalog workspace; Phase 3 provides the premium storefront over those real APIs; Phase 4A provides the server-authoritative guest/customer Cart and merge flow. The repository is **not production-ready**: Checkout, Orders, production provider configuration and deployment validation remain gated work.
+Greenfield production-oriented fashion-commerce monorepo. Phase 0 architecture is approved; Phase 1 provides the executable security foundation; Phase 2 provides catalog and inventory; Phase 3 provides the premium storefront; Phase 4A provides the server-authoritative Cart; and Phase 4B provides atomic Checkout, Reservations, immutable Orders and COD. The repository is **not production-ready**: online payment, Admin order operations, workers, production provider configuration and deployment validation remain gated work.
 
 ## Stack baseline (verified 2026-10-03)
 
@@ -56,9 +56,9 @@ Catalog endpoints, publication invariants, money representation and Cloudinary f
 
 The Phase 3 storefront architecture, reviews and completion evidence are under [`docs/phase-3/`](docs/phase-3/). Public catalog reads use a 60-second revalidation window. Set `NEXT_PUBLIC_SITE_URL` to the canonical HTTPS storefront URL and explicitly set `NEXT_PUBLIC_INDEXABLE=true` only for production environments that should be indexed. Staging and development remain `noindex` by default.
 
-Cart endpoints and configuration are documented in [`docs/api/cart.md`](docs/api/cart.md) and [`docs/architecture/cart.md`](docs/architecture/cart.md). Supply the independent cart credential secret, line limit, retention and rate-limit values shown in `.env.example`; production has no implicit values for these business/security settings.
+Cart endpoints and configuration are documented in [`docs/api/cart.md`](docs/api/cart.md) and [`docs/architecture/cart.md`](docs/architecture/cart.md). Checkout and order contracts are documented in [`docs/api/checkout-orders.md`](docs/api/checkout-orders.md) and [`docs/architecture/checkout-orders.md`](docs/architecture/checkout-orders.md). Supply every independent secret, retention, shipping and rate-limit value shown in `.env.example`; production has no implicit values for these business/security settings.
 
-Phase 4A deliberately stops before Checkout and Orders. The real Cart page and PDP Add to Cart are enabled, while its checkout action is an honest disabled Phase 4B boundary. Wishlist, password recovery and OAuth success remain unavailable rather than simulated.
+Phase 4B supports real guest/customer COD checkout, order confirmation, account order history/detail and verified guest lookup. COD remains `UNPAID` until an authorized future collection command records it. SePay, online payment success and Admin order transitions are deliberately absent until their approved phases. Wishlist, password recovery and OAuth success remain unavailable rather than simulated.
 
 Secrets belong in local ignored files or the deployment secret store. Never expose provider/database credentials through `NEXT_PUBLIC_*` or `VITE_*` variables. Production configuration must fail closed and must not use `.env.example` placeholders.
 

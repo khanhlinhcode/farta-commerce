@@ -1,0 +1,75 @@
+import { Prop, Schema, SchemaFactory } from "@nestjs/mongoose";
+import type { HydratedDocument, Types } from "mongoose";
+import mongoose from "mongoose";
+
+export const PAYMENT_STATUSES = [
+  "UNPAID",
+  "DEPOSIT_PAID",
+  "FULLY_PAID",
+  "FAILED",
+  "EXPIRED",
+  "REFUND_PENDING",
+  "REFUNDED",
+  "CONFLICT",
+] as const;
+export type PaymentStatus = (typeof PAYMENT_STATUSES)[number];
+
+@Schema({ collection: "payments", strict: "throw", timestamps: true })
+export class Payment {
+  @Prop({ required: true, type: mongoose.Schema.Types.ObjectId })
+  orderId!: Types.ObjectId;
+
+  @Prop({ required: true, type: String, enum: ["COD", "SEPAY"] })
+  provider!: "COD" | "SEPAY";
+
+  @Prop({ required: true, type: String, enum: ["COD", "DEPOSIT", "FULL"] })
+  method!: "COD" | "DEPOSIT" | "FULL";
+
+  @Prop({ required: true, type: Number, min: 0, max: Number.MAX_SAFE_INTEGER })
+  expectedAmount!: number;
+
+  @Prop({ required: true, type: String, enum: ["VND"] })
+  currency!: "VND";
+
+  @Prop({ required: true, type: String, enum: PAYMENT_STATUSES })
+  status!: PaymentStatus;
+
+  @Prop({ required: true, type: String, maxlength: 64, select: false })
+  idempotencyKeyHash!: string;
+
+  @Prop({ type: String, default: null, maxlength: 160 })
+  providerTransactionId!: string | null;
+
+  @Prop({ type: String, default: null, maxlength: 160 })
+  providerReference!: string | null;
+
+  @Prop({ type: Object, default: null })
+  providerPayloadSafeSummary!: Record<string, unknown> | null;
+
+  @Prop({ required: true, type: Number, min: 0, max: Number.MAX_SAFE_INTEGER })
+  codAmount!: number;
+
+  @Prop({ type: Date, default: null })
+  codCollectedAt!: Date | null;
+
+  @Prop({ type: mongoose.Schema.Types.ObjectId, default: null })
+  codCollectedBy!: Types.ObjectId | null;
+
+  createdAt!: Date;
+  updatedAt!: Date;
+}
+
+export type PaymentDocument = HydratedDocument<Payment>;
+export const PaymentSchema = SchemaFactory.createForClass(Payment);
+PaymentSchema.index(
+  { orderId: 1 },
+  { unique: true, name: "payment_order_unique" },
+);
+PaymentSchema.index(
+  { provider: 1, providerTransactionId: 1 },
+  {
+    unique: true,
+    name: "payment_provider_transaction_unique",
+    partialFilterExpression: { providerTransactionId: { $type: "string" } },
+  },
+);

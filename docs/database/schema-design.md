@@ -49,6 +49,8 @@ This is a logical Phase 0 model. Field names may be refined through DTO/schema i
 | `banners`                | scheduled campaigns                    | status/position/time indexes                          |
 | `audit_logs`             | append-only privileged event evidence  | actor/action/resource/time/request indexes            |
 
+Phase 4B physical collection names are `carts`, `idempotency_records`, `inventory_reservations`, `orders`, `payments`, `inventory` and `inventory_transactions`. Important implemented indexes include unique active cart ownership, unique owner/operation/idempotency key, reservation status/expiry, unique public order code, customer/time order listing, unique order/idempotency linkage, unique payment/order linkage and partial unique provider transaction ID.
+
 ## General rules
 
 - Schemas use strict mode and explicitly reject keys such as `$*`, `__proto__`, `constructor` and `prototype` before query construction.

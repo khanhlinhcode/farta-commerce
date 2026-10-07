@@ -165,9 +165,12 @@ export function CartPage() {
           <p>
             Phí vận chuyển và tổng thanh toán được xác nhận ở bước tiếp theo.
           </p>
-          <button className="button button--primary button--wide" disabled>
-            Thanh toán — mở ở Phase 4B
-          </button>
+          <Link
+            className="button button--primary button--wide"
+            href="/checkout"
+          >
+            Tiến hành thanh toán
+          </Link>
           <Link href="/shop">Tiếp tục mua sắm</Link>
         </aside>
       </div>
