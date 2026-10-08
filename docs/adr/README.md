@@ -20,3 +20,4 @@
 | 016 | Order state machine and immutable snapshots      | Accepted |
 | 017 | Payment provider abstraction                     | Accepted |
 | 018 | Payment webhook authenticity and idempotency     | Accepted |
+| 019 | Reservation worker and notification outbox       | Accepted |

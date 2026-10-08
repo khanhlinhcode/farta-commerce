@@ -73,6 +73,7 @@ describe("Phase 4B checkout, reservation, order and COD", () => {
       imports: [AppModule],
     }).compile();
     app = moduleRef.createNestApplication();
+    app.getHttpServer().setMaxListeners(256);
     configureHttpApplication(app, { requestLogging: false });
     await app.init();
     mongo = app.get<Connection>(getConnectionToken());
@@ -294,6 +295,12 @@ describe("Phase 4B checkout, reservation, order and COD", () => {
     expect(
       await mongo.db?.collection("orders").countDocuments({
         _id: new Types.ObjectId(first.body.id as string),
+      }),
+    ).toBe(1);
+    expect(
+      await mongo.db?.collection("notification_events").countDocuments({
+        aggregateId: new Types.ObjectId(first.body.id as string),
+        type: "ORDER_CREATED",
       }),
     ).toBe(1);
   });

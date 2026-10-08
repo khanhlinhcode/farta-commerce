@@ -70,6 +70,18 @@ const environmentSchema = z
       .int()
       .min(60)
       .max(86_400),
+    RESERVATION_WORKER_INTERVAL_MS: z.coerce
+      .number()
+      .int()
+      .min(1_000)
+      .max(300_000)
+      .default(15_000),
+    RESERVATION_WORKER_BATCH_SIZE: z.coerce
+      .number()
+      .int()
+      .min(1)
+      .max(500)
+      .default(50),
     SHIPPING_FLAT_FEE_VND: z.coerce
       .number()
       .int()

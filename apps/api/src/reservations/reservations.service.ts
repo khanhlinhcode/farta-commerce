@@ -104,7 +104,12 @@ export class ReservationsService {
     for (const candidate of due) {
       const session = await this.connection.startSession();
       try {
+        let committed = false;
         await session.withTransaction(async () => {
+          // withTransaction may retry this callback after a transient abort.
+          // Reset the local marker so the returned metric reflects only the
+          // callback invocation that actually commits.
+          committed = false;
           const reservation = await this.reservations
             .findOne({
               _id: candidate._id,
@@ -133,8 +138,9 @@ export class ReservationsService {
           reservation.status = "EXPIRED";
           reservation.releasedAt = new Date();
           await reservation.save({ session });
-          released += 1;
+          committed = true;
         });
+        if (committed) released += 1;
       } finally {
         await session.endSession();
       }
@@ -154,7 +160,9 @@ export class ReservationsService {
     for (const reservationId of reservationIds) {
       const session = await this.connection.startSession();
       try {
+        let committed = false;
         await session.withTransaction(async () => {
+          committed = false;
           const reservation = await this.reservations
             .findOne({
               _id: objectId(reservationId),
@@ -190,8 +198,9 @@ export class ReservationsService {
           if (result.modifiedCount !== 1) {
             throw new Error("Reservation release state changed concurrently.");
           }
-          released += 1;
+          committed = true;
         });
+        if (committed) released += 1;
       } catch (error) {
         if (
           typeof error === "object" &&
@@ -207,5 +216,80 @@ export class ReservationsService {
       }
     }
     return released;
+  }
+
+  async cancelForOrder(
+    orderId: string,
+    input: { requestId: string; actorId: string; reason: string },
+    session: ClientSession,
+  ): Promise<number> {
+    const reservations = await this.reservations
+      .find({
+        referenceType: "ORDER",
+        referenceId: objectId(orderId),
+        status: { $in: ["ACTIVE", "CONFIRMED"] },
+      })
+      .session(session);
+    if (reservations.length === 0) return 0;
+    await this.inventory.releaseBatch(
+      reservations.map((reservation) => ({
+        variantId: reservation.variantId.toString(),
+        quantity: reservation.quantity,
+      })),
+      {
+        requestId: input.requestId,
+        actorId: input.actorId,
+        reason: input.reason,
+        referenceType: "ORDER",
+        referenceId: orderId,
+        idempotencyPrefix: `order-cancel:${orderId}`,
+      },
+      session,
+    );
+    const result = await this.reservations.updateMany(
+      {
+        _id: { $in: reservations.map((reservation) => reservation._id) },
+        status: { $in: ["ACTIVE", "CONFIRMED"] },
+      },
+      { $set: { status: "CANCELLED", releasedAt: new Date() } },
+      { session },
+    );
+    if (result.modifiedCount !== reservations.length) {
+      throw new Error("Reservation cancellation changed concurrently.");
+    }
+    return result.modifiedCount;
+  }
+
+  async commitSaleForOrder(
+    orderId: string,
+    input: { requestId: string; actorId: string },
+    session: ClientSession,
+  ): Promise<number> {
+    const reservations = await this.reservations
+      .find({
+        referenceType: "ORDER",
+        referenceId: objectId(orderId),
+        status: "CONFIRMED",
+      })
+      .session(session);
+    if (reservations.length === 0) {
+      throw new Error("Confirmed order reservations were not found.");
+    }
+    await this.inventory.sellBatch(
+      reservations.map((reservation) => ({
+        variantId: reservation.variantId.toString(),
+        quantity: reservation.quantity,
+      })),
+      {
+        requestId: input.requestId,
+        actorId: input.actorId,
+        reason: "Order handed to shipping.",
+        referenceType: "ORDER",
+        referenceId: orderId,
+        idempotencyPrefix: `order-sale:${orderId}`,
+      },
+      session,
+    );
+    return reservations.length;
   }
 }

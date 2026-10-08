@@ -14,6 +14,7 @@ import {
   type IdempotencyIdentity,
 } from "../idempotency/idempotency.service";
 import { InventoryService } from "../inventory/inventory.service";
+import { NotificationsService } from "../notifications/notifications.service";
 import {
   OrdersService,
   type OrderCreationItem,
@@ -44,6 +45,8 @@ export class CheckoutService {
     private readonly reservations: ReservationsService,
     @Inject(OrdersService) private readonly orders: OrdersService,
     @Inject(PaymentsService) private readonly payments: PaymentsService,
+    @Inject(NotificationsService)
+    private readonly notifications: NotificationsService,
     @Inject(ConfigService) config: ConfigService<Environment, true>,
   ) {
     this.reservationTtl = config.get("CHECKOUT_RESERVATION_TTL_SECONDS", {
@@ -178,6 +181,11 @@ export class CheckoutService {
           preview.paymentAmounts[canonicalInput.paymentMethod] ?? preview.total,
           idempotencyKey,
           expiresAt,
+          session,
+        );
+        await this.notifications.enqueueOrderEvent(
+          "ORDER_CREATED",
+          order,
           session,
         );
         if (canonicalInput.paymentMethod === "COD") {

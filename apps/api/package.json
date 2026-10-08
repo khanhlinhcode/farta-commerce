@@ -6,6 +6,8 @@
     "dev": "node scripts/dev.mjs",
     "build": "tsc -p tsconfig.build.json",
     "start": "node dist/main.js",
+    "worker:reservations": "node dist/workers/reservation-expiry.worker.js",
+    "worker:reservations:dev": "tsx src/workers/reservation-expiry.worker.ts",
     "bootstrap:owner": "tsx src/scripts/bootstrap-owner.ts",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "test": "vitest run",

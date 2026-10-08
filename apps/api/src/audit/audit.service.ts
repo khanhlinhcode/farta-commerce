@@ -63,4 +63,21 @@ export class AuditService {
       })),
     };
   }
+
+  async listForResource(resourceType: string, resourceId: string, limit = 100) {
+    const items = await this.auditLogs
+      .find({ resourceType, resourceId })
+      .sort({ createdAt: -1, _id: -1 })
+      .limit(limit)
+      .exec();
+    return items.map((item) => ({
+      id: item.id,
+      action: item.action,
+      actorId: item.actorId.toString(),
+      requestId: item.requestId,
+      changes: item.changes,
+      reason: item.reason,
+      createdAt: item.createdAt.toISOString(),
+    }));
+  }
 }

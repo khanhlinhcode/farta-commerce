@@ -55,6 +55,92 @@ export type Banner = {
   desktopMedia: MediaAsset | null;
 };
 
+export type AdminOrderListItem = {
+  id: string;
+  orderCode: string;
+  customerId: string | null;
+  recipientName: string;
+  phone: string;
+  status: string;
+  paymentStatus: string;
+  paymentMethod: string;
+  currency: "VND";
+  itemCount: number;
+  total: number;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type AdminOrderDetail = AdminOrderListItem & {
+  items: Array<{
+    productName: string;
+    sku: string;
+    color: string;
+    size: string;
+    unitPrice: number;
+    quantity: number;
+    lineSubtotal: number;
+  }>;
+  shipping: {
+    recipientName: string;
+    phone: string;
+    addressLine: string;
+    provinceCity: string;
+    district: string | null;
+    ward: string | null;
+    method: "STANDARD";
+    notes: string | null;
+  };
+  itemsSubtotal: number;
+  shippingFee: number;
+  payment: {
+    provider: string;
+    method: string;
+    status: string;
+    expectedAmount: number;
+    orderTotal: number;
+    receivedAmount: number;
+    transactionReference: string | null;
+    reconciliationReference: string | null;
+    reconciliationReason: string | null;
+    reconciledBy: string | null;
+    reconciledAt: string | null;
+  } | null;
+  timeline: Array<{
+    status: string;
+    at: string;
+    actorType: string;
+    actorId: string | null;
+    requestId: string;
+  }>;
+  reservations: Array<{
+    id: string;
+    variantId: string;
+    quantity: number;
+    status: string;
+    expiresAt: string;
+    confirmedAt: string | null;
+    releasedAt: string | null;
+  }>;
+  paymentEvents: Array<{
+    id: string;
+    provider: string;
+    eventId: string;
+    status: string;
+    outcomeCode: string;
+    replayMismatchCount: number;
+    createdAt: string;
+  }>;
+  audit: Array<{
+    id: string;
+    action: string;
+    actorId: string;
+    requestId: string;
+    reason: string | null;
+    createdAt: string;
+  }>;
+};
+
 export class ApiFailure extends Error {
   constructor(
     readonly code: string,
@@ -236,4 +322,44 @@ export const adminApi = {
       method: "POST",
       body: JSON.stringify(input),
     }),
+  orders: (query: string) =>
+    api<{
+      items: AdminOrderListItem[];
+      page: number;
+      limit: number;
+      total: number;
+      pages: number;
+    }>(`/admin/orders${query ? `?${query}` : ""}`),
+  order: (orderCode: string) =>
+    api<AdminOrderDetail>(`/admin/orders/${encodeURIComponent(orderCode)}`),
+  transitionOrder: (orderCode: string, status: string, reason: string) =>
+    api<AdminOrderDetail>(
+      `/admin/orders/${encodeURIComponent(orderCode)}/status`,
+      {
+        method: "PATCH",
+        body: JSON.stringify({ status, reason }),
+      },
+    ),
+  cancelOrder: (orderCode: string, reason: string) =>
+    api<AdminOrderDetail>(
+      `/admin/orders/${encodeURIComponent(orderCode)}/cancel`,
+      { method: "POST", body: JSON.stringify({ reason }) },
+    ),
+  reconcilePayment: (
+    orderCode: string,
+    input: {
+      action: "START_REFUND" | "CONFIRM_REFUNDED";
+      reason: string;
+      externalReference?: string;
+    },
+  ) =>
+    api<{ orderCode: string; paymentStatus: string; orderStatus: string }>(
+      `/admin/orders/${encodeURIComponent(orderCode)}/payment-reconciliation`,
+      { method: "POST", body: JSON.stringify(input) },
+    ),
+  collectCod: (orderCode: string, reason: string) =>
+    api<{ orderCode: string; paymentStatus: string; orderStatus: string }>(
+      `/admin/orders/${encodeURIComponent(orderCode)}/cod-collected`,
+      { method: "POST", body: JSON.stringify({ reason }) },
+    ),
 };

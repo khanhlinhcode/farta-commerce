@@ -325,6 +325,50 @@ export class InventoryService {
     }
   }
 
+  async sellBatch(
+    items: ReadonlyArray<InventoryBatchItem>,
+    context: InventoryBatchContext,
+    session: ClientSession,
+  ): Promise<void> {
+    for (const item of items) {
+      const variantId = objectId(item.variantId);
+      const inventory = await this.inventories.findOneAndUpdate(
+        mongoose.trusted({
+          variantId,
+          reserved: { $gte: item.quantity },
+          onHand: { $gte: item.quantity },
+        }),
+        { $inc: { reserved: -item.quantity, onHand: -item.quantity } },
+        { returnDocument: "after", session },
+      );
+      if (!inventory) {
+        throw new ApiException(
+          HttpStatus.CONFLICT,
+          "INVENTORY_SALE_CONFLICT",
+          "Reserved inventory could not be committed as a sale.",
+        );
+      }
+      await this.transactions.create(
+        [
+          {
+            variantId,
+            type: "SALE",
+            quantityDelta: -item.quantity,
+            reason: context.reason,
+            referenceType: context.referenceType,
+            referenceId: context.referenceId,
+            actorId: context.actorId ? objectId(context.actorId) : null,
+            requestId: context.requestId,
+            idempotencyKey: `${context.idempotencyPrefix}:${item.variantId}`,
+            onHandAfter: inventory.onHand,
+            reservedAfter: inventory.reserved,
+          },
+        ],
+        { session },
+      );
+    }
+  }
+
   private response(
     inventory: InventoryDocument,
     lowStockThreshold: number,

@@ -4,6 +4,7 @@ import { AuthModule } from "../auth/auth.module";
 import { CartModule } from "../cart/cart.module";
 import { IdempotencyModule } from "../idempotency/idempotency.module";
 import { InventoryModule } from "../inventory/inventory.module";
+import { NotificationsModule } from "../notifications/notifications.module";
 import { OrdersModule } from "../orders/orders.module";
 import { PaymentsModule } from "../payments/payments.module";
 import { ReservationsModule } from "../reservations/reservations.module";
@@ -16,6 +17,7 @@ import { CheckoutService } from "./checkout.service";
     CartModule,
     IdempotencyModule,
     InventoryModule,
+    NotificationsModule,
     ReservationsModule,
     OrdersModule,
     PaymentsModule,

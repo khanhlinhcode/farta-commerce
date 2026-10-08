@@ -66,6 +66,19 @@ Only guest orders (`customerId = null`) are eligible for this public verificatio
 
 Deposit receipt changes `UNPAID → DEPOSIT_PAID`; a second exact remaining receipt changes it to `FULLY_PAID`. Full payment changes `UNPAID → FULLY_PAID`. Any amount/account/window/state mismatch enters reconciliation rather than being accepted.
 
+## Admin order operations
+
+All routes below require the `STAFF` realm. Every mutation also requires session-bound CSRF and the stated permission.
+
+- `GET /admin/orders`: `order.read`; bounded `q`, order/payment status, method, date, page, limit and stable sort filters.
+- `GET /admin/orders/:orderCode`: `order.read`; safe order, payment, reservation, webhook-event and audit projections.
+- `PATCH /admin/orders/:orderCode/status`: `order.update`; body contains only `status` and a required reason. The domain state machine decides whether the transition is legal.
+- `POST /admin/orders/:orderCode/cancel`: `order.cancel`; releases eligible reservations and writes the audit entry atomically.
+- `POST /admin/orders/:orderCode/payment-reconciliation`: `order.update`; supports manual `START_REFUND` and `CONFIRM_REFUNDED`. This records external work; it does not call or simulate a provider refund.
+- `POST /admin/orders/:orderCode/cod-collected`: `order.update`; accepts only a reason. The server uses the persisted COD amount and allows collection only for a delivered/completed COD order.
+
+Online orders can be confirmed only by verified payment processing. `SHIPPING` commits reserved stock as a `SALE` ledger entry. Paid conflicts must be reconciled before cancellation.
+
 ## Errors
 
 - `INVALID_IDEMPOTENCY_KEY`
@@ -83,3 +96,11 @@ Deposit receipt changes `UNPAID → DEPOSIT_PAID`; a second exact remaining rece
 - `PAYMENT_PROVIDER_UNAVAILABLE`
 - `SEPAY_WEBHOOK_UNAUTHORIZED`
 - `SEPAY_WEBHOOK_EXPIRED`
+- `INVALID_ORDER_TRANSITION`
+- `ONLINE_PAYMENT_REQUIRES_WEBHOOK`
+- `ORDER_PAYMENT_NOT_READY`
+- `ORDER_CANCELLATION_PAYMENT_CONFLICT`
+- `PAYMENT_REFUND_NOT_ALLOWED`
+- `REFUND_REFERENCE_REQUIRED`
+- `COD_COLLECTION_ORDER_STATE_INVALID`
+- `COD_COLLECTION_NOT_ALLOWED`

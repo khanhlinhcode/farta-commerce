@@ -60,6 +60,18 @@ export class Payment {
   @Prop({ type: Date, default: null })
   expiresAt!: Date | null;
 
+  @Prop({ type: String, default: null, maxlength: 160 })
+  reconciliationReference!: string | null;
+
+  @Prop({ type: String, default: null, maxlength: 500 })
+  reconciliationReason!: string | null;
+
+  @Prop({ type: mongoose.Schema.Types.ObjectId, default: null })
+  reconciledBy!: Types.ObjectId | null;
+
+  @Prop({ type: Date, default: null })
+  reconciledAt!: Date | null;
+
   createdAt!: Date;
   updatedAt!: Date;
 }

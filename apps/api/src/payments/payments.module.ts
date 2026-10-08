@@ -1,9 +1,11 @@
 import { Module } from "@nestjs/common";
 import { MongooseModule } from "@nestjs/mongoose";
 
+import { AuditModule } from "../audit/audit.module";
 import { AuthModule } from "../auth/auth.module";
 import { CartModule } from "../cart/cart.module";
 import { Order, OrderSchema } from "../orders/schemas/order.schema";
+import { NotificationsModule } from "../notifications/notifications.module";
 import { ReservationsModule } from "../reservations/reservations.module";
 import {
   Reservation,
@@ -25,7 +27,9 @@ import { Payment, PaymentSchema } from "./schemas/payment.schema";
 @Module({
   imports: [
     AuthModule,
+    AuditModule,
     CartModule,
+    NotificationsModule,
     ReservationsModule,
     MongooseModule.forFeature([
       { name: Payment.name, schema: PaymentSchema },

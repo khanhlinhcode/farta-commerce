@@ -2,6 +2,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   Boxes,
+  ClipboardList,
   ImageIcon,
   LayoutDashboard,
   LogOut,
@@ -25,6 +26,7 @@ import { z } from "zod";
 import { Button, Surface } from "@farta/ui";
 
 import { adminApi, ApiFailure, type AdminUser } from "./lib/api";
+import { OrderDetailPage, OrdersPage } from "./features/orders/orders-pages";
 
 const loginSchema = z.object({
   email: z.email("Email không hợp lệ."),
@@ -124,6 +126,7 @@ const navigation = [
   ["/", "Tổng quan", LayoutDashboard],
   ["/categories", "Danh mục", Tags],
   ["/products", "Sản phẩm", PackageSearch],
+  ["/orders", "Đơn hàng", ClipboardList],
   ["/media", "Media", ImageIcon],
   ["/banners", "Banner", Megaphone],
 ] as const;
@@ -818,6 +821,8 @@ function ProtectedApp() {
         <Route path="/categories" element={<CategoriesPage />} />
         <Route path="/products" element={<ProductsPage />} />
         <Route path="/products/:productId" element={<ProductDetailPage />} />
+        <Route path="/orders" element={<OrdersPage />} />
+        <Route path="/orders/:orderCode" element={<OrderDetailPage />} />
         <Route path="/media" element={<MediaPage />} />
         <Route path="/banners" element={<BannersPage />} />
         <Route path="*" element={<Navigate replace to="/" />} />

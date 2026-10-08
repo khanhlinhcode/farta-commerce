@@ -79,3 +79,22 @@ The official bank-webhook payload is VND-only and has no independent currency fi
 - Transaction failure creates no partial order/reservation.
 - Instruction retry reuses the persisted payment/reference and cannot create another payment.
 - Webhooks validate signature, timestamp/replay rules, provider event ID, order reference, amount and currency before transition.
+
+## Fulfillment, sale and cancellation transactions
+
+Admin fulfillment commands never update arbitrary fields. They load order/payment state inside a short transaction, apply the order and payment policies, then persist the transition, inventory side effects, audit record and notification intent together.
+
+- `PACKING → SHIPPING` converts every confirmed order reservation to authoritative inventory consumption: `onHand -= quantity`, `reserved -= quantity`, followed by an append-only `SALE` ledger row.
+- Eligible cancellation releases `ACTIVE` or `CONFIRMED` allocations and marks their reservations `CANCELLED` in the same transaction.
+- A confirmed reservation remains the historical allocation record after sale; the `SALE` ledger and order `SHIPPING` state prove consumption. It is never eligible for cancellation after shipping.
+- COD selection stays `UNPAID`. Only the delivered/completed staff command records `codCollectedAt`, `codCollectedBy`, server-owned amount and `FULLY_PAID`.
+
+## Reservation expiry worker
+
+`pnpm --filter @farta/api worker:reservations` runs a separate bounded polling process. Each candidate is reloaded with `status=ACTIVE` and due `expiresAt` inside its own transaction. Release, ledger and `EXPIRED` state commit together. A second worker finds no eligible state and becomes a no-op. The transaction callback's local metric marker is reset on driver retry, so transient transaction retries do not inflate the released count.
+
+No BullMQ dependency was added. Production must supervise this process separately from the API. Interval and batch size come from `RESERVATION_WORKER_INTERVAL_MS` and `RESERVATION_WORKER_BATCH_SIZE`.
+
+## Notification outbox
+
+Order-created, payment-received, confirmed, shipped and delivered actions insert an idempotent `PENDING` event within the business transaction. Payloads contain only order code and status metadata. Deposit and final-payment receipts have distinct semantic keys. No email/provider adapter exists yet, so the system does not claim delivery.

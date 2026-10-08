@@ -85,6 +85,7 @@ describe("Phase 4C SePay payment and webhook integrity", () => {
       imports: [AppModule],
     }).compile();
     app = moduleRef.createNestApplication({ rawBody: true });
+    app.getHttpServer().setMaxListeners(256);
     configureHttpApplication(app, { requestLogging: false });
     await app.init();
     mongo = app.get<Connection>(getConnectionToken());
@@ -532,6 +533,19 @@ describe("Phase 4C SePay payment and webhook integrity", () => {
       receivedAmount: 329000,
       amountDue: 0,
     });
+    const receiptEvents = await mongo.db
+      ?.collection("notification_events")
+      .find({
+        aggregateId: new Types.ObjectId(order.id as string),
+        type: "PAYMENT_RECEIVED",
+      })
+      .sort({ createdAt: 1 })
+      .toArray();
+    expect(receiptEvents).toHaveLength(2);
+    expect(receiptEvents?.map((event) => event.payload.paymentStatus)).toEqual([
+      "DEPOSIT_PAID",
+      "FULLY_PAID",
+    ]);
   });
 
   it("does not trust browser initiation or status polling as payment success", async () => {

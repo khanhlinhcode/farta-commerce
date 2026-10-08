@@ -10,6 +10,7 @@ import { CheckoutModule } from "./checkout/checkout.module";
 import { IdempotencyModule } from "./idempotency/idempotency.module";
 import { InventoryModule } from "./inventory/inventory.module";
 import { MediaModule } from "./media/media.module";
+import { NotificationsModule } from "./notifications/notifications.module";
 import { ProductsModule } from "./products/products.module";
 import { OrdersModule } from "./orders/orders.module";
 import { PaymentsModule } from "./payments/payments.module";
@@ -37,6 +38,7 @@ import { RedisModule } from "./infrastructure/redis.module";
     CartModule,
     IdempotencyModule,
     ReservationsModule,
+    NotificationsModule,
     PaymentsModule,
     OrdersModule,
     CheckoutModule,

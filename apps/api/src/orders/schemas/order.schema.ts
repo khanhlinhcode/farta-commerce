@@ -194,6 +194,11 @@ OrderSchema.index(
   { name: "order_status_time" },
 );
 OrderSchema.index(
+  { paymentStatus: 1, createdAt: -1, _id: -1 },
+  { name: "order_payment_status_time" },
+);
+OrderSchema.index({ createdAt: -1, _id: -1 }, { name: "order_created_time" });
+OrderSchema.index(
   { idempotencyRecordId: 1 },
   { unique: true, name: "order_idempotency_unique" },
 );

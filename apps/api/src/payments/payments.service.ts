@@ -4,9 +4,11 @@ import { InjectConnection, InjectModel } from "@nestjs/mongoose";
 import { createHash, timingSafeEqual } from "node:crypto";
 import type { ClientSession, Connection, Model } from "mongoose";
 
+import { AuditService } from "../audit/audit.service";
 import { isDuplicateKey, objectId } from "../catalog/catalog.utils";
 import { ApiException } from "../common/api-exception";
 import type { Environment } from "../config/environment";
+import { NotificationsService } from "../notifications/notifications.service";
 import { assertOrderTransition } from "../orders/order-state-machine";
 import { Order, type OrderDocument } from "../orders/schemas/order.schema";
 import { ReservationsService } from "../reservations/reservations.service";
@@ -53,6 +55,9 @@ export class PaymentsService {
     @Inject(PaymentProvider) private readonly provider: PaymentProvider,
     @Inject(SePayPaymentProvider)
     private readonly sepayProvider: SePayPaymentProvider,
+    @Inject(AuditService) private readonly audit: AuditService,
+    @Inject(NotificationsService)
+    private readonly notifications: NotificationsService,
     @Inject(ConfigService) config: ConfigService<Environment, true>,
   ) {
     this.sepayEnabled = config.get("SEPAY_ENABLED", { infer: true });
@@ -129,6 +134,10 @@ export class PaymentsService {
           codCollectedAt: null,
           codCollectedBy: null,
           expiresAt: online ? expiresAt : null,
+          reconciliationReference: null,
+          reconciliationReason: null,
+          reconciledBy: null,
+          reconciledAt: null,
         },
       ],
       { session },
@@ -306,6 +315,11 @@ export class PaymentsService {
         await payment.save({ session });
 
         order.paymentStatus = next.status;
+        await this.notifications.enqueueOrderEvent(
+          "PAYMENT_RECEIVED",
+          order,
+          session,
+        );
         if (order.status === "CREATED") {
           assertOrderTransition(order.status, "CONFIRMED");
           order.status = "CONFIRMED";
@@ -316,6 +330,11 @@ export class PaymentsService {
             actorId: null,
             requestId,
           });
+          await this.notifications.enqueueOrderEvent(
+            "ORDER_CONFIRMED",
+            order,
+            session,
+          );
         }
         await order.save({ session });
         record.status = "PROCESSED";
@@ -355,6 +374,196 @@ export class PaymentsService {
       await session.endSession();
     }
     return { success: true };
+  }
+
+  async reconcile(
+    orderCode: string,
+    action: "START_REFUND" | "CONFIRM_REFUNDED",
+    reason: string,
+    externalReference: string | null,
+    actor: { userId: string; requestId: string },
+  ) {
+    const session = await this.connection.startSession();
+    try {
+      let response:
+        | { orderCode: string; paymentStatus: string; orderStatus: string }
+        | undefined;
+      await session.withTransaction(async () => {
+        const order = await this.orders.findOne({ orderCode }).session(session);
+        if (!order) this.notFound();
+        if (
+          ["PACKING", "SHIPPING", "DELIVERED", "COMPLETED"].includes(
+            order.status,
+          )
+        ) {
+          throw new ApiException(
+            HttpStatus.CONFLICT,
+            "ORDER_REFUND_OUTSIDE_PHASE_SCOPE",
+            "Fulfilled orders require a dedicated returns workflow.",
+          );
+        }
+        const payment = await this.payments
+          .findOne({ orderId: order._id })
+          .session(session);
+        if (!payment) this.notFound();
+        const previousPayment = payment.status;
+        const previousOrder = order.status;
+        if (action === "START_REFUND") {
+          if (
+            !["DEPOSIT_PAID", "FULLY_PAID", "CONFLICT"].includes(payment.status)
+          ) {
+            throw new ApiException(
+              HttpStatus.CONFLICT,
+              "PAYMENT_REFUND_NOT_ALLOWED",
+              "The payment is not eligible for refund reconciliation.",
+            );
+          }
+          assertPaymentTransition(payment.status, "REFUND_PENDING");
+          payment.status = "REFUND_PENDING";
+          payment.reconciliationReference = externalReference;
+        } else {
+          if (!externalReference) {
+            throw new ApiException(
+              HttpStatus.BAD_REQUEST,
+              "REFUND_REFERENCE_REQUIRED",
+              "An external refund reference is required.",
+            );
+          }
+          assertPaymentTransition(payment.status, "REFUNDED");
+          payment.status = "REFUNDED";
+          payment.reconciliationReference = externalReference;
+        }
+        payment.reconciliationReason = reason.trim();
+        payment.reconciledBy = objectId(actor.userId);
+        payment.reconciledAt = new Date();
+        await payment.save({ session });
+        order.paymentStatus = payment.status;
+        if (
+          action === "START_REFUND" &&
+          ["CREATED", "CONFIRMED"].includes(order.status)
+        ) {
+          assertOrderTransition(order.status, "PAYMENT_CONFLICT");
+          order.status = "PAYMENT_CONFLICT";
+          order.statusHistory.push({
+            status: "PAYMENT_CONFLICT",
+            at: new Date(),
+            actorType: "STAFF",
+            actorId: objectId(actor.userId),
+            requestId: actor.requestId,
+          });
+        }
+        await order.save({ session });
+        await this.audit.record(
+          {
+            action:
+              action === "START_REFUND"
+                ? "payment.refund_pending"
+                : "payment.refunded",
+            resourceType: "Order",
+            resourceId: order.id,
+            actorId: actor.userId,
+            requestId: actor.requestId,
+            before: {
+              orderStatus: previousOrder,
+              paymentStatus: previousPayment,
+            },
+            after: {
+              orderStatus: order.status,
+              paymentStatus: payment.status,
+              externalReference: payment.reconciliationReference,
+            },
+            reason: reason.trim(),
+          },
+          session,
+        );
+        response = {
+          orderCode: order.orderCode,
+          paymentStatus: payment.status,
+          orderStatus: order.status,
+        };
+      });
+      if (!response) throw new Error("Payment reconciliation did not commit.");
+      return response;
+    } finally {
+      await session.endSession();
+    }
+  }
+
+  async recordCodCollected(
+    orderCode: string,
+    reason: string,
+    actor: { userId: string; requestId: string },
+  ) {
+    const session = await this.connection.startSession();
+    try {
+      let response:
+        | { orderCode: string; paymentStatus: string; orderStatus: string }
+        | undefined;
+      await session.withTransaction(async () => {
+        const order = await this.orders.findOne({ orderCode }).session(session);
+        if (!order) this.notFound();
+        if (!["DELIVERED", "COMPLETED"].includes(order.status)) {
+          throw new ApiException(
+            HttpStatus.CONFLICT,
+            "COD_COLLECTION_ORDER_STATE_INVALID",
+            "COD can be recorded only after delivery.",
+          );
+        }
+        const payment = await this.payments
+          .findOne({ orderId: order._id })
+          .session(session);
+        if (!payment) this.notFound();
+        if (
+          payment.provider !== "COD" ||
+          payment.status !== "UNPAID" ||
+          payment.codCollectedAt
+        ) {
+          throw new ApiException(
+            HttpStatus.CONFLICT,
+            "COD_COLLECTION_NOT_ALLOWED",
+            "COD collection cannot be recorded in the current state.",
+          );
+        }
+        assertPaymentTransition(payment.status, "FULLY_PAID");
+        payment.status = "FULLY_PAID";
+        payment.receivedAmount = payment.codAmount;
+        payment.codCollectedAt = new Date();
+        payment.codCollectedBy = objectId(actor.userId);
+        await payment.save({ session });
+        order.paymentStatus = "FULLY_PAID";
+        await order.save({ session });
+        await this.audit.record(
+          {
+            action: "payment.cod_collected",
+            resourceType: "Order",
+            resourceId: order.id,
+            actorId: actor.userId,
+            requestId: actor.requestId,
+            before: { paymentStatus: "UNPAID", codCollectedAt: null },
+            after: {
+              paymentStatus: "FULLY_PAID",
+              codCollectedAt: payment.codCollectedAt.toISOString(),
+            },
+            reason: reason.trim(),
+          },
+          session,
+        );
+        await this.notifications.enqueueOrderEvent(
+          "PAYMENT_RECEIVED",
+          order,
+          session,
+        );
+        response = {
+          orderCode: order.orderCode,
+          paymentStatus: payment.status,
+          orderStatus: order.status,
+        };
+      });
+      if (!response) throw new Error("COD collection did not commit.");
+      return response;
+    } finally {
+      await session.endSession();
+    }
   }
 
   private depositAmount(total: number): number | null {
