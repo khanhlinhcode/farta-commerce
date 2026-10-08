@@ -21,7 +21,8 @@ flowchart LR
   Orders --> Mongo
   Payments --> Mongo
   Payments --> Provider[PaymentProvider]
-  Provider --> SePay[SePay]
+  Provider --> QR[VietQR instruction URL]
+  SePay[SePay signed bank webhook] --> API
   API --> Redis[(Redis rate limits)]
 ```
 
@@ -35,8 +36,8 @@ The NestJS API remains authoritative. Storefront and Admin never connect to Mong
 | `inventory_reservations` | stock allocation lifecycle           | unique `{idempotencyIdentity, variantId}`; `{status, expiresAt}`; `{orderId, status}`; `{variantId, status}`                                                                                    |
 | `idempotency_records`    | replay binding/result                | unique `{realm, ownerKey, operation, key}`; TTL `{expiresAt}` after safe retention                                                                                                              |
 | `orders`                 | immutable checkout snapshots/state   | unique `orderCode`; unique `checkoutIdempotencyRecordId`; `{customerId, createdAt}`; `{status, createdAt}`; `{recipientPhoneHash, createdAt}`                                                   |
-| `payments`               | provider-neutral money state         | unique `{orderId, logicalAttempt}`; unique sparse `{provider, providerTransactionId}`; unique `{provider, providerReference}`; `{status, updatedAt}`                                            |
-| `payment_webhook_events` | authenticated delivery deduplication | unique `{provider, providerEventId}`; `{status, receivedAt}`; TTL only for raw/safe delivery metadata after retention approval                                                                  |
+| `payments`               | provider-neutral money state         | unique `{orderId}`; unique partial `{provider, providerTransactionId}`; unique partial `{provider, providerReference}`; `{status, updatedAt}`                                                   |
+| `payment_webhook_events` | authenticated delivery deduplication | unique `{provider, eventId}`; `{status, createdAt}`; no raw body stored                                                                                                                         |
 
 Money is integer VND. Exact internal inventory quantity is never exposed publicly.
 
@@ -56,12 +57,12 @@ A transaction abort leaves no order, reservation, ledger or inventory delta. Ret
 
 ### Webhook/reconciliation
 
-Verify HMAC and timestamp before parsing into domain input. In a short transaction, claim provider event ID, compare expected reference/amount/state, transition payment/order/reservation as allowed, append audit/outbox data and mark event processed. No email is sent in the transaction.
+Parse through the strict DTO, verify HMAC over the original raw bytes and timestamp, then normalize into domain input. In a short transaction, claim provider event ID, bind replay to the accepted payload fingerprint, compare account/reference/amount/state, transition payment/order/reservation as allowed and mark the event processed. No raw body, free-form transfer content or secret is persisted. Phase 4D adds the Admin reconciliation/audit surface.
 
 ### Expiry/cancellation
 
 Workers or commands atomically claim eligible current states, release inventory and append `RELEASE` ledger entries in the same transaction. Retrying a completed state is a no-op with the same result.
 
-## Known foundation gap
+## Implemented payment boundary
 
-The existing Phase 2 `InventoryService.reserve()` is retained only until the Phase 4B session-aware batch primitive replaces checkout usage. It requires a user actor, owns its transaction and lacks the Reservation aggregate; checkout must not compose it in a loop.
+SePay initiation is deterministic instruction generation, not a remote provider call. Online checkout keeps reservations `ACTIVE`; the first verified receipt confirms the full reservation set. Deposit receipt extends the remaining-payment window without releasing confirmed inventory. A late or mismatched event enters explicit conflict state and never silently allocates stock or marks an order paid.

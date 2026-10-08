@@ -36,21 +36,42 @@ export class RateLimitGuard implements CanActivate {
     const request = http.getRequest<Request>();
     const response = http.getResponse<Response>();
     const settings = this.settings(policy);
-    const identity = createHash("sha256")
-      .update(request.ip || request.socket.remoteAddress || "unknown")
-      .digest("hex");
+    const source = request.ip || request.socket.remoteAddress || "unknown";
+    const paymentResource =
+      policy === "PAYMENT_INITIATE" || policy === "PAYMENT_STATUS"
+        ? String(request.params.orderCode ?? "unknown").slice(0, 64)
+        : null;
+    const sourceIdentity = createHash("sha256").update(source).digest("hex");
+    const buckets = paymentResource
+      ? [
+          {
+            key: `rate:${policy}:source:${sourceIdentity}`,
+            limit: settings.globalLimit ?? settings.limit,
+          },
+          {
+            key: `rate:${policy}:resource:${createHash("sha256")
+              .update(`${source}:${paymentResource}`)
+              .digest("hex")}`,
+            limit: settings.limit,
+          },
+        ]
+      : [{ key: `rate:${policy}:${sourceIdentity}`, limit: settings.limit }];
     try {
-      const result = await this.redis.consumeRateLimit(
-        `rate:${policy}:${identity}`,
-        settings.limit,
-        settings.windowSeconds,
-      );
-      response.setHeader("X-RateLimit-Remaining", String(result.remaining));
-      if (!result.allowed)
-        throw new HttpException(
-          "Too many requests.",
-          HttpStatus.TOO_MANY_REQUESTS,
+      let remaining = Number.MAX_SAFE_INTEGER;
+      for (const bucket of buckets) {
+        const result = await this.redis.consumeRateLimit(
+          bucket.key,
+          bucket.limit,
+          settings.windowSeconds,
         );
+        remaining = Math.min(remaining, result.remaining);
+        if (!result.allowed)
+          throw new HttpException(
+            "Too many requests.",
+            HttpStatus.TOO_MANY_REQUESTS,
+          );
+      }
+      response.setHeader("X-RateLimit-Remaining", String(remaining));
       return true;
     } catch (error) {
       if (error instanceof HttpException) throw error;
@@ -61,6 +82,7 @@ export class RateLimitGuard implements CanActivate {
   private settings(policy: RateLimitPolicy): {
     limit: number;
     windowSeconds: number;
+    globalLimit?: number;
   } {
     switch (policy) {
       case "AUTH_LOGIN":
@@ -102,6 +124,26 @@ export class RateLimitGuard implements CanActivate {
         return {
           limit: this.config.get("ORDER_LOOKUP_LIMIT", { infer: true }),
           windowSeconds: this.config.get("ORDER_LOOKUP_WINDOW_SECONDS", {
+            infer: true,
+          }),
+        };
+      case "PAYMENT_INITIATE":
+        return {
+          limit: this.config.get("PAYMENT_INITIATE_LIMIT", { infer: true }),
+          globalLimit: this.config.get("PAYMENT_INITIATE_GLOBAL_LIMIT", {
+            infer: true,
+          }),
+          windowSeconds: this.config.get("PAYMENT_INITIATE_WINDOW_SECONDS", {
+            infer: true,
+          }),
+        };
+      case "PAYMENT_STATUS":
+        return {
+          limit: this.config.get("PAYMENT_STATUS_LIMIT", { infer: true }),
+          globalLimit: this.config.get("PAYMENT_STATUS_GLOBAL_LIMIT", {
+            infer: true,
+          }),
+          windowSeconds: this.config.get("PAYMENT_STATUS_WINDOW_SECONDS", {
             infer: true,
           }),
         };

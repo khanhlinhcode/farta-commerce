@@ -11,6 +11,7 @@ const environmentSchema = z
     APP_ORIGIN: url,
     ADMIN_ORIGIN: url,
     API_ORIGIN: url,
+    TRUST_PROXY_HOPS: z.coerce.number().int().min(0).max(5).default(0),
     MONGODB_URI: z.string().min(1),
     REDIS_URL: url,
     JWT_ACCESS_SECRET: z.string().min(32),
@@ -94,6 +95,89 @@ const environmentSchema = z
     CHECKOUT_WINDOW_SECONDS: z.coerce.number().int().min(10).max(3600),
     ORDER_LOOKUP_LIMIT: z.coerce.number().int().min(1).max(300),
     ORDER_LOOKUP_WINDOW_SECONDS: z.coerce.number().int().min(10).max(3600),
+    PAYMENT_INITIATE_LIMIT: z.coerce.number().int().min(1).max(300).default(20),
+    PAYMENT_INITIATE_GLOBAL_LIMIT: z.coerce
+      .number()
+      .int()
+      .min(20)
+      .max(5000)
+      .default(100),
+    PAYMENT_INITIATE_WINDOW_SECONDS: z.coerce
+      .number()
+      .int()
+      .min(10)
+      .max(3600)
+      .default(300),
+    PAYMENT_STATUS_LIMIT: z.coerce
+      .number()
+      .int()
+      .min(100)
+      .max(1000)
+      .default(120),
+    PAYMENT_STATUS_GLOBAL_LIMIT: z.coerce
+      .number()
+      .int()
+      .min(120)
+      .max(10_000)
+      .default(600),
+    PAYMENT_STATUS_WINDOW_SECONDS: z.coerce
+      .number()
+      .int()
+      .min(60)
+      .max(3600)
+      .default(300),
+    SEPAY_ENABLED: z
+      .enum(["true", "false"])
+      .default("false")
+      .transform((value) => value === "true"),
+    SEPAY_BANK_NAME: z.string().trim().max(80).default(""),
+    SEPAY_ACCOUNT_NUMBER: z.string().trim().max(80).default(""),
+    SEPAY_ACCOUNT_HOLDER: z.string().trim().max(160).default(""),
+    SEPAY_WEBHOOK_SECRET: z.string().default(""),
+    SEPAY_WEBHOOK_TOLERANCE_SECONDS: z.coerce
+      .number()
+      .int()
+      .min(30)
+      .max(900)
+      .default(300),
+    SEPAY_PAYMENT_CODE_PREFIX: z
+      .string()
+      .trim()
+      .regex(/^[A-Z][A-Z0-9]{1,9}$/)
+      .default("FAR"),
+    SEPAY_DEPOSIT_MODE: z
+      .enum(["DISABLED", "FIXED", "PERCENTAGE"])
+      .default("DISABLED"),
+    SEPAY_DEPOSIT_FIXED_VND: z
+      .string()
+      .default("")
+      .transform((value, context) => {
+        if (value === "") return null;
+        const parsed = Number(value);
+        if (!Number.isSafeInteger(parsed) || parsed <= 0) {
+          context.addIssue({
+            code: "custom",
+            message: "Fixed deposit must be a positive integer VND amount.",
+          });
+          return z.NEVER;
+        }
+        return parsed;
+      }),
+    SEPAY_DEPOSIT_BASIS_POINTS: z
+      .string()
+      .default("")
+      .transform((value, context) => {
+        if (value === "") return null;
+        const parsed = Number(value);
+        if (!Number.isInteger(parsed) || parsed < 1 || parsed > 9999) {
+          context.addIssue({
+            code: "custom",
+            message: "Deposit basis points must be an integer from 1 to 9999.",
+          });
+          return z.NEVER;
+        }
+        return parsed;
+      }),
     BOOTSTRAP_OWNER_EMAIL: z.string().default(""),
     BOOTSTRAP_OWNER_PASSWORD: z.string().default(""),
     BOOTSTRAP_OWNER_DISPLAY_NAME: z.string().default(""),
@@ -158,6 +242,80 @@ const environmentSchema = z
       });
     }
 
+    if (environment.SEPAY_ENABLED) {
+      for (const key of [
+        "SEPAY_BANK_NAME",
+        "SEPAY_ACCOUNT_NUMBER",
+        "SEPAY_ACCOUNT_HOLDER",
+      ] as const) {
+        if (!environment[key]) {
+          context.addIssue({
+            code: "custom",
+            path: [key],
+            message: "SePay payment instructions require this value.",
+          });
+        }
+      }
+      if (environment.SEPAY_WEBHOOK_SECRET.length < 32) {
+        context.addIssue({
+          code: "custom",
+          path: ["SEPAY_WEBHOOK_SECRET"],
+          message: "SePay HMAC secret must contain at least 32 characters.",
+        });
+      }
+    }
+    if (
+      environment.PAYMENT_INITIATE_GLOBAL_LIMIT <
+      environment.PAYMENT_INITIATE_LIMIT
+    ) {
+      context.addIssue({
+        code: "custom",
+        path: ["PAYMENT_INITIATE_GLOBAL_LIMIT"],
+        message: "Global payment initiation limit must cover one order limit.",
+      });
+    }
+    if (
+      environment.PAYMENT_STATUS_GLOBAL_LIMIT < environment.PAYMENT_STATUS_LIMIT
+    ) {
+      context.addIssue({
+        code: "custom",
+        path: ["PAYMENT_STATUS_GLOBAL_LIMIT"],
+        message: "Global payment status limit must cover one order limit.",
+      });
+    }
+    if (
+      environment.SEPAY_DEPOSIT_MODE === "FIXED" &&
+      (environment.SEPAY_DEPOSIT_FIXED_VND === null ||
+        environment.SEPAY_DEPOSIT_BASIS_POINTS !== null)
+    ) {
+      context.addIssue({
+        code: "custom",
+        path: ["SEPAY_DEPOSIT_FIXED_VND"],
+        message: "Fixed deposit mode requires only a fixed VND amount.",
+      });
+    }
+    if (
+      environment.SEPAY_DEPOSIT_MODE === "PERCENTAGE" &&
+      (environment.SEPAY_DEPOSIT_BASIS_POINTS === null ||
+        environment.SEPAY_DEPOSIT_FIXED_VND !== null)
+    ) {
+      context.addIssue({
+        code: "custom",
+        path: ["SEPAY_DEPOSIT_BASIS_POINTS"],
+        message: "Percentage deposit mode requires only basis points.",
+      });
+    }
+    if (
+      environment.SEPAY_DEPOSIT_MODE !== "DISABLED" &&
+      !environment.SEPAY_ENABLED
+    ) {
+      context.addIssue({
+        code: "custom",
+        path: ["SEPAY_DEPOSIT_MODE"],
+        message: "Deposit payments require SePay to be enabled.",
+      });
+    }
+
     if (environment.APP_ENV !== "production") return;
     for (const key of ["APP_ORIGIN", "ADMIN_ORIGIN", "API_ORIGIN"] as const) {
       if (!environment[key].startsWith("https://")) {
@@ -174,8 +332,12 @@ const environmentSchema = z
       "CSRF_SECRET",
       "CART_CREDENTIAL_SECRET",
       "ORDER_LOOKUP_SECRET",
+      "SEPAY_WEBHOOK_SECRET",
     ] as const) {
-      if (environment[key].toLowerCase().includes("replace")) {
+      if (
+        environment[key] &&
+        environment[key].toLowerCase().includes("replace")
+      ) {
         context.addIssue({
           code: "custom",
           path: [key],

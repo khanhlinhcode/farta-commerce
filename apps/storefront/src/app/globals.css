@@ -1451,6 +1451,13 @@ img {
   line-height: 1;
 }
 
+.checkout-choice input {
+  width: 1.1rem;
+  height: 1.1rem;
+  flex: 0 0 auto;
+  accent-color: var(--farta-color-accent);
+}
+
 .checkout-choice span {
   display: grid;
   gap: 0.25rem;
@@ -1573,6 +1580,52 @@ img {
 .order-detail-layout > aside p {
   color: var(--farta-color-text-muted);
   line-height: 1.75;
+}
+
+.payment-panel {
+  display: grid;
+  gap: 1.25rem;
+  padding: 1.25rem;
+  margin: 1.5rem 0;
+  border: 1px solid var(--farta-color-border);
+  background: var(--farta-color-surface-elevated);
+}
+
+.payment-panel h2 {
+  margin: 0.25rem 0 1rem;
+}
+
+.payment-panel dl {
+  display: grid;
+  gap: 0.65rem;
+  margin: 1rem 0;
+}
+
+.payment-panel dl div {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.payment-panel dd {
+  margin: 0;
+  font-weight: 650;
+  text-align: right;
+  overflow-wrap: anywhere;
+}
+
+.payment-panel img {
+  width: min(100%, 22rem);
+  height: auto;
+  margin-inline: auto;
+}
+
+.payment-panel--success {
+  border-color: var(--farta-color-success);
+}
+
+.payment-panel--conflict {
+  border-color: var(--farta-color-danger);
 }
 
 .order-items {

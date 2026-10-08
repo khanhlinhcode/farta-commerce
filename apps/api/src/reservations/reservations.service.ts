@@ -73,6 +73,26 @@ export class ReservationsService {
     }
   }
 
+  async attachToOrder(
+    reservationIds: ReadonlyArray<Types.ObjectId>,
+    orderId: string,
+    session: ClientSession,
+  ): Promise<void> {
+    const result = await this.reservations.updateMany(
+      { _id: { $in: reservationIds }, status: "ACTIVE" },
+      {
+        $set: {
+          referenceType: "ORDER",
+          referenceId: objectId(orderId),
+        },
+      },
+      { session },
+    );
+    if (result.modifiedCount !== reservationIds.length) {
+      throw new Error("Reservation order attachment was incomplete.");
+    }
+  }
+
   async expireDue(limit: number, requestId: string): Promise<number> {
     const due = await this.reservations
       .find({ status: "ACTIVE", expiresAt: { $lte: new Date() } })

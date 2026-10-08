@@ -64,7 +64,12 @@ export type CheckoutPreview = {
   itemsSubtotal: number;
   shippingFee: number;
   total: number;
-  supportedPaymentMethods: ReadonlyArray<"COD">;
+  supportedPaymentMethods: ReadonlyArray<"COD" | "DEPOSIT" | "FULL">;
+  paymentAmounts: {
+    COD: number;
+    FULL?: number;
+    DEPOSIT?: number;
+  };
   reservationTtlSeconds: number;
   quoteToken: string;
 };
@@ -79,18 +84,23 @@ export type OrderStatus =
   | "CANCELLED"
   | "PAYMENT_CONFLICT";
 
+export const PAYMENT_STATUSES = [
+  "UNPAID",
+  "DEPOSIT_PAID",
+  "FULLY_PAID",
+  "FAILED",
+  "EXPIRED",
+  "REFUND_PENDING",
+  "REFUNDED",
+  "CONFLICT",
+] as const;
+export type PaymentStatus = (typeof PAYMENT_STATUSES)[number];
+
 export type OrderSummaryReadModel = {
   id: string;
   orderCode: string;
   status: OrderStatus;
-  paymentStatus:
-    | "UNPAID"
-    | "DEPOSIT_PAID"
-    | "FULLY_PAID"
-    | "FAILED"
-    | "EXPIRED"
-    | "REFUNDED"
-    | "CONFLICT";
+  paymentStatus: PaymentStatus;
   paymentMethod: "COD" | "DEPOSIT" | "FULL";
   currency: "VND";
   itemCount: number;
@@ -101,14 +111,7 @@ export type OrderSummaryReadModel = {
 export type GuestOrderLookupReadModel = {
   orderCode: string;
   status: OrderStatus;
-  paymentStatus:
-    | "UNPAID"
-    | "DEPOSIT_PAID"
-    | "FULLY_PAID"
-    | "FAILED"
-    | "EXPIRED"
-    | "REFUNDED"
-    | "CONFLICT";
+  paymentStatus: PaymentStatus;
   paymentMethod: "COD" | "DEPOSIT" | "FULL";
   currency: "VND";
   items: ReadonlyArray<{
@@ -135,14 +138,7 @@ export type OrderReadModel = {
   id: string;
   orderCode: string;
   status: OrderStatus;
-  paymentStatus:
-    | "UNPAID"
-    | "DEPOSIT_PAID"
-    | "FULLY_PAID"
-    | "FAILED"
-    | "EXPIRED"
-    | "REFUNDED"
-    | "CONFLICT";
+  paymentStatus: PaymentStatus;
   paymentMethod: "COD" | "DEPOSIT" | "FULL";
   currency: "VND";
   items: ReadonlyArray<{
@@ -179,12 +175,53 @@ export type OrderReadModel = {
   payment: {
     provider: "COD" | "SEPAY";
     method: "COD" | "DEPOSIT" | "FULL";
-    status: string;
+    status: PaymentStatus;
     amount: number;
     currency: "VND";
     codAmount: number;
     codCollectedAt: string | null;
+    expectedAmount: number;
+    orderTotal: number;
+    receivedAmount: number;
+    reference: string | null;
+    expiresAt: string | null;
   } | null;
   createdAt: string;
+  updatedAt: string;
+};
+
+export type PaymentInstructionsReadModel = {
+  orderCode: string;
+  status: PaymentStatus;
+  receivedAmount: number;
+  orderTotal: number;
+  instructions: {
+    provider: "SEPAY";
+    method: "DEPOSIT" | "FULL";
+    amount: number;
+    currency: "VND";
+    reference: string;
+    expiresAt: string;
+    bank: {
+      name: string;
+      accountNumber: string;
+      accountHolder: string;
+    };
+    qrUrl: string;
+  };
+};
+
+export type PaymentStatusReadModel = {
+  orderCode: string;
+  provider: "COD" | "SEPAY";
+  method: "COD" | "DEPOSIT" | "FULL";
+  status: PaymentStatus;
+  currency: "VND";
+  expectedAmount: number;
+  receivedAmount: number;
+  orderTotal: number;
+  amountDue: number;
+  reference: string | null;
+  expiresAt: string | null;
   updatedAt: string;
 };

@@ -4,14 +4,24 @@ Status: Accepted
 
 ## Decision
 
-`PaymentsModule` persists provider-neutral payment records before any external interaction. `OrderService` depends on a `PaymentProvider` contract; provider adapters initiate a payment where supported, normalize instructions/results, verify authenticity and normalize events.
+`PaymentsModule` persists provider-neutral payment records inside the checkout transaction and before any provider interaction. `CheckoutService` depends only on `PaymentsService`; the `PaymentProvider` contract owns provider-specific instruction generation and webhook normalization/authentication.
 
-COD is the first complete method and never implies collection. SePay is a separate adapter. Provider calls occur after the order transaction and use the persisted payment/idempotency identity. Browser redirects and polling are informational; only a verified webhook or explicit server-to-provider verification can authoritatively change payment state.
+COD never implies collection. The SePay adapter uses direct bank-transfer instructions: the server creates a unique payment reference and an official VietQR delivery URL from configured merchant bank data. This flow has no outbound provider API call during initiation. Browser redirects and polling are informational; only a verified webhook can authoritatively change payment state.
 
 Payment amounts are integer VND values calculated by the server. Deposit and full-payment policy are typed configuration. Production fails closed when an enabled method lacks required provider or business configuration.
 
 ## Consequences
 
 - SePay fields do not leak into order-domain commands.
-- Provider timeout leaves a queryable pending payment and a retry uses the same logical idempotency context.
+- Repeating initiation returns instructions for the existing payment; it does not create another payment attempt.
 - Automated tests use adapters/mocks or the official sandbox; mock-only evidence is not production-readiness evidence.
+
+## Provider evidence
+
+Official SePay documentation accessed 2026-10-08:
+
+- <https://developer.sepay.vn/en/tien-ich-khac/tao-qr-code>
+- <https://developer.sepay.vn/en/tien-ich-khac/test-mode>
+- <https://developer.sepay.vn/en/sepay-webhooks/tich-hop-webhook>
+
+This ADR selects bank webhooks plus VietQR, not the separate SePay Payment Gateway/IPN product. A future gateway adapter requires a separate decision and provider contract.

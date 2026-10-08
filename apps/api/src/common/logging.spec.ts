@@ -20,6 +20,7 @@ describe("structured log redaction", () => {
       config: {
         MONGODB_URI: "mongodb-secret",
         JWT_ACCESS_SECRET: "jwt-secret",
+        SEPAY_WEBHOOK_SECRET: "sepay-webhook-secret",
       },
     });
 
@@ -30,6 +31,7 @@ describe("structured log redaction", () => {
       "refresh-secret",
       "mongodb-secret",
       "jwt-secret",
+      "sepay-webhook-secret",
     ]) {
       expect(output).not.toContain(secret);
     }

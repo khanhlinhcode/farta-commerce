@@ -1,5 +1,6 @@
 import { ValidationPipe, type INestApplication } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
+import type { Express } from "express";
 import helmet from "helmet";
 
 import { SafeHttpExceptionFilter } from "./common/http-exception.filter";
@@ -13,6 +14,11 @@ export function configureHttpApplication(
 ): void {
   const config = app.get<ConfigService<Environment, true>>(ConfigService);
   const appEnvironment = config.get("APP_ENV", { infer: true });
+  const express = app.getHttpAdapter().getInstance() as Express;
+
+  // Keep zero for direct traffic. Deployments behind a known proxy chain must
+  // set the exact hop count; never trust arbitrary forwarded addresses.
+  express.set("trust proxy", config.get("TRUST_PROXY_HOPS", { infer: true }));
 
   app.use(requestIdMiddleware);
   if (options.requestLogging !== false) app.use(createRequestLogger());

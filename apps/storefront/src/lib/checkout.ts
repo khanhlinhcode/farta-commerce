@@ -3,6 +3,8 @@ import type {
   GuestOrderLookupReadModel,
   OrderReadModel,
   OrderSummaryReadModel,
+  PaymentInstructionsReadModel,
+  PaymentStatusReadModel,
 } from "@farta/types";
 
 import { apiRequest, customerCsrfHeaders } from "./api-client";
@@ -15,7 +17,7 @@ export type CheckoutInput = {
   district?: string;
   ward?: string;
   shippingMethod: "STANDARD";
-  paymentMethod: "COD";
+  paymentMethod: "COD" | "DEPOSIT" | "FULL";
   notes?: string;
   quoteToken: string;
 };
@@ -59,4 +61,24 @@ export function lookupOrder(orderCode: string, phone: string) {
     headers: { "content-type": "application/json" },
     body: JSON.stringify({ orderCode, phone }),
   });
+}
+
+export function initiatePayment(
+  orderCode: string,
+): Promise<PaymentInstructionsReadModel> {
+  return apiRequest<PaymentInstructionsReadModel>(
+    `/payments/${encodeURIComponent(orderCode)}/initiate`,
+    {
+      method: "POST",
+      headers: customerCsrfHeaders(),
+    },
+  );
+}
+
+export function getPaymentStatus(
+  orderCode: string,
+): Promise<PaymentStatusReadModel> {
+  return apiRequest<PaymentStatusReadModel>(
+    `/payments/${encodeURIComponent(orderCode)}/status`,
+  );
 }

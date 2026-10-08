@@ -30,13 +30,13 @@ Checkout accepts recipient/shipping/payment fields only. `customerId`, prices, t
 
 ## Payments
 
-| Method | Route                               | Notes                                                           |
-| ------ | ----------------------------------- | --------------------------------------------------------------- |
-| POST   | `/payments/:paymentId/initiate`     | Phase 4C                                                        |
-| GET    | `/payments/:paymentId/status`       | Phase 4C                                                        |
-| POST   | `/payments/providers/sepay/webhook` | Phase 4C; raw body HMAC/timestamp verification; no browser CSRF |
+| Method | Route                           | Notes                                                            |
+| ------ | ------------------------------- | ---------------------------------------------------------------- |
+| POST   | `/payments/:orderCode/initiate` | owner-bound, CSRF/origin guarded, returns existing instructions  |
+| GET    | `/payments/:orderCode/status`   | owner-bound authoritative status, bounded polling target         |
+| POST   | `/webhooks/sepay`               | raw body HMAC/timestamp verification; provider callback, no CSRF |
 
-The SePay endpoint returns only the provider-required success response after the event has been durably accepted. Browser success/error returns never transition payment state.
+The SePay endpoint returns exactly `{ "success": true }` after the event has been durably accepted or recognized as a duplicate. Browser success/error returns and payment initiation never transition payment state.
 
 ## Admin order operations
 
@@ -44,4 +44,4 @@ Routes under `/admin/orders` require staff-realm authentication, granular permis
 
 ## Domain errors
 
-`CART_NOT_FOUND`, `CART_ITEM_LIMIT`, `CHECKOUT_QUOTE_CHANGED`, `CHECKOUT_CART_CONFLICT`, `CHECKOUT_STOCK_CONFLICT`, `INSUFFICIENT_STOCK`, `INVALID_IDEMPOTENCY_KEY`, `IDEMPOTENCY_KEY_REUSED`, `CHECKOUT_IN_PROGRESS`, `ORDER_NOT_FOUND`, `INVALID_ORDER_TRANSITION`, `INVALID_PAYMENT_TRANSITION`. Payment-provider and webhook errors begin in Phase 4C.
+`CART_NOT_FOUND`, `CART_ITEM_LIMIT`, `CHECKOUT_QUOTE_CHANGED`, `CHECKOUT_CART_CONFLICT`, `CHECKOUT_STOCK_CONFLICT`, `INSUFFICIENT_STOCK`, `INVALID_IDEMPOTENCY_KEY`, `IDEMPOTENCY_KEY_REUSED`, `CHECKOUT_IN_PROGRESS`, `ORDER_NOT_FOUND`, `INVALID_ORDER_TRANSITION`, `INVALID_PAYMENT_TRANSITION`, `PAYMENT_NOT_FOUND`, `PAYMENT_EXPIRED`, `PAYMENT_NOT_INITIABLE`, `PAYMENT_PROVIDER_UNAVAILABLE`, `SEPAY_WEBHOOK_UNAUTHORIZED`, `SEPAY_WEBHOOK_EXPIRED`.

@@ -15,6 +15,7 @@ export const LOG_REDACTION = {
     "*.JWT_ACCESS_SECRET",
     "*.JWT_REFRESH_SECRET",
     "*.CLOUDINARY_API_SECRET",
+    "*.SEPAY_WEBHOOK_SECRET",
   ],
   censor: "[REDACTED]",
 };

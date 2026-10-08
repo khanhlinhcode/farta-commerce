@@ -37,11 +37,11 @@ Allowed body:
 }
 ```
 
-The server normalizes the Vietnamese mobile phone to `+84...`, reloads the cart in the MongoDB transaction, reprices all lines, checks the quote, conditionally reserves every variant, writes ledger/reservation/order/payment records, confirms the reservation set and converts the cart. There is no network call inside this transaction.
+The server normalizes the Vietnamese mobile phone to `+84...`, reloads the cart in the MongoDB transaction, reprices all lines, checks the quote, conditionally reserves every variant, writes ledger/reservation/order/payment records and converts the cart. COD allocations are confirmed in the transaction; online allocations remain active until the first verified receipt. There is no network call inside this transaction.
 
 Same owner + operation + key + canonical request returns the same order. Reusing the key for another request returns `IDEMPOTENCY_KEY_REUSED`. Client `customerId`, price, subtotal, total, inventory, order status or payment status fields are rejected.
 
-Phase 4B supports COD only. COD creates an `UNPAID` provider-neutral payment with `codAmount`; selecting COD never records collection.
+`COD` creates an `UNPAID` provider-neutral payment with `codAmount`; selecting COD never records collection. When SePay is explicitly configured, preview may also advertise `FULL` and a configured `DEPOSIT`; the server signs those amounts into the quote and ignores client totals.
 
 ## Customer orders
 
@@ -58,7 +58,15 @@ Body: `orderCode` plus recipient phone. The phone is normalized and compared thr
 
 Only guest orders (`customerId = null`) are eligible for this public verification path. The response intentionally excludes recipient/address/phone/notes, database identifiers, SKU and provider payment metadata. Authenticated customer orders remain available only through the owning customer session.
 
-## Phase 4B errors
+## Online payments
+
+- `POST /payments/:orderCode/initiate`: returns existing SePay/VietQR instructions for the owning customer or original guest credential; it does not mark payment successful.
+- `GET /payments/:orderCode/status`: returns the authoritative payment status for bounded storefront polling.
+- `POST /webhooks/sepay`: validates the official raw-body HMAC and timestamp, then processes the provider event idempotently.
+
+Deposit receipt changes `UNPAID → DEPOSIT_PAID`; a second exact remaining receipt changes it to `FULLY_PAID`. Full payment changes `UNPAID → FULLY_PAID`. Any amount/account/window/state mismatch enters reconciliation rather than being accepted.
+
+## Errors
 
 - `INVALID_IDEMPOTENCY_KEY`
 - `IDEMPOTENCY_KEY_REUSED`
@@ -69,5 +77,9 @@ Only guest orders (`customerId = null`) are eligible for this public verificatio
 - `INSUFFICIENT_STOCK`
 - `INVALID_PHONE`
 - `ORDER_NOT_FOUND`
-
-SePay initiation, online-payment polling and webhooks are intentionally absent until Phase 4C.
+- `PAYMENT_NOT_FOUND`
+- `PAYMENT_EXPIRED`
+- `PAYMENT_NOT_INITIABLE`
+- `PAYMENT_PROVIDER_UNAVAILABLE`
+- `SEPAY_WEBHOOK_UNAUTHORIZED`
+- `SEPAY_WEBHOOK_EXPIRED`

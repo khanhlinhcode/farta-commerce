@@ -22,6 +22,7 @@ const checkoutSchema = z.object({
   district: z.string().trim().max(120),
   ward: z.string().trim().max(120),
   notes: z.string().trim().max(500),
+  paymentMethod: z.enum(["COD", "DEPOSIT", "FULL"]),
 });
 type CheckoutForm = z.infer<typeof checkoutSchema>;
 
@@ -45,6 +46,7 @@ export function CheckoutPage() {
       district: "",
       ward: "",
       notes: "",
+      paymentMethod: "COD",
     },
   });
   const checkout = useMutation({
@@ -58,7 +60,6 @@ export function CheckoutPage() {
           ...(values.ward ? { ward: values.ward } : {}),
           ...(values.notes ? { notes: values.notes } : {}),
           shippingMethod: "STANDARD",
-          paymentMethod: "COD",
           quoteToken: preview.data.quoteToken,
         },
         idempotencyKey.current,
@@ -129,6 +130,12 @@ export function CheckoutPage() {
   }
 
   const hasConflicts = preview.data.conflicts.length > 0;
+  const selectedPaymentMethod = form.watch("paymentMethod");
+  const submitLabels = {
+    COD: "Đặt hàng COD",
+    DEPOSIT: "Đặt hàng & nhận QR cọc",
+    FULL: "Đặt hàng & nhận QR thanh toán",
+  } as const;
   return (
     <main id="main-content" className="checkout-page">
       <header className="checkout-heading">
@@ -227,7 +234,7 @@ export function CheckoutPage() {
           </fieldset>
           <fieldset>
             <legend>Giao hàng & thanh toán</legend>
-            <div className="checkout-choice">
+            <div className="checkout-choice checkout-choice--static">
               <span className="checkout-choice__indicator" aria-hidden="true">
                 ✓
               </span>
@@ -236,15 +243,32 @@ export function CheckoutPage() {
                 <small>{formatVnd(preview.data.shippingFee)}</small>
               </span>
             </div>
-            <div className="checkout-choice">
-              <span className="checkout-choice__indicator" aria-hidden="true">
-                ✓
-              </span>
-              <span>
-                <strong>Thanh toán khi nhận hàng (COD)</strong>
-                <small>Chưa thu tiền. Thanh toán cho đơn vị giao hàng.</small>
-              </span>
-            </div>
+            {preview.data.supportedPaymentMethods.map((method) => (
+              <label className="checkout-choice" key={method}>
+                <input
+                  type="radio"
+                  value={method}
+                  {...form.register("paymentMethod")}
+                />
+                <span>
+                  <strong>
+                    {method === "COD"
+                      ? "Thanh toán khi nhận hàng (COD)"
+                      : method === "DEPOSIT"
+                        ? "Đặt cọc qua SePay"
+                        : "Thanh toán đủ qua SePay"}
+                  </strong>
+                  <small>
+                    {method === "COD"
+                      ? "Chưa thu tiền. Thanh toán cho đơn vị giao hàng."
+                      : `${formatVnd(
+                          preview.data.paymentAmounts[method] ??
+                            preview.data.total,
+                        )} · Xác nhận bằng webhook, không dựa vào trình duyệt.`}
+                  </small>
+                </span>
+              </label>
+            ))}
           </fieldset>
         </div>
         <aside className="checkout-summary">
@@ -302,7 +326,10 @@ export function CheckoutPage() {
           >
             {checkout.isPending
               ? "Đang tạo đơn an toàn…"
-              : `Đặt hàng COD · ${formatVnd(preview.data.total)}`}
+              : `${submitLabels[selectedPaymentMethod]} · ${formatVnd(
+                  preview.data.paymentAmounts[selectedPaymentMethod] ??
+                    preview.data.total,
+                )}`}
           </button>
           <p className="checkout-note">
             Bằng việc đặt hàng, bạn xác nhận thông tin giao nhận ở trên là chính

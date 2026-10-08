@@ -54,8 +54,8 @@ export class SubmitCheckoutDto {
   @IsIn(["STANDARD"])
   shippingMethod!: "STANDARD";
 
-  @IsIn(["COD"])
-  paymentMethod!: "COD";
+  @IsIn(["COD", "DEPOSIT", "FULL"])
+  paymentMethod!: "COD" | "DEPOSIT" | "FULL";
 
   @Transform(emptyToUndefined)
   @IsOptional()

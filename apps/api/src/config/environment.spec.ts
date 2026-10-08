@@ -36,7 +36,40 @@ const valid = {
 
 describe("environment validation", () => {
   it("parses a valid environment", () =>
-    expect(validateEnvironment(valid).PORT).toBe(4000));
+    expect(validateEnvironment(valid)).toMatchObject({
+      PORT: 4000,
+      TRUST_PROXY_HOPS: 0,
+      PAYMENT_INITIATE_LIMIT: 20,
+      PAYMENT_INITIATE_GLOBAL_LIMIT: 100,
+      PAYMENT_STATUS_LIMIT: 120,
+      PAYMENT_STATUS_GLOBAL_LIMIT: 600,
+      SEPAY_ENABLED: false,
+      SEPAY_DEPOSIT_MODE: "DISABLED",
+    }));
+  it("accepts a complete SePay configuration and rejects incomplete setup", () => {
+    expect(
+      validateEnvironment({
+        ...valid,
+        SEPAY_ENABLED: "true",
+        SEPAY_BANK_NAME: "TestBank",
+        SEPAY_ACCOUNT_NUMBER: "0123456789",
+        SEPAY_ACCOUNT_HOLDER: "FARTA TEST",
+        SEPAY_WEBHOOK_SECRET: "s".repeat(32),
+        SEPAY_DEPOSIT_MODE: "FIXED",
+        SEPAY_DEPOSIT_FIXED_VND: "100000",
+      }),
+    ).toMatchObject({ SEPAY_ENABLED: true, SEPAY_DEPOSIT_FIXED_VND: 100000 });
+    expect(() =>
+      validateEnvironment({ ...valid, SEPAY_ENABLED: "true" }),
+    ).toThrow("SEPAY_BANK_NAME");
+    expect(() =>
+      validateEnvironment({
+        ...valid,
+        SEPAY_DEPOSIT_MODE: "PERCENTAGE",
+        SEPAY_DEPOSIT_BASIS_POINTS: "3000",
+      }),
+    ).toThrow("SEPAY_DEPOSIT_MODE");
+  });
   it("rejects missing required configuration without echoing values", () => {
     expect(() => validateEnvironment({ ...valid, MONGODB_URI: "" })).toThrow(
       "MONGODB_URI",

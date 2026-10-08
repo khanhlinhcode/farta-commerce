@@ -2,6 +2,11 @@ import { Prop, Schema, SchemaFactory } from "@nestjs/mongoose";
 import type { HydratedDocument, Types } from "mongoose";
 import mongoose from "mongoose";
 
+import {
+  PAYMENT_STATUSES,
+  type PaymentStatus,
+} from "../../payments/payment-status";
+
 export const ORDER_STATUSES = [
   "CREATED",
   "CONFIRMED",
@@ -139,17 +144,9 @@ export class Order {
   @Prop({
     required: true,
     type: String,
-    enum: [
-      "UNPAID",
-      "DEPOSIT_PAID",
-      "FULLY_PAID",
-      "FAILED",
-      "EXPIRED",
-      "REFUNDED",
-      "CONFLICT",
-    ],
+    enum: PAYMENT_STATUSES,
   })
-  paymentStatus!: string;
+  paymentStatus!: PaymentStatus;
 
   @Prop({ required: true, type: String, enum: ["COD", "DEPOSIT", "FULL"] })
   paymentMethod!: "COD" | "DEPOSIT" | "FULL";

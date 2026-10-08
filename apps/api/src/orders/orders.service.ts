@@ -65,6 +65,7 @@ export class OrdersService {
       itemsSubtotal: number;
       shippingFee: number;
       total: number;
+      paymentMethod: "COD" | "DEPOSIT" | "FULL";
       idempotencyRecordId: string;
       requestId: string;
     },
@@ -80,7 +81,7 @@ export class OrdersService {
           cartId: objectId(input.cartId),
           status: "CREATED",
           paymentStatus: "UNPAID",
-          paymentMethod: "COD",
+          paymentMethod: input.paymentMethod,
           items: input.items.map((item) => ({
             ...item,
             productId: objectId(item.productId),
@@ -208,6 +209,11 @@ export class OrdersService {
             currency: payment.currency,
             codAmount: payment.codAmount,
             codCollectedAt: payment.codCollectedAt?.toISOString() ?? null,
+            expectedAmount: payment.expectedAmount,
+            orderTotal: payment.orderTotal,
+            receivedAmount: payment.receivedAmount,
+            reference: payment.providerReference,
+            expiresAt: payment.expiresAt?.toISOString() ?? null,
           }
         : null,
       createdAt: order.createdAt.toISOString(),

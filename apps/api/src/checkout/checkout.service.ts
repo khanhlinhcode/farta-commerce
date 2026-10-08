@@ -109,6 +109,13 @@ export class CheckoutService {
           );
         }
         this.assertCheckoutReady(checkout.readModel);
+        if (!preview.supportedPaymentMethods.includes(input.paymentMethod)) {
+          throw new ApiException(
+            HttpStatus.CONFLICT,
+            "PAYMENT_METHOD_UNAVAILABLE",
+            "The selected payment method is not available.",
+          );
+        }
         const items = this.orderItems(checkout.readModel);
         const expiresAt = new Date(Date.now() + this.reservationTtl * 1000);
         const reservationItems = items.map((item) => ({
@@ -159,22 +166,33 @@ export class CheckoutService {
             itemsSubtotal: preview.itemsSubtotal,
             shippingFee: preview.shippingFee,
             total: preview.total,
+            paymentMethod: canonicalInput.paymentMethod,
             idempotencyRecordId: claim.id,
             requestId: String(request.id),
           },
           session,
         );
-        await this.payments.createCod(
-          order.id,
-          preview.total,
+        await this.payments.createForCheckout(
+          order,
+          canonicalInput.paymentMethod,
+          preview.paymentAmounts[canonicalInput.paymentMethod] ?? preview.total,
           idempotencyKey,
+          expiresAt,
           session,
         );
-        await this.reservations.confirm(
-          reservations.map((reservation) => reservation._id),
-          order.id,
-          session,
-        );
+        if (canonicalInput.paymentMethod === "COD") {
+          await this.reservations.confirm(
+            reservations.map((reservation) => reservation._id),
+            order.id,
+            session,
+          );
+        } else {
+          await this.reservations.attachToOrder(
+            reservations.map((reservation) => reservation._id),
+            order.id,
+            session,
+          );
+        }
         await this.carts.convert(checkout.cart.id, order.id, session);
         await this.idempotency.complete(claim.id, "ORDER", order.id, session);
         orderId = order.id;
@@ -206,6 +224,8 @@ export class CheckoutService {
         ? 0
         : this.flatShippingFee;
     const total = this.safeAdd(cart.subtotal, shippingFee);
+    const supportedPaymentMethods = this.payments.supportedMethods(total);
+    const paymentAmounts = this.payments.paymentAmounts(total);
     const quoteToken = this.quote({
       cartId: cart.id,
       version: cart.version,
@@ -217,6 +237,8 @@ export class CheckoutService {
       itemsSubtotal: cart.subtotal,
       shippingFee,
       total,
+      supportedPaymentMethods,
+      paymentAmounts,
       conflicts: cart.conflicts,
     });
     return {
@@ -226,7 +248,8 @@ export class CheckoutService {
       itemsSubtotal: cart.subtotal,
       shippingFee,
       total,
-      supportedPaymentMethods: ["COD"] as const,
+      supportedPaymentMethods,
+      paymentAmounts,
       reservationTtlSeconds: this.reservationTtl,
       quoteToken,
     };

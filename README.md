@@ -1,6 +1,6 @@
 # FARTA Commerce
 
-Greenfield production-oriented fashion-commerce monorepo. Phase 0 architecture is approved; Phase 1 provides the executable security foundation; Phase 2 provides catalog and inventory; Phase 3 provides the premium storefront; Phase 4A provides the server-authoritative Cart; and Phase 4B provides atomic Checkout, Reservations, immutable Orders and COD. The repository is **not production-ready**: online payment, Admin order operations, workers, production provider configuration and deployment validation remain gated work.
+Greenfield production-oriented fashion-commerce monorepo. Phase 0 architecture is approved; Phase 1 provides the executable security foundation; Phase 2 provides catalog and inventory; Phase 3 provides the premium storefront; Phase 4A provides the server-authoritative Cart; Phase 4B provides atomic Checkout, Reservations, immutable Orders and COD; Phase 4C adds the SePay/VietQR payment boundary and verified bank webhooks. The repository is **not production-ready**: Admin order operations, workers, real SePay Test-mode/live validation, production provider configuration and deployment validation remain gated work.
 
 ## Stack baseline (verified 2026-10-03)
 
@@ -58,7 +58,7 @@ The Phase 3 storefront architecture, reviews and completion evidence are under [
 
 Cart endpoints and configuration are documented in [`docs/api/cart.md`](docs/api/cart.md) and [`docs/architecture/cart.md`](docs/architecture/cart.md). Checkout and order contracts are documented in [`docs/api/checkout-orders.md`](docs/api/checkout-orders.md) and [`docs/architecture/checkout-orders.md`](docs/architecture/checkout-orders.md). Supply every independent secret, retention, shipping and rate-limit value shown in `.env.example`; production has no implicit values for these business/security settings.
 
-Phase 4B supports real guest/customer COD checkout, order confirmation, account order history/detail and verified guest lookup. COD remains `UNPAID` until an authorized future collection command records it. SePay, online payment success and Admin order transitions are deliberately absent until their approved phases. Wishlist, password recovery and OAuth success remain unavailable rather than simulated.
+Phase 4B supports real guest/customer checkout, order confirmation, account order history/detail and verified guest lookup. COD remains `UNPAID` until an authorized future collection command records it. When explicitly configured, Phase 4C supports full/deposit SePay bank transfers, server-generated VietQR instructions, authenticated raw-body webhooks and explicit payment conflicts. Local tests use signed provider-shaped payloads only; they are not evidence of a real SePay account or money movement. Admin order transitions remain Phase 4D. Wishlist, password recovery and OAuth success remain unavailable rather than simulated.
 
 Secrets belong in local ignored files or the deployment secret store. Never expose provider/database credentials through `NEXT_PUBLIC_*` or `VITE_*` variables. Production configuration must fail closed and must not use `.env.example` placeholders.
 

@@ -2,17 +2,10 @@ import { Prop, Schema, SchemaFactory } from "@nestjs/mongoose";
 import type { HydratedDocument, Types } from "mongoose";
 import mongoose from "mongoose";
 
-export const PAYMENT_STATUSES = [
-  "UNPAID",
-  "DEPOSIT_PAID",
-  "FULLY_PAID",
-  "FAILED",
-  "EXPIRED",
-  "REFUND_PENDING",
-  "REFUNDED",
-  "CONFLICT",
-] as const;
-export type PaymentStatus = (typeof PAYMENT_STATUSES)[number];
+import { PAYMENT_STATUSES, type PaymentStatus } from "../payment-status";
+
+export { PAYMENT_STATUSES } from "../payment-status";
+export type { PaymentStatus } from "../payment-status";
 
 @Schema({ collection: "payments", strict: "throw", timestamps: true })
 export class Payment {
@@ -27,6 +20,12 @@ export class Payment {
 
   @Prop({ required: true, type: Number, min: 0, max: Number.MAX_SAFE_INTEGER })
   expectedAmount!: number;
+
+  @Prop({ required: true, type: Number, min: 0, max: Number.MAX_SAFE_INTEGER })
+  orderTotal!: number;
+
+  @Prop({ required: true, type: Number, min: 0, max: Number.MAX_SAFE_INTEGER })
+  receivedAmount!: number;
 
   @Prop({ required: true, type: String, enum: ["VND"] })
   currency!: "VND";
@@ -43,6 +42,9 @@ export class Payment {
   @Prop({ type: String, default: null, maxlength: 160 })
   providerReference!: string | null;
 
+  @Prop({ required: true, type: [String], default: [] })
+  providerTransactionIds!: string[];
+
   @Prop({ type: Object, default: null })
   providerPayloadSafeSummary!: Record<string, unknown> | null;
 
@@ -55,6 +57,9 @@ export class Payment {
   @Prop({ type: mongoose.Schema.Types.ObjectId, default: null })
   codCollectedBy!: Types.ObjectId | null;
 
+  @Prop({ type: Date, default: null })
+  expiresAt!: Date | null;
+
   createdAt!: Date;
   updatedAt!: Date;
 }
@@ -64,6 +69,14 @@ export const PaymentSchema = SchemaFactory.createForClass(Payment);
 PaymentSchema.index(
   { orderId: 1 },
   { unique: true, name: "payment_order_unique" },
+);
+PaymentSchema.index(
+  { provider: 1, providerReference: 1 },
+  {
+    unique: true,
+    name: "payment_provider_reference_unique",
+    partialFilterExpression: { providerReference: { $type: "string" } },
+  },
 );
 PaymentSchema.index(
   { provider: 1, providerTransactionId: 1 },

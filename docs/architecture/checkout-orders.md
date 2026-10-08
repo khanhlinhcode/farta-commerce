@@ -22,7 +22,7 @@ sequenceDiagram
 
 An idempotency record binds realm, actor/cart, route, key and canonical request hash. Reusing a key with a different request is rejected.
 
-## Phase 4B implementation boundary
+## Implementation boundary
 
 The implemented modules are `IdempotencyModule`, `ReservationsModule`, `CheckoutModule`, `OrdersModule` and the provider-neutral `PaymentsModule`. `CartService.loadForCheckout()` reloads the owned cart inside the caller's MongoDB session. `InventoryService.reserveBatch()` performs conditional inventory updates and append-only ledger writes in that same session; the standalone Phase 2 reservation proof is not called by checkout.
 
@@ -32,8 +32,8 @@ The atomic commit contains:
 2. authoritative cart/catalog/price reload;
 3. active reservation rows and conditional inventory increments;
 4. immutable order/shipping snapshots;
-5. an `UNPAID` COD payment;
-6. confirmed reservation references;
+5. an `UNPAID` provider-neutral COD or SePay payment;
+6. confirmed COD reservations or active online-payment reservations;
 7. converted cart and completed idempotency result.
 
 Preview does not reserve. The preview quote is an HMAC over current server-calculated content, so a price or cart change produces `CHECKOUT_QUOTE_CHANGED` before allocation.
@@ -68,10 +68,14 @@ Any verified amount/reference mismatch enters `PAYMENT_CONFLICT` for review.
 
 The frontend never declares payment success. Only verified provider callbacks or explicit server-side provider verification can transition payment state.
 
+## SePay receipt boundary
+
+The adapter creates an official VietQR delivery URL from server-side bank configuration and the persisted payment reference. It verifies SePay's `sha256=HMAC_SHA256(secret, timestamp + "." + rawBody)` header using the original body bytes and constant-time comparison. Timestamp tolerance is configurable and capped by schema validation. Provider event `id` is uniquely claimed before any payment transition.
+
+The official bank-webhook payload is VND-only and has no independent currency field. FARTA normalizes it to `VND` and compares it to the immutable payment currency. Duplicate/concurrent events have one effective transition; amount, account, expired-window or incompatible-state events produce explicit conflict records.
+
 ## Failure recovery
 
 - Transaction failure creates no partial order/reservation.
-- Provider timeout leaves a queryable pending state; retries use the same idempotency key.
+- Instruction retry reuses the persisted payment/reference and cannot create another payment.
 - Webhooks validate signature, timestamp/replay rules, provider event ID, order reference, amount and currency before transition.
-
-Phase 4B implements the first item and COD only. Provider timeout and webhook behavior remain Phase 4C contracts, not current runtime claims.

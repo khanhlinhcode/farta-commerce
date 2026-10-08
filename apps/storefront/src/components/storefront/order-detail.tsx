@@ -12,6 +12,7 @@ import { ApiClientError } from "@/lib/api-client";
 import { getOrder } from "@/lib/checkout";
 import { formatVnd } from "@/lib/catalog";
 import { MediaFrame } from "./media-frame";
+import { PaymentPanel } from "./payment-panel";
 
 const labels: Record<OrderStatus, string> = {
   CREATED: "Đã đặt hàng",
@@ -22,6 +23,17 @@ const labels: Record<OrderStatus, string> = {
   COMPLETED: "Hoàn tất",
   CANCELLED: "Đã hủy",
   PAYMENT_CONFLICT: "Cần đối soát thanh toán",
+};
+
+const paymentLabels: Record<OrderReadModel["paymentStatus"], string> = {
+  UNPAID: "Chưa thanh toán",
+  DEPOSIT_PAID: "Đã nhận tiền cọc",
+  FULLY_PAID: "Đã thanh toán đủ",
+  FAILED: "Thanh toán chưa thành công",
+  EXPIRED: "Thanh toán đã hết hạn",
+  REFUND_PENDING: "Đang xử lý hoàn tiền",
+  REFUNDED: "Đã hoàn tiền",
+  CONFLICT: "Cần đối soát thanh toán",
 };
 
 export function OrderDetail({ orderCode }: { orderCode: string }) {
@@ -161,11 +173,18 @@ export function OrderDetailView({
           )}
           <h2>Thanh toán</h2>
           <p>
-            COD ·{" "}
-            {order.paymentStatus === "UNPAID"
-              ? "Chưa thu tiền"
-              : order.paymentStatus}
+            {order.paymentMethod === "COD"
+              ? "COD"
+              : order.paymentMethod === "DEPOSIT"
+                ? "SePay · Đặt cọc"
+                : "SePay · Thanh toán đủ"}{" "}
+            · {paymentLabels[order.paymentStatus]}
           </p>
+          {"payment" in order &&
+            order.payment?.provider === "SEPAY" &&
+            order.paymentStatus !== "FULLY_PAID" && (
+              <PaymentPanel orderCode={order.orderCode} />
+            )}
           <dl className="price-summary">
             <div>
               <dt>Tạm tính</dt>
