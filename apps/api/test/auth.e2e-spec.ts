@@ -91,6 +91,9 @@ describe("authentication security foundation", () => {
     redis = app.get(RedisService);
     await mongo.db?.collection("sessions").deleteMany({});
     await mongo.db?.collection("users").deleteMany({});
+    await Promise.all(
+      Object.values(mongo.models).map((model) => model.syncIndexes()),
+    );
   }, 30_000);
 
   afterAll(async () => {

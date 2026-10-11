@@ -66,6 +66,12 @@ Phase 4D implements Admin order list/detail, permissioned fulfillment transition
 pnpm --filter @farta/api worker:reservations
 ```
 
+For a watch-mode development worker that uses the same compiled CommonJS path as the API:
+
+```bash
+pnpm --filter @farta/api worker:reservations:dev
+```
+
 No notification provider is configured; outbox events remain `PENDING`. Manual refund reconciliation records an external refund reference and never pretends that a provider refund occurred. Wishlist, password recovery and OAuth success remain unavailable rather than simulated.
 
 Secrets belong in local ignored files or the deployment secret store. Never expose provider/database credentials through `NEXT_PUBLIC_*` or `VITE_*` variables. Production configuration must fail closed and must not use `.env.example` placeholders.
@@ -76,5 +82,5 @@ Secrets belong in local ignored files or the deployment secret store. Never expo
 - API configuration error: confirm `apps/api/.env` exists and contains no production placeholders outside development.
 - Mongo readiness failure: ensure Docker is running and `pnpm infra:up` reports healthy services.
 - Replica-set transaction failure: inspect the one-shot `mongo-init` service; Compose initializes it automatically.
-- Local MongoDB connection waiting indefinitely: on hosts where `localhost` resolves to an unreachable IPv6 listener, use `mongodb://127.0.0.1:27017/farta?replicaSet=rs0&directConnection=true` locally.
+- Local MongoDB uses `127.0.0.1` plus `directConnection=true`; this keeps single-node replica-set transactions available without following Docker's internal-only `mongodb` hostname. Do not copy this development behavior into a managed production replica-set URI.
 - Port collision: change local-only ports consistently in `.env` and proxy configuration.

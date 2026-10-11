@@ -3,11 +3,11 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "node scripts/dev.mjs",
+    "dev": "node scripts/dev.mjs dist/main.js",
     "build": "tsc -p tsconfig.build.json",
     "start": "node dist/main.js",
     "worker:reservations": "node dist/workers/reservation-expiry.worker.js",
-    "worker:reservations:dev": "tsx src/workers/reservation-expiry.worker.ts",
+    "worker:reservations:dev": "node scripts/dev.mjs dist/workers/reservation-expiry.worker.js",
     "bootstrap:owner": "tsx src/scripts/bootstrap-owner.ts",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "test": "vitest run",

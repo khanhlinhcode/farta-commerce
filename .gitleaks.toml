@@ -1,0 +1,15 @@
+title = "FARTA Gitleaks configuration"
+
+[extend]
+useDefault = true
+
+[allowlist]
+description = "Known non-secret placeholders in the public environment template"
+condition = "AND"
+regexTarget = "line"
+paths = ['''(?:^|/)\.env\.example$''']
+regexes = [
+  '''^CSRF_SECRET=replace-with-a-third-independent-at-least-32-byte-secret$''',
+  '''^CART_CREDENTIAL_SECRET=replace-with-a-fourth-independent-at-least-32-byte-secret$''',
+  '''^ORDER_LOOKUP_SECRET=replace-with-a-fifth-independent-at-least-32-byte-secret$''',
+]

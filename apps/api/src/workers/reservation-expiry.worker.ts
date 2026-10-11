@@ -11,6 +11,25 @@ import { ReservationsService } from "../reservations/reservations.service";
 
 const logger = new Logger("ReservationExpiryWorker");
 
+function waitForNextBatch(
+  intervalMs: number,
+  signal: AbortSignal,
+): Promise<void> {
+  if (signal.aborted) return Promise.resolve();
+
+  return new Promise((resolve) => {
+    const timer = setTimeout(finish, intervalMs);
+
+    function finish(): void {
+      clearTimeout(timer);
+      signal.removeEventListener("abort", finish);
+      resolve();
+    }
+
+    signal.addEventListener("abort", finish, { once: true });
+  });
+}
+
 async function run(): Promise<void> {
   // This process uses Nest's built-in logger directly. Do not buffer startup
   // logs without installing and flushing a replacement logger, otherwise
@@ -26,8 +45,12 @@ async function run(): Promise<void> {
     infer: true,
   });
   let stopping = false;
+  const stopController = new AbortController();
   const stop = () => {
+    if (stopping) return;
     stopping = true;
+    logger.log("Reservation expiry worker shutdown requested.");
+    stopController.abort();
   };
   process.once("SIGINT", stop);
   process.once("SIGTERM", stop);
@@ -43,7 +66,7 @@ async function run(): Promise<void> {
       logger.error("Reservation expiry batch failed and will be retried.");
     }
     if (!stopping) {
-      await new Promise((resolve) => setTimeout(resolve, intervalMs));
+      await waitForNextBatch(intervalMs, stopController.signal);
     }
   }
   await application.close();
