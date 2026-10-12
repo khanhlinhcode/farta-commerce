@@ -28,3 +28,6 @@ __pycache__/
 *.py[cod]
 
 infrastructure/docker/data/
+
+# Local-only mapping from Cloudinary MediaAsset records to the development seed.
+apps/api/.development-seed-media.json

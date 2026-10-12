@@ -23,5 +23,6 @@ import { Banner, BannerSchema } from "./schemas/banner.schema";
   ],
   controllers: [PublicBannersController, AdminBannersController],
   providers: [BannersService],
+  exports: [BannersService],
 })
 export class BannersModule {}

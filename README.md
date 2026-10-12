@@ -52,6 +52,14 @@ Start with [`docs/phase-0/README.md`](docs/phase-0/README.md). Important decisio
 
 Authentication routes and exact cookie/CSRF behavior are documented in [`docs/api/authentication.md`](docs/api/authentication.md). To create a development OWNER, set the three blank `BOOTSTRAP_OWNER_*` variables locally and run `pnpm --filter @farta/api bootstrap:owner`; the command refuses staging/production and never has a default password.
 
+For an idempotent local catalog, first finalize the approved development images through the authenticated Admin Cloudinary flow and place their non-secret `MediaAsset` mapping in the ignored `apps/api/.development-seed-media.json` manifest. Set `DEVELOPMENT_SEED_ACTOR_EMAIL` to an existing active development OWNER, then run:
+
+```bash
+pnpm --filter @farta/api seed:development
+```
+
+The command accepts only `APP_ENV=development`; it never seeds staging/production, never creates credentials, never deletes local business data and initializes stock only when a seed-owned variant is still empty. See [`docs/phase-4/development-seed-report.md`](docs/phase-4/development-seed-report.md).
+
 Catalog endpoints, publication invariants, money representation and Cloudinary finalization are documented in [`docs/api/catalog.md`](docs/api/catalog.md), [`docs/architecture/catalog-inventory.md`](docs/architecture/catalog-inventory.md) and [`docs/architecture/cloudinary-phase-2.md`](docs/architecture/cloudinary-phase-2.md).
 
 The Phase 3 storefront architecture, reviews and completion evidence are under [`docs/phase-3/`](docs/phase-3/). Public catalog reads use a 60-second revalidation window. Set `NEXT_PUBLIC_SITE_URL` to the canonical HTTPS storefront URL and explicitly set `NEXT_PUBLIC_INDEXABLE=true` only for production environments that should be indexed. Staging and development remain `noindex` by default.
