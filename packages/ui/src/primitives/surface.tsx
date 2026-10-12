@@ -9,7 +9,7 @@ export function Surface({
   return (
     <div
       className={cn(
-        "rounded-[var(--farta-radius-lg)] bg-[var(--farta-color-surface)]",
+        "rounded-[var(--farta-radius-md)] bg-[var(--farta-color-surface)]",
         className,
       )}
       {...props}
@@ -24,7 +24,7 @@ export function GlassSurface({
   return (
     <div
       className={cn(
-        "rounded-[var(--farta-radius-lg)] border border-[var(--farta-glass-border)] bg-[var(--farta-glass-background)] shadow-[var(--farta-shadow-soft)] supports-[backdrop-filter]:backdrop-blur-[var(--farta-glass-blur)]",
+        "rounded-[var(--farta-radius-md)] border border-[var(--farta-glass-border)] bg-[var(--farta-glass-background)] shadow-[var(--farta-shadow-soft)] supports-[backdrop-filter]:backdrop-blur-[var(--farta-glass-blur)]",
         className,
       )}
       {...props}

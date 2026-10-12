@@ -1,7 +1,15 @@
 "use client";
 
 import { useQuery } from "@tanstack/react-query";
-import { Menu, Search, ShoppingBag, UserRound, X } from "lucide-react";
+import {
+  ArrowUpRight,
+  ChevronDown,
+  Menu,
+  Search,
+  ShoppingBag,
+  UserRound,
+  X,
+} from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
@@ -137,7 +145,10 @@ export function SiteHeader() {
             ))}
             {categoryItems.length > 0 && (
               <details className="category-nav">
-                <summary>Danh mục</summary>
+                <summary>
+                  Danh mục
+                  <ChevronDown aria-hidden="true" size={14} strokeWidth={1.5} />
+                </summary>
                 <div>
                   {categoryItems.map((category) => (
                     <Link href={`/category/${category.slug}`} key={category.id}>
@@ -157,6 +168,7 @@ export function SiteHeader() {
               type="button"
             >
               <Search aria-hidden="true" size={19} />
+              <span className="search-label">Tìm kiếm</span>
             </button>
             <Link
               className="icon-button"
@@ -209,17 +221,26 @@ export function SiteHeader() {
               {links.map(([href, label]) => (
                 <Link href={href} key={href}>
                   {label}
-                  <span aria-hidden="true">↗</span>
+                  <ArrowUpRight
+                    aria-hidden="true"
+                    size={18}
+                    strokeWidth={1.5}
+                  />
                 </Link>
               ))}
               {categoryItems.map((category) => (
                 <Link href={`/category/${category.slug}`} key={category.id}>
                   {category.name}
-                  <span aria-hidden="true">↗</span>
+                  <ArrowUpRight
+                    aria-hidden="true"
+                    size={18}
+                    strokeWidth={1.5}
+                  />
                 </Link>
               ))}
               <Link href="/login">
-                Đăng nhập<span aria-hidden="true">↗</span>
+                Đăng nhập
+                <ArrowUpRight aria-hidden="true" size={18} strokeWidth={1.5} />
               </Link>
             </nav>
           </aside>

@@ -1,5 +1,6 @@
 import Image from "next/image";
 import Link from "next/link";
+import { ArrowRight } from "lucide-react";
 
 import { CatalogState } from "@/components/storefront/catalog-states";
 import { MediaFrame } from "@/components/storefront/media-frame";
@@ -28,6 +29,7 @@ function Hero({ banner }: { banner: Banner | null }) {
     "Những thiết kế dành cho người phụ nữ Việt hiện đại — tự do trong chuyển động, tinh tế trong từng chi tiết.";
   const ctaTarget = banner?.ctaTarget ?? "/shop";
   const ctaLabel = banner?.ctaLabel ?? "Khám phá bộ sưu tập";
+  const [titleLead, ...titleTail] = title.split(",");
 
   return (
     <section className="runway-hero" aria-labelledby="home-hero-title">
@@ -39,10 +41,19 @@ function Hero({ banner }: { banner: Banner | null }) {
           <li>03</li>
           <li>04</li>
         </ol>
-        <h1 id="home-hero-title">{title}</h1>
+        <h1 id="home-hero-title">
+          {titleTail.length > 0 ? (
+            <>
+              {titleLead}, <span>{titleTail.join(",").trim()}</span>
+            </>
+          ) : (
+            title
+          )}
+        </h1>
         <p className="runway-hero__lede">{subtitle}</p>
         <Link className="editorial-link" href={ctaTarget}>
-          {ctaLabel} <span aria-hidden="true">⟶</span>
+          {ctaLabel}
+          <ArrowRight aria-hidden="true" size={17} strokeWidth={1.5} />
         </Link>
       </div>
       <div className={`runway-hero__media${imageSource ? "" : " is-empty"}`}>
@@ -90,7 +101,8 @@ export default async function HomePage() {
         <div className="section-heading">
           <h2 id="new-arrivals-title">Hàng mới</h2>
           <Link href="/new-arrivals">
-            Xem tất cả <span aria-hidden="true">⟶</span>
+            Xem tất cả
+            <ArrowRight aria-hidden="true" size={16} strokeWidth={1.5} />
           </Link>
         </div>
         {productResult.ok && products.length > 0 ? (
@@ -164,7 +176,8 @@ export default async function HomePage() {
           Trang phục theo nhịp sống, không chạy theo tiếng ồn.
         </h2>
         <Link className="editorial-link editorial-link--light" href="/shop">
-          Xem toàn bộ thiết kế <span aria-hidden="true">⟶</span>
+          Xem toàn bộ thiết kế
+          <ArrowRight aria-hidden="true" size={17} strokeWidth={1.5} />
         </Link>
       </section>
     </main>

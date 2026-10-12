@@ -2,6 +2,7 @@
 
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { Check } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { cloneElement, useRef, useState, type ReactElement } from "react";
@@ -12,6 +13,7 @@ import { ApiClientError } from "@/lib/api-client";
 import { cartQueryKey } from "@/lib/cart";
 import { getCheckoutPreview, submitCheckout } from "@/lib/checkout";
 import { formatVnd } from "@/lib/catalog";
+import { CommerceLoading } from "./commerce-loading";
 import { MediaFrame } from "./media-frame";
 
 const checkoutSchema = z.object({
@@ -105,7 +107,11 @@ export function CheckoutPage() {
         className="checkout-page checkout-state"
         aria-busy="true"
       >
-        <p>Đang xác nhận giá và tình trạng sản phẩm…</p>
+        <CommerceLoading
+          detail="Giá, tồn kho và phương thức thanh toán đang được xác nhận an toàn."
+          label="FARTA / CHECKOUT"
+          title="Đang chuẩn bị thanh toán"
+        />
       </main>
     );
   }
@@ -236,7 +242,7 @@ export function CheckoutPage() {
             <legend>Giao hàng & thanh toán</legend>
             <div className="checkout-choice checkout-choice--static">
               <span className="checkout-choice__indicator" aria-hidden="true">
-                ✓
+                <Check size={16} strokeWidth={1.8} />
               </span>
               <span>
                 <strong>Giao hàng tiêu chuẩn</strong>

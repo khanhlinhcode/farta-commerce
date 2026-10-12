@@ -5,11 +5,14 @@ import {
   ClipboardList,
   ImageIcon,
   LayoutDashboard,
+  LogIn,
   LogOut,
   Megaphone,
   PackageSearch,
+  Plus,
   ShieldCheck,
   Tags,
+  UploadCloud,
 } from "lucide-react";
 import { useState } from "react";
 import { useForm } from "react-hook-form";
@@ -114,6 +117,7 @@ function LoginPage() {
             </p>
           )}
           <Button className="w-full" disabled={login.isPending} type="submit">
+            <LogIn aria-hidden="true" size={17} strokeWidth={1.7} />
             {login.isPending ? "Đang xác thực…" : "Đăng nhập"}
           </Button>
         </form>
@@ -322,6 +326,7 @@ function CategoriesPage() {
               </p>
             )}
             <Button disabled={create.isPending} type="submit">
+              <Plus aria-hidden="true" size={17} strokeWidth={1.7} />
               Tạo danh mục
             </Button>
           </form>
@@ -428,6 +433,7 @@ function ProductsPage() {
             </select>
           </label>
           <Button disabled={create.isPending} type="submit">
+            <Plus aria-hidden="true" size={17} strokeWidth={1.7} />
             Tạo draft
           </Button>
         </form>
@@ -529,7 +535,10 @@ function ProductDetailPage() {
               {...form.register("price", { valueAsNumber: true })}
             />
           </label>
-          <Button type="submit">Thêm variant</Button>
+          <Button type="submit">
+            <Plus aria-hidden="true" size={17} strokeWidth={1.7} />
+            Thêm variant
+          </Button>
         </form>
         {create.error && (
           <p role="alert" className="form-error">
@@ -670,6 +679,7 @@ function MediaPage() {
             />
           </label>
           <Button disabled={upload.isPending || !file} type="submit">
+            <UploadCloud aria-hidden="true" size={17} strokeWidth={1.7} />
             {upload.isPending ? "Đang tải…" : "Tải ảnh"}
           </Button>
         </form>
@@ -761,6 +771,7 @@ function BannersPage() {
             disabled={!title || !mediaId || create.isPending}
             type="submit"
           >
+            <Plus aria-hidden="true" size={17} strokeWidth={1.7} />
             Tạo draft banner
           </Button>
         </form>

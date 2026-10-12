@@ -1,5 +1,13 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { ArrowLeft, ChevronLeft, ChevronRight } from "lucide-react";
+import {
+  ArrowLeft,
+  BadgeCheck,
+  Ban,
+  ChevronLeft,
+  ChevronRight,
+  CircleArrowRight,
+  Undo2,
+} from "lucide-react";
 import { useState } from "react";
 import { Link, useParams, useSearchParams } from "react-router-dom";
 
@@ -285,6 +293,11 @@ export function OrderDetailPage() {
                   onClick={() => transition.mutate()}
                   type="button"
                 >
+                  <CircleArrowRight
+                    aria-hidden="true"
+                    size={16}
+                    strokeWidth={1.7}
+                  />
                   Cập nhật trạng thái
                 </Button>
               </>
@@ -298,6 +311,7 @@ export function OrderDetailPage() {
                 onClick={() => cancel.mutate()}
                 type="button"
               >
+                <Ban aria-hidden="true" size={16} strokeWidth={1.7} />
                 Huỷ đơn có kiểm soát
               </Button>
             )}
@@ -462,6 +476,7 @@ function PaymentPanel({
               onClick={() => reconcile.mutate("START_REFUND")}
               type="button"
             >
+              <Undo2 aria-hidden="true" size={16} strokeWidth={1.7} />
               Đánh dấu chờ hoàn tiền
             </Button>
           )}
@@ -473,6 +488,7 @@ function PaymentPanel({
                 onClick={() => collectCod.mutate()}
                 type="button"
               >
+                <BadgeCheck aria-hidden="true" size={16} strokeWidth={1.7} />
                 Xác nhận đã thu COD
               </Button>
             )}
@@ -495,6 +511,7 @@ function PaymentPanel({
                 onClick={() => reconcile.mutate("CONFIRM_REFUNDED")}
                 type="button"
               >
+                <BadgeCheck aria-hidden="true" size={16} strokeWidth={1.7} />
                 Xác nhận đã hoàn tiền
               </Button>
             </>

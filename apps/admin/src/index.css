@@ -1,5 +1,6 @@
 @import "tailwindcss";
 @import "@farta/design-tokens/styles.css";
+@source "../../../packages/ui/src";
 
 * {
   box-sizing: border-box;
@@ -103,7 +104,8 @@ textarea {
   font-size: 0.8rem;
 }
 .form-error {
-  border-left: 3px solid var(--farta-color-danger);
+  border: 1px solid rgb(157 47 47 / 0.22);
+  border-radius: var(--farta-radius-sm);
   padding: 0.7rem 0.9rem;
   background: rgb(157 47 47 / 0.06);
 }
@@ -521,5 +523,293 @@ td small {
   }
   .page-header h1 {
     font-size: 2.5rem;
+  }
+}
+
+/* Operational refinement: less dashboard theatre, stronger hierarchy, and one
+   consistent control language from the shared FARTA primitives. */
+html {
+  scrollbar-color: var(--farta-color-accent) var(--farta-color-canvas);
+  scrollbar-width: thin;
+}
+
+body {
+  caret-color: var(--farta-color-accent);
+}
+
+::selection {
+  background: rgb(95 44 59 / 0.18);
+}
+
+:focus-visible {
+  outline: 2px solid var(--farta-color-accent);
+  outline-offset: 3px;
+}
+
+::-webkit-scrollbar {
+  width: 0.65rem;
+  height: 0.65rem;
+}
+
+::-webkit-scrollbar-thumb {
+  border: 2px solid var(--farta-color-canvas);
+  border-radius: 999px;
+  background: var(--farta-color-accent);
+}
+
+.auth-editorial {
+  position: relative;
+  overflow: hidden;
+  isolation: isolate;
+  background: #211d1d;
+}
+
+.auth-editorial::before {
+  position: absolute;
+  z-index: -1;
+  inset: clamp(2rem, 7vw, 7rem);
+  border: 1px solid rgb(255 255 255 / 0.12);
+  content: "";
+}
+
+.auth-editorial::after {
+  position: absolute;
+  z-index: -1;
+  top: 5%;
+  left: -2%;
+  color: rgb(255 255 255 / 0.035);
+  content: "FARTA";
+  font-family: var(--farta-font-display);
+  font-size: clamp(10rem, 20vw, 20rem);
+  letter-spacing: 0.08em;
+  line-height: 1;
+  white-space: nowrap;
+}
+
+.auth-editorial h1 {
+  position: relative;
+  margin: 0;
+  letter-spacing: -0.035em;
+}
+
+.auth-card {
+  border: 1px solid rgb(217 212 201 / 0.78);
+  box-shadow: 0 1.8rem 5rem rgb(23 23 20 / 0.1);
+}
+
+.auth-card form > button {
+  margin-top: 0.75rem;
+}
+
+input,
+select,
+textarea {
+  transition:
+    border-color var(--farta-motion-fast) var(--farta-ease-standard),
+    background var(--farta-motion-fast) var(--farta-ease-standard),
+    box-shadow var(--farta-motion-fast) var(--farta-ease-standard);
+}
+
+input:hover,
+select:hover,
+textarea:hover {
+  border-color: #aaa397;
+}
+
+input:focus,
+select:focus,
+textarea:focus {
+  border-color: var(--farta-color-accent);
+  outline: 0;
+  box-shadow: 0 0 0 3px rgb(95 44 59 / 0.1);
+}
+
+.admin-layout {
+  grid-template-columns: 18rem minmax(0, 1fr);
+}
+
+.sidebar {
+  padding: 2rem 1rem 1.25rem;
+  background: #201e1c;
+}
+
+.sidebar > div:first-child {
+  padding: 0.4rem 0.75rem 0;
+}
+
+.sidebar nav {
+  gap: 0.25rem;
+}
+
+.sidebar nav a {
+  position: relative;
+  min-height: 3rem;
+  border: 1px solid transparent;
+  border-radius: var(--farta-radius-sm);
+  transition:
+    background var(--farta-motion-fast) var(--farta-ease-standard),
+    border-color var(--farta-motion-fast) var(--farta-ease-standard),
+    color var(--farta-motion-fast) var(--farta-ease-standard),
+    transform var(--farta-motion-fast) var(--farta-ease-standard);
+}
+
+.sidebar nav a:hover {
+  border-color: rgb(255 255 255 / 0.08);
+  transform: translateX(0.2rem);
+}
+
+.sidebar nav a.active {
+  border-color: rgb(255 255 255 / 0.1);
+  background: #fffdf8;
+  color: #201e1c;
+}
+
+.sidebar nav svg,
+.staff-card svg {
+  flex: none;
+  stroke-width: 1.6;
+}
+
+.staff-card {
+  padding: 1rem 0.75rem 0;
+}
+
+.admin-content {
+  width: min(100%, 92rem);
+  margin-inline: auto;
+}
+
+.page-header {
+  padding-bottom: 1.5rem;
+  border-bottom: 1px solid var(--farta-color-border);
+}
+
+.page-header h1 {
+  max-width: 18ch;
+  font-size: clamp(2.5rem, 4vw, 3.8rem);
+  letter-spacing: -0.025em;
+  line-height: 0.98;
+}
+
+.page-header > p:last-child {
+  margin-bottom: 0;
+}
+
+.metric-grid {
+  overflow: hidden;
+  gap: 0;
+  border: 1px solid var(--farta-color-border);
+  border-radius: var(--farta-radius-md);
+  background: var(--farta-color-surface);
+}
+
+.metric {
+  border: 0;
+  border-right: 1px solid var(--farta-color-border);
+  border-radius: 0;
+  background: transparent;
+}
+
+.metric:last-child {
+  border-right: 0;
+}
+
+.metric strong {
+  font-size: clamp(2.6rem, 4vw, 4rem);
+  font-variant-numeric: tabular-nums;
+}
+
+.notice,
+.panel {
+  border-color: rgb(217 212 201 / 0.9);
+  border-radius: var(--farta-radius-md);
+  background: var(--farta-color-surface);
+}
+
+.notice {
+  margin-top: 1.25rem;
+}
+
+.table-panel {
+  scrollbar-color: var(--farta-color-accent) transparent;
+}
+
+th {
+  padding-top: 0.75rem;
+  color: #77736a;
+  font-weight: 700;
+}
+
+tbody tr {
+  transition: background var(--farta-motion-fast) var(--farta-ease-standard);
+}
+
+tbody tr:hover {
+  background: rgb(95 44 59 / 0.035);
+}
+
+.status {
+  border: 1px solid rgb(23 23 20 / 0.06);
+}
+
+.state-card {
+  border-style: solid;
+  border-radius: var(--farta-radius-sm);
+  background: rgb(255 253 248 / 0.7);
+}
+
+.inventory-cell button {
+  border-radius: var(--farta-radius-sm);
+}
+
+@media (max-width: 900px) {
+  .admin-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .sidebar {
+    position: sticky;
+    z-index: 20;
+    top: 0;
+    border-right: 0;
+    border-bottom: 1px solid rgb(255 255 255 / 0.1);
+    padding: 0.9rem 1rem;
+  }
+
+  .sidebar > div:first-child {
+    padding: 0;
+  }
+
+  .sidebar .wordmark {
+    font-size: 1.35rem;
+  }
+
+  .sidebar nav a {
+    flex: 0 0 auto;
+    min-height: 2.65rem;
+    white-space: nowrap;
+  }
+
+  .metric {
+    border-right: 0;
+    border-bottom: 1px solid var(--farta-color-border);
+  }
+
+  .metric:last-child {
+    border-bottom: 0;
+  }
+}
+
+@media (max-width: 560px) {
+  .auth-layout {
+    background: var(--farta-color-canvas);
+  }
+
+  .auth-card {
+    padding: 2rem 1.35rem;
+  }
+
+  .page-header {
+    margin-bottom: 1.5rem;
   }
 }

@@ -12,6 +12,7 @@ import {
   updateCartItem,
 } from "@/lib/cart";
 import { formatVnd } from "@/lib/catalog";
+import { CommerceLoading } from "./commerce-loading";
 import { MediaFrame } from "./media-frame";
 
 export function CartPage() {
@@ -39,7 +40,11 @@ export function CartPage() {
   if (cart.isPending) {
     return (
       <main id="main-content" className="cart-page cart-state" aria-busy="true">
-        <p>Đang chuẩn bị giỏ hàng…</p>
+        <CommerceLoading
+          detail="Đang đồng bộ sản phẩm, số lượng và mức giá hiện tại từ máy chủ."
+          label="FARTA / CART"
+          title="Đang chuẩn bị giỏ hàng…"
+        />
       </main>
     );
   }

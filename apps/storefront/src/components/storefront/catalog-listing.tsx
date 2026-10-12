@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { ArrowLeft, ArrowRight } from "lucide-react";
 import { Suspense } from "react";
 
 import { CatalogFilters } from "./catalog-filters";
@@ -101,7 +102,8 @@ export function CatalogListing({
             <nav className="pagination" aria-label="Phân trang sản phẩm">
               {products.page > 1 ? (
                 <Link href={pageHref(basePath, query, products.page - 1)}>
-                  ← Trang trước
+                  <ArrowLeft aria-hidden="true" size={15} strokeWidth={1.5} />
+                  Trang trước
                 </Link>
               ) : (
                 <span />
@@ -111,7 +113,8 @@ export function CatalogListing({
               </span>
               {products.page < pageCount ? (
                 <Link href={pageHref(basePath, query, products.page + 1)}>
-                  Trang sau →
+                  Trang sau
+                  <ArrowRight aria-hidden="true" size={15} strokeWidth={1.5} />
                 </Link>
               ) : (
                 <span />

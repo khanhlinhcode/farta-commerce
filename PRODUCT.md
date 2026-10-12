@@ -33,7 +33,7 @@ FARTA combines an editorial, product-photography-led Vietnamese fashion experien
 - Prices use authoritative integer VND values; browser-calculated totals are never authoritative.
 - Products contain real color/size variants and expose semantic availability rather than internal warehouse quantity.
 - Browser sessions use realm-separated secure cookie authentication, CSRF protection and server-side session authority.
-- The current repository has no Cart/Checkout/Order/Payment implementation until Phase 4.
+- The current repository includes server-authoritative Cart, Checkout, Reservations, Orders, COD and a provider-neutral SePay payment boundary from Phase 4.
 - Google/Apple provider adapters, final payment credentials and final brand assets are open external dependencies and must not be faked.
 
 ## Brand Commitments
