@@ -22,6 +22,10 @@ const storefrontUrl = process.env.E2E_STOREFRONT_URL ?? "http://localhost:3000";
 const adminUrl = process.env.E2E_ADMIN_URL ?? "http://localhost:5173";
 const apiUrl = process.env.E2E_API_URL ?? "http://localhost:4000";
 const cloudName = localEnvironmentValue("CLOUDINARY_CLOUD_NAME") ?? "";
+for (const name of ["E2E_STAFF_EMAIL", "E2E_STAFF_PASSWORD"] as const) {
+  const value = localEnvironmentValue(name);
+  if (value && !process.env[name]) process.env[name] = value;
+}
 const serverEnvironment = Object.fromEntries(
   Object.entries(process.env).flatMap(([key, value]) =>
     value === undefined || key.startsWith("E2E_") ? [] : [[key, value]],

@@ -2,7 +2,7 @@ import { expect, test } from "@playwright/test";
 
 import {
   addSeedProductToCart,
-  cancelBrowserOrderInNewContext,
+  cancelBrowserOrderAsStaff,
   fillCheckout,
   registerCustomer,
   seed,
@@ -45,7 +45,7 @@ test("customer realm cannot access Admin and authenticated CSRF remains enforced
   expect(result.cartError).not.toMatch(/\b(stack|node_modules|MongoServer)\b/i);
 });
 
-test("customer B cannot read customer A order", async ({ page, browser }) => {
+test("customer B cannot read customer A order", async ({ page }) => {
   await addSeedProductToCart(page);
   await registerCustomer(page);
   await fillCheckout(page, "0945678901");
@@ -64,7 +64,7 @@ test("customer B cannot read customer A order", async ({ page, browser }) => {
   expect(await response.text()).not.toMatch(
     /\b(stack|node_modules|MongoServer)\b/i,
   );
-  await cancelBrowserOrderInNewContext(browser, code);
+  await cancelBrowserOrderAsStaff(code);
 });
 
 test("checkout rejects client-supplied authoritative totals", async ({

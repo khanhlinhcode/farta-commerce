@@ -1,5 +1,11 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { cleanup, render, screen, within } from "@testing-library/react";
+import {
+  cleanup,
+  fireEvent,
+  render,
+  screen,
+  within,
+} from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
@@ -29,6 +35,73 @@ describe("admin authentication boundary", () => {
       "username",
     );
     expect(screen.getByRole("button", { name: "Đăng nhập" })).toBeEnabled();
+  });
+
+  it("shows the safe server error when staff login is rejected", async () => {
+    vi.spyOn(globalThis, "fetch").mockImplementation(async (input) => {
+      const url = String(input);
+      if (url.endsWith("/api/v1/auth/staff/csrf")) {
+        return new Response(JSON.stringify({ csrfToken: "test-csrf" }), {
+          status: 200,
+        });
+      }
+      if (url.endsWith("/api/v1/auth/staff/login")) {
+        return new Response(
+          JSON.stringify({
+            error: {
+              code: "INVALID_CREDENTIALS",
+              message: "Thông tin đăng nhập không hợp lệ.",
+            },
+          }),
+          { status: 401 },
+        );
+      }
+      return new Response(null, { status: 404 });
+    });
+    const queryClient = new QueryClient({
+      defaultOptions: { queries: { retry: false } },
+    });
+    render(
+      <QueryClientProvider client={queryClient}>
+        <MemoryRouter initialEntries={["/login"]}>
+          <App />
+        </MemoryRouter>
+      </QueryClientProvider>,
+    );
+    fireEvent.change(screen.getByLabelText("Email"), {
+      target: { value: "staff@farta.test" },
+    });
+    fireEvent.change(screen.getByLabelText("Mật khẩu"), {
+      target: { value: "not-the-password" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Đăng nhập" }));
+    expect(await screen.findByRole("alert")).toHaveTextContent(
+      "Thông tin đăng nhập không hợp lệ.",
+    );
+  });
+
+  it("renders a permission-denied state instead of treating 403 as logout", async () => {
+    vi.spyOn(globalThis, "fetch").mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          error: { code: "FORBIDDEN", message: "Không đủ quyền." },
+        }),
+        { status: 403 },
+      ),
+    );
+    const queryClient = new QueryClient({
+      defaultOptions: { queries: { retry: false } },
+    });
+    render(
+      <QueryClientProvider client={queryClient}>
+        <MemoryRouter initialEntries={["/"]}>
+          <App />
+        </MemoryRouter>
+      </QueryClientProvider>,
+    );
+    expect(await screen.findByRole("alert")).toHaveTextContent(
+      "Bạn không có quyền truy cập khu vực quản trị này.",
+    );
   });
 
   it("renders server-backed order operations from the feature route", async () => {

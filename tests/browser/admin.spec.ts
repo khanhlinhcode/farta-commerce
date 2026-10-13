@@ -8,6 +8,8 @@ import {
   urls,
 } from "./support";
 
+test.use({ trace: "off" });
+
 test("unauthenticated Admin UI and API remain protected", async ({
   page,
   request,
@@ -16,6 +18,18 @@ test("unauthenticated Admin UI and API remain protected", async ({
   await expect(page).toHaveURL(`${urls.admin}/login`);
   const response = await request.get(`${urls.api}/api/v1/admin/orders`);
   expect(response.status()).toBe(401);
+});
+
+test("Staff login UI reports invalid credentials without exposing internals", async ({
+  page,
+}) => {
+  await page.goto(`${urls.admin}/login`);
+  await page.getByLabel("Email").fill("invalid-staff@example.test");
+  await page.getByLabel("Mật khẩu").fill("InvalidBrowserPassword!2026");
+  await page.getByRole("button", { name: "Đăng nhập" }).click();
+  await expect(page.getByRole("alert")).toContainText(
+    "Thông tin đăng nhập không hợp lệ",
+  );
 });
 
 test("Staff can inspect seeded catalog and inventory", async ({ page }) => {

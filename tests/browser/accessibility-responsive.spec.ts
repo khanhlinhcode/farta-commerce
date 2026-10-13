@@ -8,6 +8,8 @@ import {
   urls,
 } from "./support";
 
+test.use({ trace: "off" });
+
 const viewports = [
   { width: 320, height: 568 },
   { width: 360, height: 800 },

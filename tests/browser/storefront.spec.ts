@@ -3,7 +3,7 @@ import { expect, test } from "@playwright/test";
 import {
   addSeedProductToCart,
   assertNoHorizontalOverflow,
-  cancelBrowserOrderInNewContext,
+  cancelBrowserOrderAsStaff,
   fillCheckout,
   registerCustomer,
   seed,
@@ -55,7 +55,7 @@ test("variant selection, Cart update and removal remain server authoritative", a
   ).toBeVisible();
 });
 
-test("guest COD checkout supports safe lookup", async ({ page, browser }) => {
+test("guest COD checkout supports safe lookup", async ({ page }) => {
   await addSeedProductToCart(page);
   await fillCheckout(page, "0901234567");
   await page.getByRole("button", { name: /Đặt hàng COD/ }).click();
@@ -69,12 +69,11 @@ test("guest COD checkout supports safe lookup", async ({ page, browser }) => {
   await page.getByRole("button", { name: "Tra cứu đơn hàng" }).click();
   await expect(page.getByText(`Đơn hàng ${code}`)).toBeVisible();
   await expect(page.getByText("Thông tin được bảo vệ")).toBeVisible();
-  await cancelBrowserOrderInNewContext(browser, code);
+  await cancelBrowserOrderAsStaff(code);
 });
 
 test("guest Cart merges on registration and customer order survives re-login", async ({
   page,
-  browser,
 }) => {
   await addSeedProductToCart(page);
   const credentials = await registerCustomer(page);
@@ -98,12 +97,11 @@ test("guest Cart merges on registration and customer order survives re-login", a
   await page.getByRole("link", { name: new RegExp(code) }).click();
   await expect(page).toHaveURL(new RegExp(`/account/orders/${code}$`));
   await expect(page.getByText(`Đơn hàng ${code}`)).toBeVisible();
-  await cancelBrowserOrderInNewContext(browser, code);
+  await cancelBrowserOrderAsStaff(code);
 });
 
 test("concurrent duplicate checkout creates one logical order", async ({
   page,
-  browser,
 }) => {
   await addSeedProductToCart(page);
   await page.goto("/checkout");
@@ -158,6 +156,6 @@ test("concurrent duplicate checkout creates one logical order", async ({
   expect(new Set(result.map((entry) => entry.body.orderCode)).size).toBe(1);
   const orderCode = result[0]?.body.orderCode;
   expect(orderCode).toBeTruthy();
-  await cancelBrowserOrderInNewContext(browser, orderCode!);
+  await cancelBrowserOrderAsStaff(orderCode!);
   await assertNoHorizontalOverflow(page);
 });

@@ -142,8 +142,8 @@ export default async function ProductPage({ params }: Props) {
             <details>
               <summary>Giao hàng & đổi trả</summary>
               <p>
-                Chính sách giao hàng và đổi trả đang chờ stakeholder cấu hình
-                trước Phase 4.
+                Chính sách giao hàng và đổi trả chi tiết sẽ hiển thị sau khi
+                stakeholder phê duyệt nội dung vận hành chính thức.
               </p>
             </details>
           </div>

@@ -1,6 +1,17 @@
 # FARTA Commerce
 
-Greenfield production-oriented fashion-commerce monorepo. Phase 0 architecture is approved; Phase 1 provides the executable security foundation; Phase 2 provides catalog and inventory; Phase 3 provides the premium storefront; Phase 4A provides the server-authoritative Cart; Phase 4B provides atomic Checkout, Reservations, immutable Orders and COD; Phase 4C adds the SePay/VietQR payment boundary and verified bank webhooks; Phase 4D adds permissioned Admin order operations, inventory sale/cancellation workflows, reservation expiry and a notification outbox. The repository is **not production-ready**: real SePay Test-mode/live validation, notification delivery, production worker supervision, provider configuration and deployment validation remain gated work.
+Greenfield production-oriented fashion-commerce monorepo. Phase 0 architecture is approved; Phase 1 provides the executable security foundation; Phase 2 provides catalog and inventory; Phase 3 provides the premium storefront; Phase 4A provides the server-authoritative Cart; Phase 4B provides atomic Checkout, Reservations, immutable Orders and COD; Phase 4C adds the SePay/VietQR payment boundary and verified bank webhooks; Phase 4D adds permissioned Admin order operations, inventory sale/cancellation workflows, reservation expiry and a notification outbox. Phase 4.1 adds local runtime stabilization, an idempotent development catalog seed, Chromium browser release coverage and feature-oriented Admin modules. The repository is **not production-ready**: real SePay Test-mode/live validation, notification delivery, production worker supervision, provider configuration and deployment validation remain gated work.
+
+## Current status
+
+| Scope                                               | Status                                                        |
+| --------------------------------------------------- | ------------------------------------------------------------- |
+| Local commerce implementation and automated gates   | Implemented                                                   |
+| Development Cloudinary-backed catalog seed          | Implemented; environment-specific manifest required           |
+| Chromium Storefront/Admin browser release coverage  | Implemented locally                                           |
+| CI browser lane                                     | Deferred until approved non-production media bootstrap exists |
+| Staging deployment and external-provider validation | Not started                                                   |
+| Controlled AI shopping assistant                    | Not started; remains behind the API tool boundary             |
 
 ## Stack baseline (verified 2026-10-03)
 
@@ -57,6 +68,8 @@ E2E_STAFF_PASSWORD=<development-staff-password> \
 pnpm test:browser
 ```
 
+For local-only use, the same `E2E_STAFF_EMAIL` and `E2E_STAFF_PASSWORD` values may instead be stored in the ignored `apps/api/.env`. They are loaded only by the Playwright runner and are filtered out of the API, Storefront and Admin child-process environments. Use a development-only account; never place production credentials in this file or commit them.
+
 `test:browser` reruns the idempotent development seed before Playwright. It starts API, Storefront and Admin through the checked-in `webServer` configuration, uses one Chromium worker, and never embeds credentials in source or snapshots. Update reviewed visual baselines only with `pnpm test:browser:update`.
 
 The CI browser lane is intentionally not enabled yet: a fresh CI MongoDB cannot reproduce the real Cloudinary-backed seed from the ignored environment-specific media manifest alone. A dedicated non-production Cloudinary account and an approved MediaAsset bootstrap/finalization mechanism are required first; CI must not substitute fake media or production provider credentials.
@@ -96,6 +109,8 @@ pnpm --filter @farta/api worker:reservations:dev
 ```
 
 No notification provider is configured; outbox events remain `PENDING`. Manual refund reconciliation records an external refund reference and never pretends that a provider refund occurred. Wishlist, password recovery and OAuth success remain unavailable rather than simulated.
+
+The Admin entrypoint is intentionally thin. Feature pages, schemas and tests live under `apps/admin/src/features/`; shared authenticated API transport remains under `apps/admin/src/lib/`. This organization does not change backend permissions or commerce state machines.
 
 Secrets belong in local ignored files or the deployment secret store. Never expose provider/database credentials through `NEXT_PUBLIC_*` or `VITE_*` variables. Production configuration must fail closed and must not use `.env.example` placeholders.
 

@@ -34,6 +34,8 @@ FARTA combines an editorial, product-photography-led Vietnamese fashion experien
 - Products contain real color/size variants and expose semantic availability rather than internal warehouse quantity.
 - Browser sessions use realm-separated secure cookie authentication, CSRF protection and server-side session authority.
 - The current repository includes server-authoritative Cart, Checkout, Reservations, Orders, COD and a provider-neutral SePay payment boundary from Phase 4.
+- Development-only catalog seeding and Chromium release coverage exercise the real API, MongoDB/Redis transactions and finalized Cloudinary media; this is local evidence, not staging evidence.
+- Admin code is organized by commerce feature (`auth`, `dashboard`, `categories`, `products`, `variants`, `inventory`, `media`, `banners`, `orders`) while shared transport and session handling remain in `lib/`.
 - Google/Apple provider adapters, final payment credentials and final brand assets are open external dependencies and must not be faked.
 
 ## Brand Commitments
@@ -50,6 +52,9 @@ FARTA combines an editorial, product-photography-led Vietnamese fashion experien
 - Approved Phase 0 architecture and design-system decisions under `docs/`.
 - Phase 1 authentication/session/RBAC/CSRF implementation and tests.
 - Phase 2 real Category/Product/Variant/Inventory/Media/Banner APIs and Admin catalog workspace.
+- Phase 3 premium Storefront connected to real public catalog data.
+- Phase 4 authoritative Cart, Checkout, Reservations, Orders, COD, SePay boundary, Admin order operations and reservation worker.
+- Phase 4.1 local runtime stabilization, idempotent development seed and Chromium browser release coverage.
 - Shared semantic tokens in `packages/design-tokens` and primitives in `packages/ui`.
 - No stakeholder-owned fashion photography, final logo, testimonials, reviews, ratings, sales analytics or production OAuth/payment credentials are currently present; these must not be fabricated.
 
@@ -60,6 +65,17 @@ FARTA combines an editorial, product-photography-led Vietnamese fashion experien
 3. Security, authorization, idempotency and auditability are architectural requirements.
 4. Empty, error and unavailable states remain honest; unfinished features are not simulated.
 5. Mobile accessibility and performance are release gates, not cleanup work.
+
+## Current Release Status
+
+| Area                                  | Status                   | Evidence boundary                                                         |
+| ------------------------------------- | ------------------------ | ------------------------------------------------------------------------- |
+| Phase 0–4 commerce foundation         | Implemented locally      | Unit, integration, security, concurrency and build gates                  |
+| Development catalog and media         | Implemented locally      | Idempotent seed with finalized development Cloudinary assets              |
+| Browser release coverage              | Implemented for Chromium | Local seeded Storefront/Admin journeys and reviewed snapshots             |
+| Staging deployment                    | Not started              | Hosting, managed data services and provider credentials required          |
+| SePay/OAuth/email provider validation | Not validated externally | Test-mode accounts, public HTTPS callbacks and provider delivery required |
+| AI shopping assistant                 | Not started              | Must use controlled API tools after staging commerce validation           |
 
 ## Accessibility & Inclusion
 

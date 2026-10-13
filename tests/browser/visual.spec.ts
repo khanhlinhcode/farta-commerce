@@ -10,6 +10,8 @@ import {
   urls,
 } from "./support";
 
+test.use({ trace: "off" });
+
 async function stableScreenshot(page: Page, name: string) {
   await page.locator("main:not(.page-loading)").waitFor();
   await page.waitForLoadState("networkidle");
