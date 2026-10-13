@@ -3,7 +3,13 @@ import Link from "next/link";
 import { formatVnd, type Product } from "@/lib/catalog";
 import { MediaFrame } from "./media-frame";
 
-export function ProductCard({ product }: { product: Product }) {
+export function ProductCard({
+  product,
+  priority = false,
+}: {
+  product: Product;
+  priority?: boolean;
+}) {
   const colors = [
     ...new Map(
       product.variants.map((variant) => [variant.color, variant]),
@@ -31,6 +37,7 @@ export function ProductCard({ product }: { product: Product }) {
           media={product.coverMedia}
           fallbackLabel={product.name}
           className="product-card__primary"
+          priority={priority}
         />
         {alternateMedia && (
           <MediaFrame

@@ -15,6 +15,9 @@
     "typecheck": "pnpm -r --if-present typecheck",
     "test": "pnpm -r --if-present test",
     "test:e2e": "pnpm -r --if-present test:e2e",
+    "test:browser": "pnpm --filter @farta/api seed:development && playwright test",
+    "test:browser:update": "pnpm --filter @farta/api seed:development && playwright test --update-snapshots",
+    "test:browser:install": "playwright install chromium",
     "format:check": "prettier --check .",
     "audit:prod": "pnpm audit --prod --audit-level high",
     "infra:up": "docker compose -f infrastructure/docker/compose.yml up -d --wait mongodb redis && docker compose -f infrastructure/docker/compose.yml run --rm mongo-init",
@@ -22,6 +25,7 @@
   },
   "devDependencies": {
     "@farta/eslint-config": "workspace:*",
+    "@playwright/test": "1.64.0",
     "eslint": "10.12.0",
     "prettier": "3.9.9",
     "typescript": "5.9.3"

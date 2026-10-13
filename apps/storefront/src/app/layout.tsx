@@ -43,7 +43,11 @@ export default function RootLayout({
   children,
 }: Readonly<{ children: ReactNode }>) {
   return (
-    <html lang="vi" className={`${display.variable} ${body.variable}`}>
+    <html
+      lang="vi"
+      className={`${display.variable} ${body.variable}`}
+      data-scroll-behavior="smooth"
+    >
       <body>
         <Providers>
           <a className="skip-link" href="#main-content">

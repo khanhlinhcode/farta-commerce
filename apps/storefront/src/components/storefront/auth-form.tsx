@@ -83,12 +83,18 @@ export function AuthForm({ mode }: { mode: "login" | "register" }) {
         <label>
           Họ tên
           <input
+            id="auth-display-name"
             autoComplete="name"
             {...form.register("displayName")}
             aria-invalid={Boolean(form.formState.errors.displayName)}
+            aria-describedby={
+              form.formState.errors.displayName
+                ? "auth-display-name-error"
+                : undefined
+            }
           />
           {form.formState.errors.displayName && (
-            <span className="field-error">
+            <span className="field-error" id="auth-display-name-error">
               {form.formState.errors.displayName.message}
             </span>
           )}
@@ -97,13 +103,17 @@ export function AuthForm({ mode }: { mode: "login" | "register" }) {
       <label>
         Email
         <input
+          id="auth-email"
           autoComplete="email"
           type="email"
           {...form.register("email")}
           aria-invalid={Boolean(form.formState.errors.email)}
+          aria-describedby={
+            form.formState.errors.email ? "auth-email-error" : undefined
+          }
         />
         {form.formState.errors.email && (
-          <span className="field-error">
+          <span className="field-error" id="auth-email-error">
             {form.formState.errors.email.message}
           </span>
         )}
@@ -111,13 +121,17 @@ export function AuthForm({ mode }: { mode: "login" | "register" }) {
       <label>
         Mật khẩu
         <input
+          id="auth-password"
           autoComplete={mode === "login" ? "current-password" : "new-password"}
           type="password"
           {...form.register("password")}
           aria-invalid={Boolean(form.formState.errors.password)}
+          aria-describedby={
+            form.formState.errors.password ? "auth-password-error" : undefined
+          }
         />
         {form.formState.errors.password && (
-          <span className="field-error">
+          <span className="field-error" id="auth-password-error">
             {form.formState.errors.password.message}
           </span>
         )}

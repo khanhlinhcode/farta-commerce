@@ -30,8 +30,8 @@ export function MediaFrame({
       src={media.secureUrl}
       alt={media.altText ?? fallbackLabel}
       fill
+      loading={priority ? "eager" : "lazy"}
       sizes="(max-width: 768px) 50vw, (max-width: 1200px) 33vw, 25vw"
-      priority={priority}
     />
   );
 }

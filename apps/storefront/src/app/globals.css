@@ -1579,6 +1579,7 @@ img {
 
 .checkout-line-media,
 .order-item-media {
+  position: relative;
   aspect-ratio: 4 / 5;
   overflow: hidden;
   background: var(--farta-color-surface-elevated);
@@ -2833,8 +2834,22 @@ body {
 }
 
 @media (max-width: 600px) {
-  .header-tools .icon-button:first-child {
-    display: none;
+  .site-header__inner {
+    grid-template-columns: 2.5rem minmax(4.5rem, 1fr) auto;
+  }
+
+  .header-tools .icon-button,
+  .header-tools .icon-button:first-child,
+  .mobile-only {
+    display: inline-grid;
+    width: 2.5rem;
+    height: 2.75rem;
+    padding: 0;
+  }
+
+  .wordmark {
+    font-size: 1.2rem;
+    letter-spacing: 0.18em;
   }
 
   .runway-hero h1 {

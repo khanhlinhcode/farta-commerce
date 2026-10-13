@@ -771,6 +771,8 @@ tbody tr:hover {
     position: sticky;
     z-index: 20;
     top: 0;
+    min-width: 0;
+    overflow: hidden;
     border-right: 0;
     border-bottom: 1px solid rgb(255 255 255 / 0.1);
     padding: 0.9rem 1rem;
@@ -788,6 +790,10 @@ tbody tr:hover {
     flex: 0 0 auto;
     min-height: 2.65rem;
     white-space: nowrap;
+  }
+
+  .sidebar nav {
+    max-width: 100%;
   }
 
   .metric {

@@ -90,24 +90,40 @@ function LoginPage() {
           <label>
             Email
             <input
+              id="staff-login-email"
+              aria-invalid={Boolean(form.formState.errors.email)}
+              aria-describedby={
+                form.formState.errors.email
+                  ? "staff-login-email-error"
+                  : undefined
+              }
               autoComplete="username"
               type="email"
               {...form.register("email")}
             />
           </label>
           {form.formState.errors.email && (
-            <p className="field-error">{form.formState.errors.email.message}</p>
+            <p className="field-error" id="staff-login-email-error">
+              {form.formState.errors.email.message}
+            </p>
           )}
           <label>
             Mật khẩu
             <input
+              id="staff-login-password"
+              aria-invalid={Boolean(form.formState.errors.password)}
+              aria-describedby={
+                form.formState.errors.password
+                  ? "staff-login-password-error"
+                  : undefined
+              }
               autoComplete="current-password"
               type="password"
               {...form.register("password")}
             />
           </label>
           {form.formState.errors.password && (
-            <p className="field-error">
+            <p className="field-error" id="staff-login-password-error">
               {form.formState.errors.password.message}
             </p>
           )}

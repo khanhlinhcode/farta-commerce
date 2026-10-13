@@ -10,6 +10,8 @@ export default [
       "**/dist/**",
       "**/build/**",
       "**/coverage/**",
+      "**/playwright-report/**",
+      "**/test-results/**",
       "**/*.d.ts",
     ],
   },

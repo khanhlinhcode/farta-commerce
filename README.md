@@ -46,6 +46,21 @@ pnpm audit:prod
 cd apps/ai-service && uv run ruff check . && uv run pytest
 ```
 
+### Browser release coverage
+
+Browser coverage is pinned to `@playwright/test` 1.64.0 and Chromium. After the development Cloudinary media manifest and catalog seed are available, install the matching browser once and provide an existing local STAFF/OWNER account through the process environment:
+
+```bash
+pnpm test:browser:install
+E2E_STAFF_EMAIL=<development-staff-email> \
+E2E_STAFF_PASSWORD=<development-staff-password> \
+pnpm test:browser
+```
+
+`test:browser` reruns the idempotent development seed before Playwright. It starts API, Storefront and Admin through the checked-in `webServer` configuration, uses one Chromium worker, and never embeds credentials in source or snapshots. Update reviewed visual baselines only with `pnpm test:browser:update`.
+
+The CI browser lane is intentionally not enabled yet: a fresh CI MongoDB cannot reproduce the real Cloudinary-backed seed from the ignored environment-specific media manifest alone. A dedicated non-production Cloudinary account and an approved MediaAsset bootstrap/finalization mechanism are required first; CI must not substitute fake media or production provider credentials.
+
 ## Architecture and security
 
 Start with [`docs/phase-0/README.md`](docs/phase-0/README.md). Important decisions are under `docs/adr/`; the current design threat model is `docs/security/threat-model.md`.
@@ -92,3 +107,4 @@ Secrets belong in local ignored files or the deployment secret store. Never expo
 - Replica-set transaction failure: inspect the one-shot `mongo-init` service; Compose initializes it automatically.
 - Local MongoDB uses `127.0.0.1` plus `directConnection=true`; this keeps single-node replica-set transactions available without following Docker's internal-only `mongodb` hostname. Do not copy this development behavior into a managed production replica-set URI.
 - Port collision: change local-only ports consistently in `.env` and proxy configuration.
+- Browser seed failure: confirm `APP_ENV=development`, `DEVELOPMENT_SEED_ACTOR_EMAIL`, the ignored finalized-media manifest and its matching local `MediaAsset` records exist before running Playwright.

@@ -64,7 +64,7 @@ function Hero({ banner }: { banner: Banner | null }) {
               "FARTA Edit 01 — chuyển động và phom dáng"
             }
             fill
-            priority
+            preload
             sizes="(max-width: 767px) 100vw, 60vw"
             src={imageSource}
           />

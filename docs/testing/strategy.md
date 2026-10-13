@@ -33,7 +33,7 @@ Mocks are allowed only at external boundaries and must not replace tests for Mon
 ## Frontend quality
 
 - Vitest + Testing Library for components/hooks.
-- Playwright for desktop/mobile flows, keyboard navigation, route error/loading states and automated axe checks on representative pages.
+- Playwright for desktop/mobile flows, keyboard navigation, route error/loading states and explicit semantic accessibility assertions. Automated axe coverage remains deferred until that dependency is separately approved.
 - Visual regression is limited to stable shells/components; it does not replace semantic assertions.
 - Core Web Vitals and bundle budgets become release gates after real product pages exist.
 
