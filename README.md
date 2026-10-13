@@ -10,7 +10,7 @@ Greenfield production-oriented fashion-commerce monorepo. Phase 0 architecture i
 | Development Cloudinary-backed catalog seed          | Implemented; environment-specific manifest required           |
 | Chromium Storefront/Admin browser release coverage  | Implemented locally                                           |
 | CI browser lane                                     | Deferred until approved non-production media bootstrap exists |
-| Staging deployment and external-provider validation | Not started                                                   |
+| Staging deployment and external-provider validation | Readiness audited; deployment blocked on provider inputs      |
 | Controlled AI shopping assistant                    | Not started; remains behind the API tool boundary             |
 
 ## Stack baseline (verified 2026-10-03)

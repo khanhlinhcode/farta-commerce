@@ -73,7 +73,7 @@ FARTA combines an editorial, product-photography-led Vietnamese fashion experien
 | Phase 0–4 commerce foundation         | Implemented locally      | Unit, integration, security, concurrency and build gates                  |
 | Development catalog and media         | Implemented locally      | Idempotent seed with finalized development Cloudinary assets              |
 | Browser release coverage              | Implemented for Chromium | Local seeded Storefront/Admin journeys and reviewed snapshots             |
-| Staging deployment                    | Not started              | Hosting, managed data services and provider credentials required          |
+| Staging deployment                    | Readiness audited        | Deployment blocked on hosting, managed services and provider credentials  |
 | SePay/OAuth/email provider validation | Not validated externally | Test-mode accounts, public HTTPS callbacks and provider delivery required |
 | AI shopping assistant                 | Not started              | Must use controlled API tools after staging commerce validation           |
 

@@ -37,7 +37,7 @@ Status: implemented locally through the development seed, Chromium Storefront/Ad
 
 ## Phase 5 — Staging and external-provider validation
 
-Status: not started. Requires approved staging domains/hosting, managed MongoDB and Redis, secret storage, Cloudinary staging, SePay Test mode with public HTTPS webhook, OAuth credentials, notification delivery and monitoring. No production-readiness claim may be made from local mocks or local browser evidence.
+Status: provider-neutral readiness audited; deployment not started. The audit identified that staging currently receives development-grade cookie/header/HTTPS behavior and must be hardened before public deployment. Execution remains blocked on approved staging domains/hosting, managed MongoDB and Redis, secret storage, Cloudinary staging, SePay Test mode with public HTTPS webhook, OAuth credentials, notification delivery and monitoring. No production-readiness claim may be made from local mocks or local browser evidence.
 
 ## Later hardening and expansion
 
