@@ -1,12 +1,19 @@
 import { z } from "zod";
 
 const url = z.url();
+const appEnvironment = z.enum(["development", "test", "staging", "production"]);
+
+export type AppEnvironment = z.infer<typeof appEnvironment>;
+
+export function isDeployedEnvironment(
+  environment: unknown,
+): environment is Extract<AppEnvironment, "staging" | "production"> {
+  return environment === "staging" || environment === "production";
+}
 
 const environmentSchema = z
   .object({
-    APP_ENV: z
-      .enum(["development", "test", "staging", "production"])
-      .default("development"),
+    APP_ENV: appEnvironment.default("development"),
     PORT: z.coerce.number().int().min(1).max(65_535).default(4000),
     APP_ORIGIN: url,
     ADMIN_ORIGIN: url,
@@ -328,13 +335,13 @@ const environmentSchema = z
       });
     }
 
-    if (environment.APP_ENV !== "production") return;
+    if (!isDeployedEnvironment(environment.APP_ENV)) return;
     for (const key of ["APP_ORIGIN", "ADMIN_ORIGIN", "API_ORIGIN"] as const) {
-      if (!environment[key].startsWith("https://")) {
+      if (new URL(environment[key]).protocol !== "https:") {
         context.addIssue({
           code: "custom",
           path: [key],
-          message: "Production origins must use HTTPS.",
+          message: "Deployed-environment origins must use HTTPS.",
         });
       }
     }
@@ -353,7 +360,7 @@ const environmentSchema = z
         context.addIssue({
           code: "custom",
           path: [key],
-          message: "Production secrets cannot be placeholders.",
+          message: "Deployed-environment secrets cannot be placeholders.",
         });
       }
     }
@@ -366,7 +373,8 @@ const environmentSchema = z
         context.addIssue({
           code: "custom",
           path: [key],
-          message: "Development bootstrap values are forbidden in production.",
+          message:
+            "Development bootstrap values are forbidden in deployed environments.",
         });
       }
     }

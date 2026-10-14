@@ -19,7 +19,7 @@ describe("buildDatabaseOptions", () => {
       const options = buildDatabaseOptions(appEnvironment, uri);
 
       expect(options).not.toHaveProperty("directConnection");
-      expect(options.autoIndex).toBe(appEnvironment !== "production");
+      expect(options.autoIndex).toBe(appEnvironment === "test");
     },
   );
 });

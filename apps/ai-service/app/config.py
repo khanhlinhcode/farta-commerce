@@ -12,9 +12,9 @@ class Settings(BaseSettings):
     api_base_url: HttpUrl = HttpUrl("http://localhost:4000")
 
     @model_validator(mode="after")
-    def require_secure_production_api(self) -> "Settings":
-        if self.app_env == "production" and self.api_base_url.scheme != "https":
-            raise ValueError("Production API URL must use HTTPS.")
+    def require_secure_deployed_api(self) -> "Settings":
+        if self.app_env in {"staging", "production"} and self.api_base_url.scheme != "https":
+            raise ValueError("Deployed-environment API URL must use HTTPS.")
         return self
 
 

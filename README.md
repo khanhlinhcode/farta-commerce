@@ -10,7 +10,7 @@ Greenfield production-oriented fashion-commerce monorepo. Phase 0 architecture i
 | Development Cloudinary-backed catalog seed          | Implemented; environment-specific manifest required           |
 | Chromium Storefront/Admin browser release coverage  | Implemented locally                                           |
 | CI browser lane                                     | Deferred until approved non-production media bootstrap exists |
-| Staging deployment and external-provider validation | Readiness audited; deployment blocked on provider inputs      |
+| Staging deployment and external-provider validation | Security defaults hardened; deployment blocked on inputs      |
 | Controlled AI shopping assistant                    | Not started; remains behind the API tool boundary             |
 
 ## Stack baseline (verified 2026-10-03)
@@ -113,6 +113,8 @@ No notification provider is configured; outbox events remain `PENDING`. Manual r
 The Admin entrypoint is intentionally thin. Feature pages, schemas and tests live under `apps/admin/src/features/`; shared authenticated API transport remains under `apps/admin/src/lib/`. This organization does not change backend permissions or commerce state machines.
 
 Secrets belong in local ignored files or the deployment secret store. Never expose provider/database credentials through `NEXT_PUBLIC_*` or `VITE_*` variables. Production configuration must fail closed and must not use `.env.example` placeholders.
+
+`staging` and `production` are both deployed environments: they require HTTPS origins, Secure protected cookies, reviewed HTTP security headers, operational log verbosity and HTTPS AI-to-API routing. Development and test retain local HTTP behavior. These defaults are locally tested; proxy hops, TLS termination and cookie delivery still require validation against the selected staging topology.
 
 ## Troubleshooting
 

@@ -3,17 +3,22 @@ import { ConfigService } from "@nestjs/config";
 import { parse, serialize, type SerializeOptions } from "cookie";
 import type { Request, Response } from "express";
 
-import type { Environment } from "../../config/environment";
+import {
+  isDeployedEnvironment,
+  type Environment,
+} from "../../config/environment";
 import type { AuthRealm } from "../auth.constants";
 
 @Injectable()
 export class AuthCookieService {
-  private readonly production: boolean;
+  private readonly deployed: boolean;
   private readonly accessTtl: number;
   private readonly refreshTtl: number;
 
   constructor(@Inject(ConfigService) config: ConfigService<Environment, true>) {
-    this.production = config.get("APP_ENV", { infer: true }) === "production";
+    this.deployed = isDeployedEnvironment(
+      config.get("APP_ENV", { infer: true }),
+    );
     this.accessTtl = config.get("JWT_ACCESS_TTL_SECONDS", { infer: true });
     this.refreshTtl = config.get("SESSION_ABSOLUTE_TTL_SECONDS", {
       infer: true,
@@ -92,14 +97,14 @@ export class AuthCookieService {
       "Set-Cookie",
       serialize(this.name(kind, realm), value, {
         ...options,
-        secure: this.production,
+        secure: this.deployed,
       }),
     );
   }
 
   private name(kind: "access" | "refresh" | "csrf", realm: AuthRealm): string {
     const realmName = realm === "CUSTOMER" ? "customer" : "staff";
-    if (!this.production) return `farta_${realmName}_${kind}`;
+    if (!this.deployed) return `farta_${realmName}_${kind}`;
     const prefix = kind === "access" ? "__Host-" : "__Secure-";
     return `${prefix}farta_${realmName}_${kind}`;
   }

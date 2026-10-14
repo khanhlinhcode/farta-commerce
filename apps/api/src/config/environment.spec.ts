@@ -34,6 +34,14 @@ const valid = {
   ORDER_LOOKUP_WINDOW_SECONDS: "300",
 };
 
+const validStaging = {
+  ...valid,
+  APP_ENV: "staging",
+  APP_ORIGIN: "https://storefront.staging.example",
+  ADMIN_ORIGIN: "https://admin.staging.example",
+  API_ORIGIN: "https://api.staging.example",
+};
+
 describe("environment validation", () => {
   it("parses a valid environment", () =>
     expect(validateEnvironment(valid)).toMatchObject({
@@ -77,11 +85,59 @@ describe("environment validation", () => {
       "MONGODB_URI",
     );
   });
+  it.each(["APP_ORIGIN", "ADMIN_ORIGIN", "API_ORIGIN"] as const)(
+    "rejects an insecure staging %s",
+    (key) => {
+      expect(() =>
+        validateEnvironment({
+          ...validStaging,
+          [key]: "http://staging.example",
+        }),
+      ).toThrow(key);
+    },
+  );
+  it("accepts HTTPS staging origins while SePay is disabled", () => {
+    expect(validateEnvironment(validStaging)).toMatchObject({
+      APP_ENV: "staging",
+      SEPAY_ENABLED: false,
+      SEPAY_WEBHOOK_SECRET: "",
+    });
+  });
+  it("rejects staging placeholder secrets without echoing their values", () => {
+    const placeholder = "replace-with-a-secret-that-must-not-be-logged";
+    let message = "";
+    try {
+      validateEnvironment({
+        ...validStaging,
+        JWT_ACCESS_SECRET: placeholder,
+      });
+    } catch (error) {
+      message = error instanceof Error ? error.message : String(error);
+    }
+    expect(message).toContain("JWT_ACCESS_SECRET");
+    expect(message).not.toContain(placeholder);
+  });
+  it.each([
+    "BOOTSTRAP_OWNER_EMAIL",
+    "BOOTSTRAP_OWNER_PASSWORD",
+    "BOOTSTRAP_OWNER_DISPLAY_NAME",
+  ] as const)("rejects staging development value %s", (key) => {
+    expect(() =>
+      validateEnvironment({ ...validStaging, [key]: "development-only" }),
+    ).toThrow(key);
+  });
+  it("preserves local HTTP for development and test", () => {
+    expect(validateEnvironment(valid)).toMatchObject({ APP_ENV: "test" });
+    expect(
+      validateEnvironment({ ...valid, APP_ENV: "development" }),
+    ).toMatchObject({ APP_ENV: "development" });
+  });
   it("rejects insecure production origins and placeholder secrets", () => {
     expect(() =>
       validateEnvironment({
-        ...valid,
+        ...validStaging,
         APP_ENV: "production",
+        APP_ORIGIN: "http://storefront.example",
         JWT_ACCESS_SECRET: "replace".repeat(6),
       }),
     ).toThrow("APP_ORIGIN");

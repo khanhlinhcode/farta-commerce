@@ -1,5 +1,7 @@
 import pinoHttp from "pino-http";
 
+import { isDeployedEnvironment } from "../config/environment";
+
 export const LOG_REDACTION = {
   paths: [
     "req.headers.authorization",
@@ -14,6 +16,11 @@ export const LOG_REDACTION = {
     "*.REDIS_URL",
     "*.JWT_ACCESS_SECRET",
     "*.JWT_REFRESH_SECRET",
+    "*.CSRF_SECRET",
+    "*.CART_CREDENTIAL_SECRET",
+    "*.ORDER_LOOKUP_SECRET",
+    "*.GOOGLE_CLIENT_SECRET",
+    "*.APPLE_PRIVATE_KEY",
     "*.CLOUDINARY_API_SECRET",
     "*.SEPAY_WEBHOOK_SECRET",
   ],
@@ -22,7 +29,7 @@ export const LOG_REDACTION = {
 
 export function createRequestLogger() {
   return pinoHttp({
-    level: process.env.APP_ENV === "production" ? "info" : "debug",
+    level: logLevelForEnvironment(process.env.APP_ENV),
     genReqId: (request) => request.id,
     redact: LOG_REDACTION,
     serializers: {
@@ -34,4 +41,8 @@ export function createRequestLogger() {
       },
     },
   });
+}
+
+export function logLevelForEnvironment(environment: unknown): "info" | "debug" {
+  return isDeployedEnvironment(environment) ? "info" : "debug";
 }

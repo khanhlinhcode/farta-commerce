@@ -1,12 +1,37 @@
 import { ValidationPipe, type INestApplication } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 import type { Express } from "express";
-import helmet from "helmet";
+import helmet, { type HelmetOptions } from "helmet";
 
 import { SafeHttpExceptionFilter } from "./common/http-exception.filter";
 import { createRequestLogger } from "./common/logging";
 import { requestIdMiddleware } from "./common/request-id";
-import type { Environment } from "./config/environment";
+import { isDeployedEnvironment, type Environment } from "./config/environment";
+
+export function httpSecurityOptions(
+  appEnvironment: Environment["APP_ENV"],
+): Readonly<HelmetOptions> {
+  const deployed = isDeployedEnvironment(appEnvironment);
+  return {
+    contentSecurityPolicy: deployed
+      ? {
+          useDefaults: false,
+          directives: {
+            defaultSrc: ["'none'"],
+            baseUri: ["'none'"],
+            formAction: ["'none'"],
+            frameAncestors: ["'none'"],
+          },
+        }
+      : false,
+    strictTransportSecurity: deployed
+      ? { maxAge: 31_536_000, includeSubDomains: true }
+      : false,
+    xContentTypeOptions: true,
+    xFrameOptions: { action: "deny" },
+    referrerPolicy: { policy: "strict-origin-when-cross-origin" },
+  };
+}
 
 export function configureHttpApplication(
   app: INestApplication,
@@ -22,14 +47,7 @@ export function configureHttpApplication(
 
   app.use(requestIdMiddleware);
   if (options.requestLogging !== false) app.use(createRequestLogger());
-  app.use(
-    helmet({
-      ...(appEnvironment === "production"
-        ? {}
-        : { contentSecurityPolicy: false, strictTransportSecurity: false }),
-      referrerPolicy: { policy: "strict-origin-when-cross-origin" },
-    }),
-  );
+  app.use(helmet(httpSecurityOptions(appEnvironment)));
   app.enableCors({
     origin: [
       config.get("APP_ORIGIN", { infer: true }),

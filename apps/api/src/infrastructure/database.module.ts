@@ -3,7 +3,7 @@ import { ConfigService } from "@nestjs/config";
 import { MongooseModule, type MongooseModuleOptions } from "@nestjs/mongoose";
 import mongoose from "mongoose";
 
-import type { Environment } from "../config/environment";
+import { isDeployedEnvironment, type Environment } from "../config/environment";
 
 export function buildDatabaseOptions(
   appEnvironment: Environment["APP_ENV"],
@@ -12,7 +12,7 @@ export function buildDatabaseOptions(
   const commonOptions: MongooseModuleOptions = {
     uri,
     serverSelectionTimeoutMS: 5_000,
-    autoIndex: appEnvironment !== "production",
+    autoIndex: !isDeployedEnvironment(appEnvironment),
     sanitizeFilter: true,
   };
 

@@ -122,24 +122,25 @@ No private value may be placed in `NEXT_PUBLIC_*` or `VITE_*`. Development boots
 
 ## Blocking findings
 
-### P5-B01 — staging currently receives development-grade HTTP security behavior
+### P5-B01 — staging received development-grade HTTP security behavior
 
 Severity: High for a public staging deployment
 
-Status: unresolved; deployment blocker
+Status: resolved locally on 2026-10-14; staging deployment validation pending
 
-`AuthCookieService` and `CartCredentialService` enable `Secure` cookies and protected cookie prefixes only when `APP_ENV === "production"`. With `APP_ENV=staging`, credentials would use the unprefixed development cookie names and omit `Secure`.
+The original audit found that `AuthCookieService` and `CartCredentialService` enabled `Secure` cookies and protected cookie prefixes only when `APP_ENV === "production"`. `configureHttpApplication` also disabled CSP and HSTS outside production, while the API/AI configuration allowed non-HTTPS staging origins.
 
-`configureHttpApplication` disables Helmet CSP and HSTS for every environment other than production. The environment schema also enforces HTTPS origins and rejects placeholder secrets only for production. The AI configuration similarly requires an HTTPS API only in production.
+Phase 5A introduced one typed deployed-environment policy: `staging` and `production` now receive secure protected cookies, explicit CSP/HSTS/frame/no-sniff policy, HTTPS origin validation, placeholder/bootstrap rejection, operational logging and disabled Mongoose auto-index creation. The AI service now requires an HTTPS commerce API in both deployed environments. Development and test retain local HTTP compatibility.
 
-Required remediation before staging deployment:
+Regression coverage proves the local policy for:
 
-- define an explicit local/test versus deployed-environment policy;
-- treat staging as a secure deployed environment for cookies, HTTPS and security headers;
-- add regression tests for staging behavior;
-- validate the result behind the selected proxy/TLS topology.
+- customer/staff/CSRF and guest-cart cookie attributes and clearing;
+- HTTPS origins, placeholder secrets and bootstrap values;
+- explicit HTTP security options and deployed logging level;
+- deployed database auto-index behavior;
+- AI staging/production HTTPS requirements.
 
-No staging deployment may proceed while this finding is unresolved.
+This finding is resolved in code, not closed as deployment evidence. A real HTTPS staging environment must still validate proxy hops, forwarded protocol handling, response headers and browser cookie acceptance before public exposure.
 
 ### P5-B02 — hosting, domains and proxy topology are not selected
 
@@ -205,7 +206,7 @@ Required decisions:
 After the stakeholder supplies the non-secret provider selections and configures credentials in provider secret stores:
 
 1. verify current official documentation for each selected provider;
-2. remediate P5-B01 with tests before any public staging deployment;
+2. verify the locally resolved P5-B01 controls against the selected HTTPS proxy topology;
 3. create provider-specific architecture, environment matrix and runbook;
 4. provision managed MongoDB/Redis;
 5. deploy API and reservation worker before frontends;
@@ -216,4 +217,4 @@ After the stakeholder supplies the non-secret provider selections and configures
 
 ## Conclusion
 
-The local release baseline and Git synchronization gates are green. Phase 5 deployment is intentionally stopped because provider selections, domains, managed infrastructure and external credentials are not available, and because staging security behavior requires remediation before public exposure. No staging resource was created and no production-readiness claim is made.
+The local release baseline, Git synchronization and provider-neutral staging hardening gates are green. Phase 5 deployment remains intentionally stopped because provider selections, domains, managed infrastructure and external credentials are not available. The hardened controls still require verification behind a real staging TLS/proxy boundary. No staging resource was created and no production-readiness claim is made.

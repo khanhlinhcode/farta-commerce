@@ -4,17 +4,19 @@ import { parse, serialize } from "cookie";
 import { createHmac, randomBytes, timingSafeEqual } from "node:crypto";
 import type { Request, Response } from "express";
 
-import type { Environment } from "../config/environment";
+import { isDeployedEnvironment, type Environment } from "../config/environment";
 
 @Injectable()
 export class CartCredentialService {
   private readonly secret: string;
-  private readonly production: boolean;
+  private readonly deployed: boolean;
   private readonly ttlSeconds: number;
 
   constructor(@Inject(ConfigService) config: ConfigService<Environment, true>) {
     this.secret = config.get("CART_CREDENTIAL_SECRET", { infer: true });
-    this.production = config.get("APP_ENV", { infer: true }) === "production";
+    this.deployed = isDeployedEnvironment(
+      config.get("APP_ENV", { infer: true }),
+    );
     this.ttlSeconds = config.get("GUEST_CART_TTL_SECONDS", { infer: true });
   }
 
@@ -41,7 +43,7 @@ export class CartCredentialService {
       "Set-Cookie",
       serialize(this.cookieName(), raw, {
         httpOnly: true,
-        secure: this.production,
+        secure: this.deployed,
         sameSite: "lax",
         path: "/",
         maxAge: this.ttlSeconds,
@@ -55,7 +57,7 @@ export class CartCredentialService {
       "Set-Cookie",
       serialize(this.cookieName(), "", {
         httpOnly: true,
-        secure: this.production,
+        secure: this.deployed,
         sameSite: "lax",
         path: "/",
         maxAge: 0,
@@ -80,6 +82,6 @@ export class CartCredentialService {
   }
 
   private cookieName(): string {
-    return this.production ? "__Host-farta_guest_cart" : "farta_guest_cart";
+    return this.deployed ? "__Host-farta_guest_cart" : "farta_guest_cart";
   }
 }
