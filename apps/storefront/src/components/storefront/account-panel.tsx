@@ -2,7 +2,7 @@
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 
 type CurrentUser = {
   user: {
@@ -51,12 +51,33 @@ async function sessionMutation(path: string, method: "POST" | "DELETE") {
   if (!response.ok) throw new Error(String(response.status));
 }
 
+async function customerMutation<T>(
+  path: string,
+  method: "POST" | "PATCH",
+  body?: Record<string, unknown>,
+): Promise<T> {
+  const csrf = customerCsrfToken();
+  if (!csrf) throw new Error("CSRF_MISSING");
+  const response = await fetch(`/api/v1${path}`, {
+    method,
+    credentials: "include",
+    headers: {
+      "x-csrf-token": csrf,
+      ...(body ? { "content-type": "application/json" } : {}),
+    },
+    ...(body ? { body: JSON.stringify(body) } : {}),
+  });
+  if (!response.ok) throw new Error(String(response.status));
+  return response.json() as Promise<T>;
+}
+
 export function AccountPanel({
   section = "overview",
 }: {
   section?: "overview" | "profile" | "orders" | "security";
 }) {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const queryClient = useQueryClient();
   const me = useQuery({
     queryKey: ["customer-me"],
@@ -83,8 +104,26 @@ export function AccountPanel({
       ),
     onSuccess: () => {
       queryClient.clear();
-      router.push("/login");
-      router.refresh();
+      router.replace("/login");
+    },
+  });
+  const profile = useMutation({
+    mutationFn: (displayName: string) =>
+      customerMutation<CurrentUser["user"]>("/auth/customer/profile", "PATCH", {
+        displayName,
+      }),
+    onSuccess: (user) => {
+      queryClient.setQueryData<CurrentUser>(["customer-me"], { user });
+    },
+  });
+  const onboarding = useMutation({
+    mutationFn: () =>
+      customerMutation<CurrentUser["user"]>(
+        "/auth/customer/onboarding/complete",
+        "POST",
+      ),
+    onSuccess: (user) => {
+      queryClient.setQueryData<CurrentUser>(["customer-me"], { user });
     },
   });
   if (me.isPending)
@@ -183,30 +222,91 @@ export function AccountPanel({
     return (
       <div className="profile-readonly">
         <h2>Hồ sơ</h2>
-        <dl>
-          <div>
-            <dt>Tên hiển thị</dt>
-            <dd>{user.displayName}</dd>
-          </div>
-          <div>
-            <dt>Email</dt>
-            <dd>{user.email}</dd>
-          </div>
-        </dl>
-        <p>
-          API cập nhật hồ sơ chưa có trong Phase 1; dữ liệu được hiển thị
-          read-only.
-        </p>
+        <form
+          onSubmit={(event) => {
+            event.preventDefault();
+            const data = new FormData(event.currentTarget);
+            profile.mutate(String(data.get("displayName") ?? ""));
+          }}
+        >
+          <label htmlFor="profile-display-name">Tên hiển thị</label>
+          <input
+            id="profile-display-name"
+            name="displayName"
+            defaultValue={user.displayName}
+            minLength={1}
+            maxLength={100}
+            required
+            aria-describedby="profile-display-name-help"
+          />
+          <p id="profile-display-name-help">
+            Tên này được dùng trong lời chào FARTA.
+          </p>
+          <label htmlFor="profile-email">Email</label>
+          <input id="profile-email" value={user.email} readOnly />
+          <button
+            className="button button--primary"
+            disabled={profile.isPending}
+            type="submit"
+          >
+            {profile.isPending ? "Đang lưu…" : "Lưu hồ sơ"}
+          </button>
+          {profile.isSuccess && <p role="status">Đã cập nhật hồ sơ.</p>}
+          {profile.isError && (
+            <p className="form-error" role="alert">
+              Không thể cập nhật hồ sơ. Vui lòng thử lại.
+            </p>
+          )}
+        </form>
       </div>
     );
   return (
     <div>
+      {searchParams.get("cart") === "review" && (
+        <div className="account-state" role="status">
+          <strong>Đăng nhập đã thành công.</strong>
+          <p>
+            Giỏ hàng chưa thể đồng bộ hoàn toàn. Sản phẩm cũ vẫn được giữ để bạn
+            kiểm tra lại.
+          </p>
+          <Link href="/cart">Kiểm tra lại giỏ hàng</Link>
+        </div>
+      )}
       <h2>
         {user.onboardingCompleted
           ? `Xin chào ${user.displayName.split(/\s+/)[0]}.`
           : `Chào mừng ${user.displayName.split(/\s+/)[0]} đến với FARTA.`}
       </h2>
       <p>Quản lý hồ sơ, đơn hàng và bảo mật từ một nơi.</p>
+      {!user.onboardingCompleted && (
+        <div className="security-actions">
+          <button
+            className="button button--primary"
+            disabled={onboarding.isPending}
+            onClick={() =>
+              onboarding.mutate(undefined, {
+                onSuccess: () => router.push("/shop"),
+              })
+            }
+            type="button"
+          >
+            Bắt đầu khám phá
+          </button>
+          <button
+            className="button button--quiet"
+            disabled={onboarding.isPending}
+            onClick={() => onboarding.mutate()}
+            type="button"
+          >
+            Bỏ qua lời chào
+          </button>
+          {onboarding.isError && (
+            <p className="form-error" role="alert">
+              Chưa thể lưu lựa chọn. Vui lòng thử lại.
+            </p>
+          )}
+        </div>
+      )}
       <div className="account-links">
         <Link href="/account/profile">Hồ sơ</Link>
         <Link href="/account/orders">Đơn hàng</Link>

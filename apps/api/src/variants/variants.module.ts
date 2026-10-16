@@ -8,6 +8,10 @@ import {
 } from "../inventory/schemas/inventory.schema";
 import { Product, ProductSchema } from "../products/schemas/product.schema";
 import {
+  MediaAsset,
+  MediaAssetSchema,
+} from "../media/schemas/media-asset.schema";
+import {
   ProductVariant,
   ProductVariantSchema,
 } from "./schemas/product-variant.schema";
@@ -21,6 +25,7 @@ import { VariantsService } from "./variants.service";
       { name: Product.name, schema: ProductSchema },
       { name: ProductVariant.name, schema: ProductVariantSchema },
       { name: Inventory.name, schema: InventorySchema },
+      { name: MediaAsset.name, schema: MediaAssetSchema },
     ]),
   ],
   controllers: [VariantsController],

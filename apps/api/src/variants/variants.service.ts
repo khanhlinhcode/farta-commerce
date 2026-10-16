@@ -17,6 +17,11 @@ import {
   Product,
   type ProductDocument,
 } from "../products/schemas/product.schema";
+import { assertActiveMediaReferences } from "../media/media-reference.validator";
+import {
+  MediaAsset,
+  type MediaAssetDocument,
+} from "../media/schemas/media-asset.schema";
 import type { CreateVariantDto, UpdateVariantDto } from "./dto/variant.dto";
 import {
   ProductVariant,
@@ -35,11 +40,14 @@ export class VariantsService {
     private readonly products: Model<ProductDocument>,
     @InjectModel(Inventory.name)
     private readonly inventories: Model<InventoryDocument>,
+    @InjectModel(MediaAsset.name)
+    private readonly media: Model<MediaAssetDocument>,
     @Inject(AuditService) private readonly audit: AuditService,
   ) {}
 
   async create(productId: string, input: CreateVariantDto, actor: Actor) {
     this.validatePrices(input.price, input.compareAtPrice ?? null);
+    await this.validateImageReferences(input.mediaIds);
     const productObjectId = objectId(productId);
     const session = await this.connection.startSession();
     try {
@@ -138,6 +146,9 @@ export class VariantsService {
         ? variant.compareAtPrice
         : input.compareAtPrice;
     this.validatePrices(nextPrice, nextCompare);
+    if (input.mediaIds !== undefined) {
+      await this.validateImageReferences(input.mediaIds);
+    }
     const oldPrice = variant.price;
     const oldCompareAtPrice = variant.compareAtPrice;
     if (input.sku !== undefined) variant.sku = normalizeSku(input.sku);
@@ -259,6 +270,18 @@ export class VariantsService {
         "Variant prices are invalid.",
       );
     }
+  }
+
+  private async validateImageReferences(
+    mediaIds: readonly string[] | undefined,
+  ): Promise<void> {
+    await assertActiveMediaReferences(
+      this.media,
+      mediaIds ?? [],
+      "image",
+      "VARIANT_MEDIA_INVALID",
+      "Variant media must reference active image assets.",
+    );
   }
 
   private productNotFound(): never {

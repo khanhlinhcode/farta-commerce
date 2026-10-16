@@ -11,6 +11,10 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { App } from "./app";
 
+// Prime the route chunk in the test graph. Production still loads this page
+// lazily, while the route assertion no longer depends on transform latency.
+import "./features/orders/orders-page";
+
 describe("admin authentication boundary", () => {
   afterEach(() => {
     cleanup();

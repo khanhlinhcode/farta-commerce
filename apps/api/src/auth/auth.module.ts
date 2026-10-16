@@ -2,6 +2,7 @@ import { Module } from "@nestjs/common";
 import { APP_GUARD } from "@nestjs/core";
 import { MongooseModule } from "@nestjs/mongoose";
 
+import { AuditModule } from "../audit/audit.module";
 import { CustomerAuthController, StaffAuthController } from "./auth.controller";
 import { AuthenticationGuard } from "./guards/authentication.guard";
 import { CsrfGuard } from "./guards/csrf.guard";
@@ -26,6 +27,7 @@ import { UsersService } from "./services/users.service";
 
 @Module({
   imports: [
+    AuditModule,
     MongooseModule.forFeature([
       { name: User.name, schema: UserSchema },
       { name: Session.name, schema: SessionSchema },

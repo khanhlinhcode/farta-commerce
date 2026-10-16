@@ -9,13 +9,16 @@ import { adminApi } from "../../lib/api";
 export function DashboardPage() {
   const categories = useQuery({
     queryKey: ["categories"],
-    queryFn: adminApi.categories,
+    queryFn: () => adminApi.categories(),
   });
   const products = useQuery({
     queryKey: ["products"],
-    queryFn: adminApi.products,
+    queryFn: () => adminApi.products(),
   });
-  const media = useQuery({ queryKey: ["media"], queryFn: adminApi.media });
+  const media = useQuery({
+    queryKey: ["media", "dashboard"],
+    queryFn: () => adminApi.media({ limit: 1 }),
+  });
   return (
     <>
       <PageHeader
@@ -26,7 +29,7 @@ export function DashboardPage() {
       <section className="metric-grid">
         <Metric label="Danh mục" value={categories.data?.total} />
         <Metric label="Sản phẩm" value={products.data?.total} />
-        <Metric label="Media assets" value={media.data?.items.length} />
+        <Metric label="Media assets" value={media.data?.total} />
       </section>
       <Surface className="notice">
         <Boxes />

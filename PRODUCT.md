@@ -55,6 +55,7 @@ FARTA combines an editorial, product-photography-led Vietnamese fashion experien
 - Phase 3 premium Storefront connected to real public catalog data.
 - Phase 4 authoritative Cart, Checkout, Reservations, Orders, COD, SePay boundary, Admin order operations and reservation worker.
 - Phase 4.1 local runtime stabilization, idempotent development seed and Chromium browser release coverage.
+- Release-remediation code for truthful catalog pricing, category-correct related products, profile/onboarding, type-safe media, bounded catalog/sitemap queries and expanded Admin operations. Final browser/recovery/provider gates remain open.
 - Shared semantic tokens in `packages/design-tokens` and primitives in `packages/ui`.
 - No stakeholder-owned fashion photography, final logo, testimonials, reviews, ratings, sales analytics or production OAuth/payment credentials are currently present; these must not be fabricated.
 
@@ -76,6 +77,7 @@ FARTA combines an editorial, product-photography-led Vietnamese fashion experien
 | Staging deployment                    | Readiness audited        | Deployment blocked on hosting, managed services and provider credentials  |
 | SePay/OAuth/email provider validation | Not validated externally | Test-mode accounts, public HTTPS callbacks and provider delivery required |
 | AI shopping assistant                 | Not started              | Must use controlled API tools after staging commerce validation           |
+| Release remediation                   | Partial                  | Local code/API gates pass; recovery approval and browser rerun remain     |
 
 ## Accessibility & Inclusion
 

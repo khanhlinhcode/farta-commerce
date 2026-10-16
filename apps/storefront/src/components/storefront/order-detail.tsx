@@ -112,6 +112,7 @@ export function OrderDetailView({
                         : null
                     }
                     fallbackLabel={item.productName}
+                    sizes="68px"
                   />
                 </div>
                 <div>

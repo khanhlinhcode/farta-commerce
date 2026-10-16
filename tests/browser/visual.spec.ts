@@ -76,6 +76,10 @@ test("Admin catalog and order detail visual baselines", async ({
   await page.setViewportSize({ width: 1440, height: 900 });
   await loginStaff(page);
   await page.goto(`${urls.admin}/products`);
+  await expect(
+    page.locator('.category-checklist input[type="checkbox"]').first(),
+  ).toBeVisible();
+  await expect(page.getByText(seed.productName, { exact: true })).toBeVisible();
   await stableScreenshot(page, "admin-catalog.png");
   await page.goto(`${urls.admin}/orders/${order.code}`);
   const orderHeading = page.getByRole("heading", { name: order.code });

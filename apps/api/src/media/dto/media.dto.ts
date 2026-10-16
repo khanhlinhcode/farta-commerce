@@ -55,3 +55,22 @@ export class FinalizeMediaDto {
 export class MediaIdParamDto {
   @IsMongoId() mediaId!: string;
 }
+
+export class MediaQueryDto {
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(1)
+  page = 1;
+
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(1)
+  @Max(100)
+  limit = 24;
+
+  @IsOptional()
+  @IsIn(MEDIA_RESOURCE_TYPES)
+  resourceType?: MediaResourceType;
+}

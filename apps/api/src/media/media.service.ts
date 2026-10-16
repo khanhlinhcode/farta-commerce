@@ -6,7 +6,7 @@ import { AuditService } from "../audit/audit.service";
 import { isDuplicateKey, objectId } from "../catalog/catalog.utils";
 import { ApiException } from "../common/api-exception";
 import { CloudinarySignatureService } from "./cloudinary-signature.service";
-import type { FinalizeMediaDto } from "./dto/media.dto";
+import type { FinalizeMediaDto, MediaQueryDto } from "./dto/media.dto";
 import { MEDIA_FORMATS, type MediaResourceType } from "./media.constants";
 import {
   MediaAsset,
@@ -125,12 +125,25 @@ export class MediaService {
     }
   }
 
-  async list() {
-    const items = await this.assets
-      .find({ archivedAt: null })
-      .sort({ createdAt: -1 })
-      .limit(100);
-    return { items: items.map((asset) => this.response(asset)) };
+  async list(query: MediaQueryDto) {
+    const filter = {
+      archivedAt: null,
+      ...(query.resourceType ? { resourceType: query.resourceType } : {}),
+    };
+    const [items, total] = await Promise.all([
+      this.assets
+        .find(filter)
+        .sort({ createdAt: -1 })
+        .skip((query.page - 1) * query.limit)
+        .limit(query.limit),
+      this.assets.countDocuments(filter),
+    ]);
+    return {
+      items: items.map((asset) => this.response(asset)),
+      page: query.page,
+      limit: query.limit,
+      total,
+    };
   }
 
   async archive(mediaId: string, actor: Actor): Promise<void> {

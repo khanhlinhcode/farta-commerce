@@ -67,8 +67,13 @@ export function AuthForm({ mode }: { mode: "login" | "register" }) {
         return;
       }
       const authenticated = (await response.json()) as { csrfToken: string };
-      await mergeCart(authenticated.csrfToken);
-      router.push("/account");
+      let cartNeedsReview = false;
+      try {
+        await mergeCart(authenticated.csrfToken);
+      } catch {
+        cartNeedsReview = true;
+      }
+      router.push(cartNeedsReview ? "/account?cart=review" : "/account");
       router.refresh();
     } catch {
       setServerError(

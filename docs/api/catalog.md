@@ -21,7 +21,7 @@ Public DTOs exclude actor IDs, ledger data, exact stock and audit records. Produ
 - `/api/v1/admin/products/:productId/variants`: list, create, update, archive
 - `GET /api/v1/admin/inventory/:variantId`
 - `PATCH /api/v1/admin/inventory/:variantId/adjustments`
-- `GET /api/v1/admin/media`
+- `GET /api/v1/admin/media?page=1&limit=24&resourceType=image|video` (bounded; maximum 100)
 - `POST /api/v1/admin/media/upload-authorizations`
 - `POST /api/v1/admin/media/finalize`
 - `DELETE /api/v1/admin/media/:mediaId`
@@ -29,6 +29,8 @@ Public DTOs exclude actor IDs, ledger data, exact stock and audit records. Produ
 - `GET /api/v1/admin/audit-logs`
 
 Inventory adjustment requires an `Idempotency-Key` header of 8–160 characters. The request body accepts only `quantityDelta` and `reason`; final stock is never accepted from the client.
+
+Public Product DTOs include allowlisted `categories: [{ id, slug, name }]`. This is a navigation/read-model contract; internal category documents and actor metadata are not serialized.
 
 ## Selected errors
 

@@ -16,6 +16,28 @@ vi.mock("next/image", () => ({
     delete imageProps.preload;
     return <img {...imageProps} />;
   },
+  getImageProps: ({
+    src,
+    alt,
+    width,
+    height,
+    sizes,
+    loading,
+  }: React.ImgHTMLAttributes<HTMLImageElement> & {
+    src: string;
+    width: number;
+    height: number;
+  }) => ({
+    props: {
+      src,
+      srcSet: `${src}?w=${width} ${width}w`,
+      alt,
+      width,
+      height,
+      sizes,
+      loading,
+    },
+  }),
 }));
 
 const poster: Media = {
@@ -76,6 +98,33 @@ describe("CampaignHeroMedia", () => {
     expect(
       screen.queryByRole("button", { name: /phim chiến dịch/i }),
     ).not.toBeInTheDocument();
+  });
+
+  it("uses one art-directed picture instead of mounting two preloaded images", () => {
+    const mobilePoster = {
+      ...poster,
+      id: "mobile-poster",
+      secureUrl:
+        "https://res.cloudinary.com/farta-test/image/upload/mobile-poster.jpg",
+      width: 900,
+      height: 1200,
+    };
+    render(
+      <CampaignHeroMedia
+        name="Quiet Form"
+        desktopPoster={poster}
+        mobilePoster={mobilePoster}
+        desktopVideo={null}
+        mobileVideo={null}
+        developmentFallback={null}
+      />,
+    );
+
+    const picture = document.querySelector("picture");
+    expect(picture).toBeInTheDocument();
+    expect(picture?.querySelectorAll("img")).toHaveLength(1);
+    expect(picture?.querySelectorAll("source")).toHaveLength(2);
+    expect(picture?.querySelector("img")).toHaveAttribute("loading", "eager");
   });
 
   it("does not mount autoplay video when reduced motion is requested", () => {

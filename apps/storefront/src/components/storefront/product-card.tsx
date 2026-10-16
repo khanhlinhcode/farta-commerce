@@ -3,6 +3,36 @@ import Link from "next/link";
 import { formatVnd, type Product } from "@/lib/catalog";
 import { MediaFrame } from "./media-frame";
 
+export function productCardPrice(product: Product): {
+  label: string;
+  compareAt: number | null;
+  onSale: boolean;
+} {
+  const prices = product.variants.map((variant) => variant.price);
+  const exactPrice = product.price.min === product.price.max;
+  const comparePrices = product.variants.map(
+    (variant) => variant.compareAtPrice,
+  );
+  const firstCompare = comparePrices[0] ?? null;
+  const unambiguousCompare =
+    exactPrice &&
+    prices.every((price) => price === product.price.min) &&
+    firstCompare !== null &&
+    firstCompare > product.price.min &&
+    comparePrices.every((price) => price === firstCompare);
+  return {
+    label: exactPrice
+      ? formatVnd(product.price.min)
+      : `Từ ${formatVnd(product.price.min)}`,
+    compareAt: unambiguousCompare ? firstCompare : null,
+    onSale: product.variants.some(
+      (variant) =>
+        variant.compareAtPrice !== null &&
+        variant.compareAtPrice > variant.price,
+    ),
+  };
+}
+
 export function ProductCard({
   product,
   priority = false,
@@ -18,10 +48,7 @@ export function ProductCard({
   const soldOut = product.variants.every(
     (variant) => variant.availability === "OUT_OF_STOCK",
   );
-  const compareAt = Math.max(
-    0,
-    ...product.variants.map((variant) => variant.compareAtPrice ?? 0),
-  );
+  const pricing = productCardPrice(product);
   const alternateMedia = product.media.find(
     (media) => media.id !== product.coverMedia?.id,
   );
@@ -44,9 +71,10 @@ export function ProductCard({
             media={alternateMedia}
             fallbackLabel={`${product.name} — góc nhìn khác`}
             className="product-card__alternate"
+            decorative
           />
         )}
-        {(soldOut || isNew || compareAt > product.price.min) && (
+        {(soldOut || isNew || pricing.onSale) && (
           <span className="product-badge">
             {soldOut ? "Hết hàng" : isNew ? "Mới" : "Sale"}
           </span>
@@ -57,15 +85,21 @@ export function ProductCard({
           <h3>
             <Link href={`/product/${product.slug}`}>{product.name}</Link>
           </h3>
-          <p>{formatVnd(product.price.min)}</p>
+          <p>{pricing.label}</p>
         </div>
-        {compareAt > product.price.min && <del>{formatVnd(compareAt)}</del>}
+        {pricing.compareAt !== null && (
+          <del>{formatVnd(pricing.compareAt)}</del>
+        )}
       </div>
       {colors.length > 0 && (
-        <div className="color-row" aria-label={`${colors.length} màu`}>
+        <div className="color-row">
+          <span className="sr-only">
+            Màu có sẵn: {colors.map((variant) => variant.color).join(", ")}
+          </span>
           {colors.slice(0, 5).map((variant) => (
             <span
               key={variant.color}
+              aria-hidden="true"
               title={variant.color}
               style={{ backgroundColor: variant.colorCode ?? "#d8d2c7" }}
             />

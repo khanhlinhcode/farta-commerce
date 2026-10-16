@@ -4,14 +4,15 @@ Greenfield production-oriented fashion-commerce monorepo. Phase 0 architecture i
 
 ## Current status
 
-| Scope                                               | Status                                                        |
-| --------------------------------------------------- | ------------------------------------------------------------- |
-| Local commerce implementation and automated gates   | Implemented                                                   |
-| Development Cloudinary-backed catalog seed          | Implemented; environment-specific manifest required           |
-| Chromium Storefront/Admin browser release coverage  | Implemented locally                                           |
-| CI browser lane                                     | Deferred until approved non-production media bootstrap exists |
-| Staging deployment and external-provider validation | Security defaults hardened; deployment blocked on inputs      |
-| Controlled AI shopping assistant                    | Not started; remains behind the API tool boundary             |
+| Scope                                               | Status                                                          |
+| --------------------------------------------------- | --------------------------------------------------------------- |
+| Local commerce implementation and automated gates   | Implemented                                                     |
+| Development Cloudinary-backed catalog seed          | Implemented; environment-specific manifest required             |
+| Chromium Storefront/Admin browser release coverage  | Implemented locally                                             |
+| CI browser lane                                     | Deferred until approved non-production media bootstrap exists   |
+| Release remediation                                 | Partial; correctness/Admin work landed locally, blockers remain |
+| Staging deployment and external-provider validation | Security defaults hardened; deployment blocked on inputs        |
+| Controlled AI shopping assistant                    | Not started; remains behind the API tool boundary               |
 
 ## Stack baseline (verified 2026-10-03)
 
@@ -109,6 +110,8 @@ pnpm --filter @farta/api worker:reservations:dev
 ```
 
 No notification provider is configured; outbox events remain `PENDING`. Manual refund reconciliation records an external refund reference and never pretends that a provider refund occurred. Wishlist, password recovery and OAuth success remain unavailable rather than simulated.
+
+Customer profile editing and first-login onboarding completion are now real session/CSRF-protected API workflows. Password recovery remains a release blocker until the recovery/outbox schema evolution and transactional email boundary are approved; see [`docs/remediation/account-recovery-security-review.md`](docs/remediation/account-recovery-security-review.md). The current remediation evidence and browser-host limitation are under [`docs/remediation/`](docs/remediation/).
 
 The Admin entrypoint is intentionally thin. Feature pages, schemas and tests live under `apps/admin/src/features/`; shared authenticated API transport remains under `apps/admin/src/lib/`. This organization does not change backend permissions or commerce state machines.
 

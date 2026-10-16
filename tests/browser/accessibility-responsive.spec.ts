@@ -50,8 +50,10 @@ test("mobile menu, Search and filter drawer manage keyboard focus", async ({
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto("/");
   const menu = page.getByRole("button", { name: "Mở menu" });
+  await expect(menu).toBeEnabled();
   await menu.focus();
-  await page.keyboard.press("Enter");
+  await expect(menu).toBeFocused();
+  await menu.press("Enter");
   await expect(
     page.getByRole("dialog", { name: "Menu di động" }),
   ).toBeVisible();

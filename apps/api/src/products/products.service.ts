@@ -1,6 +1,6 @@
 import { HttpStatus, Inject, Injectable } from "@nestjs/common";
 import { InjectModel } from "@nestjs/mongoose";
-import type { Model } from "mongoose";
+import type { Model, PipelineStage, Types } from "mongoose";
 
 import { AuditService } from "../audit/audit.service";
 import {
@@ -23,6 +23,7 @@ import {
   MediaAsset,
   type MediaAssetDocument,
 } from "../media/schemas/media-asset.schema";
+import { assertActiveMediaReferences } from "../media/media-reference.validator";
 import {
   ProductVariant,
   type ProductVariantDocument,
@@ -74,6 +75,7 @@ export class ProductsService {
     const slug = normalizeSlug(input.slug ?? input.name);
     if (!slug) this.invalidSlug();
     await this.validateCategories(input.categoryIds, false);
+    await this.validateImageReferences(input.coverMediaId, input.mediaIds);
     if (input.status === "ACTIVE") {
       throw new ApiException(
         HttpStatus.CONFLICT,
@@ -149,6 +151,16 @@ export class ProductsService {
         input.categoryIds,
         input.status === "ACTIVE" || product.status === "ACTIVE",
       );
+    if (input.coverMediaId !== undefined || input.mediaIds !== undefined) {
+      await this.validateImageReferences(
+        input.coverMediaId === undefined
+          ? product.coverMediaId?.toString()
+          : input.coverMediaId,
+        input.mediaIds === undefined
+          ? product.mediaIds.map(String)
+          : input.mediaIds,
+      );
+    }
     if (input.name !== undefined) product.name = input.name.trim();
     if (input.slug !== undefined) product.slug = normalizeSlug(input.slug);
     if (input.shortDescription !== undefined)
@@ -255,6 +267,12 @@ export class ProductsService {
     };
   }
 
+  async getAdminById(productId: string) {
+    const product = await this.products.findById(objectId(productId));
+    if (!product) this.notFound();
+    return this.adminResponse(product);
+  }
+
   async listPublic(query: ProductListQueryDto) {
     const filter: Record<string, unknown> = {
       status: "ACTIVE",
@@ -287,43 +305,94 @@ export class ProductsService {
         ...(query.maxPrice !== undefined ? { $lte: query.maxPrice } : {}),
       };
     }
-    const matchingVariants = await this.variants
-      .find(variantFilter)
-      .select({ productId: 1, lowStockThreshold: 1, _id: 1 });
-    let allowedVariants = matchingVariants;
+    const variantPipeline: NonNullable<
+      PipelineStage.Lookup["$lookup"]["pipeline"]
+    > = [
+      {
+        $match: {
+          $expr: { $eq: ["$productId", "$$productId"] },
+          ...variantFilter,
+        },
+      },
+    ];
     if (query.availability) {
-      const ids = matchingVariants.map((variant) => variant._id);
-      const inventory = await this.inventories.find({
-        variantId: { $in: ids },
-      });
-      const availabilityById = new Map(
-        inventory.map((item) => [
-          item.variantId.toString(),
-          item.onHand - item.reserved,
-        ]),
+      variantPipeline.push(
+        {
+          $lookup: {
+            from: "inventory",
+            let: { variantId: "$_id" },
+            pipeline: [
+              { $match: { $expr: { $eq: ["$variantId", "$$variantId"] } } },
+              { $project: { _id: 0, onHand: 1, reserved: 1 } },
+              { $limit: 1 },
+            ],
+            as: "inventory",
+          },
+        },
+        {
+          $set: {
+            available: {
+              $subtract: [
+                { $ifNull: [{ $first: "$inventory.onHand" }, 0] },
+                { $ifNull: [{ $first: "$inventory.reserved" }, 0] },
+              ],
+            },
+          },
+        },
+        {
+          $match: {
+            $expr:
+              query.availability === "OUT_OF_STOCK"
+                ? { $lte: ["$available", 0] }
+                : query.availability === "LOW_STOCK"
+                  ? {
+                      $and: [
+                        { $gt: ["$available", 0] },
+                        { $lte: ["$available", "$lowStockThreshold"] },
+                      ],
+                    }
+                  : { $gt: ["$available", "$lowStockThreshold"] },
+          },
+        },
       );
-      allowedVariants = matchingVariants.filter((variant) => {
-        const available = availabilityById.get(variant.id) ?? 0;
-        if (query.availability === "OUT_OF_STOCK") return available <= 0;
-        if (query.availability === "LOW_STOCK") {
-          return available > 0 && available <= variant.lowStockThreshold;
-        }
-        return available > variant.lowStockThreshold;
-      });
     }
-    filter._id = {
-      $in: [
-        ...new Set(
-          allowedVariants.map((variant) => variant.productId.toString()),
-        ),
-      ].map((id) => objectId(id)),
-    };
-    const total = await this.products.countDocuments(filter);
-    const products = await this.products
-      .find(filter)
-      .sort({ publishedAt: -1, _id: -1 })
-      .skip((query.page - 1) * query.limit)
-      .limit(query.limit);
+    variantPipeline.push({ $limit: 1 });
+    const [catalogPage] = await this.products.aggregate<{
+      metadata: Array<{ total: number }>;
+      items: Array<{ _id: Types.ObjectId }>;
+    }>([
+      { $match: filter },
+      {
+        $lookup: {
+          from: "product_variants",
+          let: { productId: "$_id" },
+          pipeline: variantPipeline,
+          as: "matchingVariants",
+        },
+      },
+      { $match: { "matchingVariants.0": { $exists: true } } },
+      {
+        $facet: {
+          metadata: [{ $count: "total" }],
+          items: [
+            { $sort: { publishedAt: -1, _id: -1 } },
+            { $skip: (query.page - 1) * query.limit },
+            { $limit: query.limit },
+            { $project: { _id: 1 } },
+          ],
+        },
+      },
+    ]);
+    const pageIds = catalogPage?.items.map((item) => item._id) ?? [];
+    const productById = new Map(
+      (await this.products.find({ _id: { $in: pageIds } }).exec()).map(
+        (product) => [product.id, product],
+      ),
+    );
+    const products = pageIds
+      .map((id) => productById.get(id.toString()))
+      .filter((product) => product !== undefined);
+    const total = catalogPage?.metadata[0]?.total ?? 0;
     const items = await this.enrich(products);
     return { items, page: query.page, limit: query.limit, total };
   }
@@ -356,9 +425,27 @@ export class ProductsService {
         ...product.mediaIds,
       ])
       .concat(variants.flatMap((variant) => variant.mediaIds));
-    const media = mediaIds.length
-      ? await this.media.find({ _id: { $in: mediaIds }, archivedAt: null })
-      : [];
+    const categoryIds = [
+      ...new Set(
+        products.flatMap((product) => product.categoryIds.map(String)),
+      ),
+    ];
+    const [media, categories] = await Promise.all([
+      mediaIds.length
+        ? this.media.find({
+            _id: { $in: mediaIds },
+            archivedAt: null,
+            resourceType: "image",
+          })
+        : [],
+      categoryIds.length
+        ? this.categories.find({
+            _id: { $in: categoryIds.map((id) => objectId(id)) },
+            status: "ACTIVE",
+            archivedAt: null,
+          })
+        : [],
+    ]);
     const mediaById = new Map(
       media.map((asset) => [
         asset.id,
@@ -373,6 +460,12 @@ export class ProductsService {
     );
     const stock = new Map(
       inventory.map((item) => [item.variantId.toString(), item]),
+    );
+    const categoryById = new Map(
+      categories.map((category) => [
+        category.id,
+        { id: category.id, slug: category.slug, name: category.name },
+      ]),
     );
     const variantsByProduct = new Map<string, VariantPublic[]>();
     for (const variant of variants) {
@@ -411,6 +504,9 @@ export class ProductsService {
         shortDescription: product.shortDescription,
         description: product.description,
         categoryIds: product.categoryIds.map(String),
+        categories: product.categoryIds
+          .map((id) => categoryById.get(id.toString()))
+          .filter((category) => category !== undefined),
         coverMedia: product.coverMediaId
           ? (mediaById.get(product.coverMediaId.toString()) ?? null)
           : null,
@@ -470,6 +566,20 @@ export class ProductsService {
         "Product categories are invalid.",
       );
     }
+  }
+
+  private async validateImageReferences(
+    coverMediaId: string | null | undefined,
+    mediaIds: readonly string[] | undefined,
+  ): Promise<void> {
+    const ids = [...(coverMediaId ? [coverMediaId] : []), ...(mediaIds ?? [])];
+    await assertActiveMediaReferences(
+      this.media,
+      ids,
+      "image",
+      "PRODUCT_MEDIA_INVALID",
+      "Product media must reference active image assets.",
+    );
   }
 
   private async assertPublishable(product: ProductDocument): Promise<void> {

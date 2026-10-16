@@ -39,6 +39,10 @@ Status: implemented locally through the development seed, Chromium Storefront/Ad
 
 Status: provider-neutral security defaults hardened locally; deployment not started. Staging now follows the deployed cookie, HTTPS, security-header, logging, database-index and AI-to-API transport policy, with regression coverage. Execution remains blocked on approved staging domains/hosting, proxy validation, managed MongoDB and Redis, secret storage, Cloudinary staging, SePay Test mode with public HTTPS webhook, OAuth credentials, notification delivery and monitoring. No production-readiness claim may be made from local mocks or local browser evidence.
 
+## Release remediation checkpoint
+
+Status (2026-10-16): catalog correctness, truthful price presentation, profile/onboarding, media integrity, bounded catalog/sitemap work and expanded Admin operations are implemented locally. Password recovery schema approval, generated Next file policy, strict CSP rendering decision, provider delivery and a green low-load Browser E2E rerun remain open. See `docs/remediation/final-remediation-report.md`.
+
 ## Later hardening and expansion
 
 After Phase 5 staging evidence: threat-model refresh, full security regression/pentest, production CSP/provider validation, deeper UX/performance/accessibility work, and finally the controlled AI-service tool boundary. AI remains unable to access MongoDB directly or bypass commerce authorization.

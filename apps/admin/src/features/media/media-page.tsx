@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Film, Image as ImageIcon, UploadCloud } from "lucide-react";
+import { Archive, Film, Image as ImageIcon, UploadCloud } from "lucide-react";
 import { useState } from "react";
 
 import { Button, Surface } from "@farta/ui";
@@ -10,10 +10,20 @@ import { errorMessage } from "../../lib/errors";
 
 export function MediaPage() {
   const queryClient = useQueryClient();
-  const query = useQuery({ queryKey: ["media"], queryFn: adminApi.media });
+  const [page, setPage] = useState(1);
   const [file, setFile] = useState<File | null>(null);
   const [alt, setAlt] = useState("");
   const [resourceType, setResourceType] = useState<"image" | "video">("image");
+  const [filter, setFilter] = useState<"all" | "image" | "video">("all");
+  const [archiveTarget, setArchiveTarget] = useState<string | null>(null);
+  const query = useQuery({
+    queryKey: ["media", page, filter],
+    queryFn: () =>
+      adminApi.media({
+        page,
+        ...(filter === "all" ? {} : { resourceType: filter }),
+      }),
+  });
   const upload = useMutation({
     mutationFn: () => {
       if (!file)
@@ -23,6 +33,13 @@ export function MediaPage() {
     onSuccess: async () => {
       setFile(null);
       setAlt("");
+      await queryClient.invalidateQueries({ queryKey: ["media"] });
+    },
+  });
+  const archive = useMutation({
+    mutationFn: (mediaId: string) => adminApi.archiveMedia(mediaId),
+    onSuccess: async () => {
+      setArchiveTarget(null);
       await queryClient.invalidateQueries({ queryKey: ["media"] });
     },
   });
@@ -41,9 +58,10 @@ export function MediaPage() {
             upload.mutate();
           }}
         >
-          <label>
+          <label htmlFor="media-resource-type">
             Loại media
             <select
+              id="media-resource-type"
               onChange={(event) => {
                 setResourceType(event.target.value as "image" | "video");
                 setFile(null);
@@ -54,7 +72,7 @@ export function MediaPage() {
               <option value="video">Video campaign</option>
             </select>
           </label>
-          <label>
+          <label htmlFor="media-file">
             Tệp {resourceType === "video" ? "video" : "ảnh"}
             <input
               accept={
@@ -62,14 +80,16 @@ export function MediaPage() {
                   ? "video/mp4,video/webm"
                   : "image/jpeg,image/png,image/webp,image/avif"
               }
+              id="media-file"
               key={resourceType}
               onChange={(event) => setFile(event.target.files?.[0] ?? null)}
               type="file"
             />
           </label>
-          <label>
+          <label htmlFor="media-alt-text">
             Alt text
             <input
+              id="media-alt-text"
               onChange={(event) => setAlt(event.target.value)}
               value={alt}
             />
@@ -85,6 +105,21 @@ export function MediaPage() {
           </p>
         )}
       </Surface>
+      <label className="admin-filter-control" htmlFor="media-library-filter">
+        Lọc thư viện
+        <select
+          id="media-library-filter"
+          onChange={(event) => {
+            setPage(1);
+            setFilter(event.target.value as "all" | "image" | "video");
+          }}
+          value={filter}
+        >
+          <option value="all">Tất cả</option>
+          <option value="image">Ảnh</option>
+          <option value="video">Video</option>
+        </select>
+      </label>
       <QueryState pending={query.isPending} error={query.error} />
       <section className="media-grid">
         {query.data?.items.map((item) => (
@@ -111,10 +146,55 @@ export function MediaPage() {
                 )}
                 {item.width} × {item.height} · {item.format.toUpperCase()}
               </span>
+              {archiveTarget === item.id ? (
+                <div className="inline-editor">
+                  <span>Lưu trữ media này?</span>
+                  <Button
+                    disabled={archive.isPending}
+                    onClick={() => archive.mutate(item.id)}
+                  >
+                    Xác nhận
+                  </Button>
+                  <button onClick={() => setArchiveTarget(null)} type="button">
+                    Hủy
+                  </button>
+                </div>
+              ) : (
+                <button onClick={() => setArchiveTarget(item.id)} type="button">
+                  <Archive aria-hidden="true" size={15} /> Lưu trữ
+                </button>
+              )}
+              {archiveTarget === item.id && archive.error && (
+                <p className="form-error" role="alert">
+                  {errorMessage(archive.error)}
+                </p>
+              )}
             </div>
           </Surface>
         ))}
       </section>
+      {query.data && (
+        <div className="pagination-controls">
+          <button
+            disabled={page <= 1}
+            onClick={() => setPage((value) => Math.max(1, value - 1))}
+            type="button"
+          >
+            Trang trước
+          </button>
+          <span>
+            Trang {page}/
+            {Math.max(1, Math.ceil(query.data.total / query.data.limit))}
+          </span>
+          <button
+            disabled={page * query.data.limit >= query.data.total}
+            onClick={() => setPage((value) => value + 1)}
+            type="button"
+          >
+            Trang sau
+          </button>
+        </div>
+      )}
     </>
   );
 }

@@ -112,6 +112,16 @@ describe("Phase 2 catalog and inventory", () => {
       rolesVersion: 1,
       onboardingCompletedAt: new Date(),
     });
+    await users.create({
+      normalizedEmail: "banner-editor@farta.test",
+      passwordHash: await passwords.hash("a banner editor password"),
+      displayName: "Banner Editor",
+      roles: ["STAFF"],
+      permissions: ["banner.read", "banner.create", "banner.update"],
+      status: "ACTIVE",
+      rolesVersion: 1,
+      onboardingCompletedAt: new Date(),
+    });
 
     admin = request.agent(app.getHttpServer());
     const csrf = await admin.get("/api/v1/auth/staff/csrf").expect(200);
@@ -211,6 +221,47 @@ describe("Phase 2 catalog and inventory", () => {
       createdAt: new Date(),
       updatedAt: new Date(),
     });
+    await admin
+      .post("/api/v1/admin/products")
+      .set("origin", adminOrigin)
+      .set("x-csrf-token", csrfToken)
+      .send({
+        name: "Unknown media product",
+        categoryIds: [categoryId],
+        coverMediaId: new Types.ObjectId().toString(),
+      })
+      .expect(400)
+      .expect(({ body }) => {
+        expect(body.error.code).toBe("PRODUCT_MEDIA_INVALID");
+      });
+    const archivedMediaId = new Types.ObjectId();
+    await mongo.db?.collection("media_assets").insertOne({
+      _id: archivedMediaId,
+      provider: "CLOUDINARY",
+      publicId: "farta/catalog/archived-image",
+      secureUrl:
+        "https://res.cloudinary.com/farta-test/image/upload/v1/farta/catalog/archived-image.jpg",
+      resourceType: "image",
+      format: "jpg",
+      width: 1200,
+      height: 1500,
+      bytes: 1000,
+      originalFilename: "archived-image.jpg",
+      altText: "Archived image",
+      createdBy: new Types.ObjectId(ownerId),
+      archivedAt: new Date(),
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    });
+    await admin
+      .post("/api/v1/admin/categories")
+      .set("origin", adminOrigin)
+      .set("x-csrf-token", csrfToken)
+      .send({ name: "Archived media category", imageMediaId: archivedMediaId })
+      .expect(400)
+      .expect(({ body }) => {
+        expect(body.error.code).toBe("CATEGORY_MEDIA_INVALID");
+      });
     const product = await admin
       .post("/api/v1/admin/products")
       .set("origin", adminOrigin)
@@ -309,6 +360,7 @@ describe("Phase 2 catalog and inventory", () => {
       slug: "farta-essential-tee",
       price: { currency: "VND", min: 299000, max: 299000 },
       coverMedia: { id: coverMediaId },
+      categories: [{ id: categoryId, slug: "ao-thun-nu", name: "Áo Thun Nữ" }],
     });
     expect(publicProduct.body.variants[0].availability).toBe("OUT_OF_STOCK");
     expect(publicProduct.body).not.toHaveProperty("createdBy");
@@ -417,6 +469,43 @@ describe("Phase 2 catalog and inventory", () => {
       durationSeconds: 9.4,
     });
 
+    const mediaPage = await admin
+      .get("/api/v1/admin/media?page=1&limit=1&resourceType=video")
+      .expect(200);
+    expect(mediaPage.body).toMatchObject({ page: 1, limit: 1 });
+    expect(mediaPage.body.total).toBeGreaterThanOrEqual(1);
+    expect(mediaPage.body.items).toHaveLength(1);
+    expect(mediaPage.body.items[0].resourceType).toBe("video");
+    await admin.get("/api/v1/admin/media?limit=101").expect(400);
+
+    await admin
+      .post("/api/v1/admin/categories")
+      .set("origin", adminOrigin)
+      .set("x-csrf-token", csrfToken)
+      .send({ name: "Invalid video category", imageMediaId: video.body.id })
+      .expect(400)
+      .expect(({ body }) => {
+        expect(body.error.code).toBe("CATEGORY_MEDIA_INVALID");
+      });
+    await admin
+      .patch(`/api/v1/admin/products/${productId}`)
+      .set("origin", adminOrigin)
+      .set("x-csrf-token", csrfToken)
+      .send({ mediaIds: [coverMediaId, video.body.id] })
+      .expect(400)
+      .expect(({ body }) => {
+        expect(body.error.code).toBe("PRODUCT_MEDIA_INVALID");
+      });
+    await admin
+      .patch(`/api/v1/admin/products/${productId}/variants/${variantId}`)
+      .set("origin", adminOrigin)
+      .set("x-csrf-token", csrfToken)
+      .send({ mediaIds: [video.body.id] })
+      .expect(400)
+      .expect(({ body }) => {
+        expect(body.error.code).toBe("VARIANT_MEDIA_INVALID");
+      });
+
     await admin
       .post("/api/v1/admin/banners")
       .set("origin", adminOrigin)
@@ -428,6 +517,45 @@ describe("Phase 2 catalog and inventory", () => {
         position: "home-hero",
       })
       .expect(400);
+
+    await admin
+      .post("/api/v1/admin/banners")
+      .set("origin", adminOrigin)
+      .set("x-csrf-token", csrfToken)
+      .send({
+        title: "Invalid schedule",
+        desktopMediaId: media.body.id,
+        position: "home-hero",
+        startAt: "2026-10-17T12:00:00.000Z",
+        endAt: "2026-10-17T11:00:00.000Z",
+      })
+      .expect(400);
+
+    const bannerEditor = request.agent(app.getHttpServer());
+    const editorCsrf = await bannerEditor
+      .get("/api/v1/auth/staff/csrf")
+      .expect(200);
+    const editorLogin = await bannerEditor
+      .post("/api/v1/auth/staff/login")
+      .set("origin", adminOrigin)
+      .set("x-csrf-token", editorCsrf.body.csrfToken as string)
+      .send({
+        email: "banner-editor@farta.test",
+        password: "a banner editor password",
+      })
+      .expect(201);
+    const editorToken = editorLogin.body.csrfToken as string;
+    await bannerEditor
+      .post("/api/v1/admin/banners")
+      .set("origin", adminOrigin)
+      .set("x-csrf-token", editorToken)
+      .send({
+        title: "Unauthorized publish",
+        desktopMediaId: media.body.id,
+        position: "home-hero",
+        status: "ACTIVE",
+      })
+      .expect(403);
 
     await admin
       .post("/api/v1/admin/banners")

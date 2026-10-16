@@ -66,7 +66,12 @@ export function CatalogListing({
         {description && <div>{description}</div>}
         {heroMedia && (
           <figure className="catalog-hero__media">
-            <MediaFrame media={heroMedia} fallbackLabel={title} priority />
+            <MediaFrame
+              media={heroMedia}
+              fallbackLabel={title}
+              priority
+              sizes="(max-width: 900px) calc(100vw - 32px), 35vw"
+            />
           </figure>
         )}
       </header>
@@ -96,7 +101,7 @@ export function CatalogListing({
               detail="Thử điều chỉnh bộ lọc hoặc khám phá toàn bộ cửa hàng."
             />
           ) : (
-            <ProductGrid products={result.data.items} />
+            <ProductGrid products={result.data.items} eagerFirst={!heroMedia} />
           )}
           {products && pageCount > 1 && (
             <nav className="pagination" aria-label="Phân trang sản phẩm">

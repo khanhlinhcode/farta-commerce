@@ -13,6 +13,9 @@ export type Category = {
   status: string;
   sortOrder: number;
   parentCategoryId: string | null;
+  description: string | null;
+  imageMediaId: string | null;
+  seo: { title: string | null; description: string | null };
 };
 
 export type Product = {
@@ -22,6 +25,11 @@ export type Product = {
   status: string;
   categoryIds: string[];
   coverMediaId: string | null;
+  mediaIds: string[];
+  shortDescription: string | null;
+  description: string | null;
+  tags: string[];
+  seo: { title: string | null; description: string | null };
   updatedAt: string;
 };
 
@@ -33,6 +41,9 @@ export type Variant = {
   price: number;
   compareAtPrice: number | null;
   status: string;
+  colorCode: string | null;
+  mediaIds: string[];
+  lowStockThreshold: number;
 };
 
 export type MediaAsset = {
@@ -51,10 +62,14 @@ export type MediaAsset = {
 export type Banner = {
   id: string;
   title: string;
+  subtitle: string | null;
   position: string;
   priority: number;
   status: string;
+  ctaLabel: string | null;
   ctaTarget: string | null;
+  startAt: string | null;
+  endAt: string | null;
   desktopMedia: MediaAsset | null;
   mobileMedia: MediaAsset | null;
   desktopVideo: MediaAsset | null;
@@ -165,6 +180,14 @@ function cookie(name: string): string | undefined {
     ?.slice(name.length + 1);
 }
 
+function queryString(input: Record<string, string | number | undefined>) {
+  const params = new URLSearchParams();
+  for (const [key, value] of Object.entries(input)) {
+    if (value !== undefined && value !== "") params.set(key, String(value));
+  }
+  return params.toString();
+}
+
 async function api<T>(path: string, init: RequestInit = {}): Promise<T> {
   const headers = new Headers(init.headers);
   if (init.body && !(init.body instanceof FormData))
@@ -204,19 +227,59 @@ export const adminApi = {
     });
   },
   logout: () => api<void>("/auth/staff/logout", { method: "POST" }),
-  categories: () =>
-    api<{ items: Category[]; total: number }>("/admin/categories?limit=100"),
+  categories: (
+    query: {
+      page?: number;
+      limit?: number;
+      q?: string;
+      status?: string;
+    } = {},
+  ) =>
+    api<{ items: Category[]; page: number; limit: number; total: number }>(
+      `/admin/categories?${queryString({ limit: 20, ...query })}`,
+    ),
   createCategory: (input: {
     name: string;
     status: string;
     parentCategoryId?: string;
+    description?: string | null;
+    imageMediaId?: string | null;
+    sortOrder?: number;
   }) =>
     api<Category>("/admin/categories", {
       method: "POST",
       body: JSON.stringify(input),
     }),
-  products: () =>
-    api<{ items: Product[]; total: number }>("/admin/products?limit=100"),
+  updateCategory: (
+    categoryId: string,
+    input: Partial<{
+      name: string;
+      status: string;
+      parentCategoryId: string | null;
+      description: string | null;
+      imageMediaId: string | null;
+      sortOrder: number;
+    }>,
+  ) =>
+    api<Category>(`/admin/categories/${categoryId}`, {
+      method: "PATCH",
+      body: JSON.stringify(input),
+    }),
+  archiveCategory: (categoryId: string) =>
+    api<void>(`/admin/categories/${categoryId}`, { method: "DELETE" }),
+  products: (
+    query: {
+      page?: number;
+      limit?: number;
+      q?: string;
+      status?: string;
+      category?: string;
+    } = {},
+  ) =>
+    api<{ items: Product[]; page: number; limit: number; total: number }>(
+      `/admin/products?${queryString({ limit: 20, ...query })}`,
+    ),
+  product: (productId: string) => api<Product>(`/admin/products/${productId}`),
   createProduct: (input: {
     name: string;
     categoryIds: string[];
@@ -226,15 +289,68 @@ export const adminApi = {
       method: "POST",
       body: JSON.stringify(input),
     }),
+  updateProduct: (
+    productId: string,
+    input: Partial<{
+      name: string;
+      slug: string;
+      shortDescription: string | null;
+      description: string | null;
+      categoryIds: string[];
+      status: string;
+      tags: string[];
+      coverMediaId: string | null;
+      mediaIds: string[];
+      seo: { title?: string | null; description?: string | null };
+    }>,
+  ) =>
+    api<Product>(`/admin/products/${productId}`, {
+      method: "PATCH",
+      body: JSON.stringify(input),
+    }),
+  archiveProduct: (productId: string) =>
+    api<void>(`/admin/products/${productId}`, { method: "DELETE" }),
   variants: (productId: string) =>
     api<{ items: Variant[] }>(`/admin/products/${productId}/variants`),
   createVariant: (
     productId: string,
-    input: { sku: string; color: string; size: string; price: number },
+    input: {
+      sku: string;
+      color: string;
+      colorCode?: string | null;
+      size: string;
+      price: number;
+      compareAtPrice?: number | null;
+      mediaIds?: string[];
+      lowStockThreshold?: number;
+    },
   ) =>
     api<Variant>(`/admin/products/${productId}/variants`, {
       method: "POST",
       body: JSON.stringify(input),
+    }),
+  updateVariant: (
+    productId: string,
+    variantId: string,
+    input: Partial<{
+      sku: string;
+      color: string;
+      colorCode: string | null;
+      size: string;
+      price: number;
+      compareAtPrice: number | null;
+      status: string;
+      mediaIds: string[];
+      lowStockThreshold: number;
+    }>,
+  ) =>
+    api<Variant>(`/admin/products/${productId}/variants/${variantId}`, {
+      method: "PATCH",
+      body: JSON.stringify(input),
+    }),
+  archiveVariant: (productId: string, variantId: string) =>
+    api<void>(`/admin/products/${productId}/variants/${variantId}`, {
+      method: "DELETE",
     }),
   inventory: (variantId: string) =>
     api<{
@@ -255,7 +371,21 @@ export const adminApi = {
         body: JSON.stringify(input),
       },
     ),
-  media: () => api<{ items: MediaAsset[] }>("/admin/media"),
+  media: (
+    query: {
+      page?: number;
+      limit?: number;
+      resourceType?: "image" | "video";
+    } = {},
+  ) =>
+    api<{
+      items: MediaAsset[];
+      page: number;
+      limit: number;
+      total: number;
+    }>(`/admin/media?${queryString({ limit: 24, ...query })}`),
+  archiveMedia: (mediaId: string) =>
+    api<void>(`/admin/media/${mediaId}`, { method: "DELETE" }),
   async uploadMedia(
     file: File,
     altText: string,
@@ -329,18 +459,47 @@ export const adminApi = {
   banners: () => api<{ items: Banner[] }>("/admin/banners"),
   createBanner: (input: {
     title: string;
+    subtitle?: string | null;
     desktopMediaId: string;
     mobileMediaId?: string | null;
     desktopVideoMediaId?: string | null;
     mobileVideoMediaId?: string | null;
     position: string;
-    ctaTarget?: string;
+    ctaLabel?: string | null;
+    ctaTarget?: string | null;
+    priority?: number;
+    startAt?: string | null;
+    endAt?: string | null;
     status: string;
   }) =>
     api<Banner>("/admin/banners", {
       method: "POST",
       body: JSON.stringify(input),
     }),
+  updateBanner: (
+    bannerId: string,
+    input: Partial<{
+      title: string;
+      subtitle: string | null;
+      desktopMediaId: string;
+      mobileMediaId: string | null;
+      desktopVideoMediaId: string | null;
+      mobileVideoMediaId: string | null;
+      ctaLabel: string | null;
+      ctaTarget: string | null;
+      position: string;
+      priority: number;
+      startAt: string | null;
+      endAt: string | null;
+      status: string;
+    }>,
+  ) =>
+    api<Banner>(`/admin/banners/${bannerId}`, {
+      method: "PATCH",
+      body: JSON.stringify(input),
+    }),
+  archiveBanner: (bannerId: string) =>
+    api<void>(`/admin/banners/${bannerId}`, { method: "DELETE" }),
   orders: (query: string) =>
     api<{
       items: AdminOrderListItem[];

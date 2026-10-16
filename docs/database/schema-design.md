@@ -30,6 +30,8 @@ This is a logical Phase 0 model. Field names may be refined through DTO/schema i
 
 `userId`, keyed `tokenDigest`, `expiresAt`, `consumedAt`, timestamps. TTL cleanup is convenience; application checks expiry and consumption authoritatively.
 
+Implementation status (2026-10-16): planned only. No collection/schema is registered in the application yet. Adding it and extending the transactional notification outbox requires stakeholder approval and migration/index review.
+
 ## Commerce collections
 
 | Collection               | Purpose                                | Critical constraints/indexes                          |

@@ -2658,21 +2658,22 @@ img {
   overflow: hidden;
 }
 
+.campaign-hero__picture {
+  position: absolute;
+  inset: 0;
+}
+
 .campaign-hero__poster,
 .campaign-hero__media video {
+  position: absolute;
+  inset: 0;
   width: 100%;
   height: 100%;
   object-fit: cover;
   object-position: center 34%;
 }
 
-.campaign-hero__poster--mobile {
-  display: none;
-}
-
 .campaign-hero__media video {
-  position: absolute;
-  inset: 0;
   opacity: 0;
   transition: opacity 700ms var(--farta-ease-standard);
 }
@@ -2996,14 +2997,6 @@ img {
 @media (max-width: 600px) {
   .site-header--home:not(.is-scrolled) {
     background: linear-gradient(rgb(12 12 10 / 0.6), transparent);
-  }
-
-  .campaign-hero__poster--mobile {
-    display: block;
-  }
-
-  .campaign-hero__poster--mobile + .campaign-hero__poster--desktop {
-    display: none;
   }
 
   .campaign-hero__poster,

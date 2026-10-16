@@ -1,7 +1,7 @@
 "use client";
 
 import { Pause, Play } from "lucide-react";
-import Image from "next/image";
+import Image, { getImageProps } from "next/image";
 import { useRef, useState, useSyncExternalStore } from "react";
 
 import {
@@ -71,6 +71,35 @@ export function CampaignHeroMedia({
     mobilePoster && canOptimizeCloudinary(mobilePoster.secureUrl)
       ? mobilePoster.secureUrl
       : desktopPosterSource;
+  const hasArtDirectedPoster =
+    Boolean(desktopPosterSource && mobilePosterSource) &&
+    mobilePosterSource !== desktopPosterSource;
+  const artDirectedPoster = hasArtDirectedPoster
+    ? (() => {
+        const common = {
+          alt: mobilePoster?.altText ?? desktopPoster?.altText ?? name,
+          loading: "eager" as const,
+          sizes: "100vw",
+        };
+        const {
+          props: { srcSet: desktopSrcSet },
+        } = getImageProps({
+          ...common,
+          src: desktopPosterSource!,
+          width: Math.max(1, desktopPoster?.width ?? 1920),
+          height: Math.max(1, desktopPoster?.height ?? 1080),
+        });
+        const {
+          props: { srcSet: mobileSrcSet, ...mobileImageProps },
+        } = getImageProps({
+          ...common,
+          src: mobilePosterSource!,
+          width: Math.max(1, mobilePoster?.width ?? 900),
+          height: Math.max(1, mobilePoster?.height ?? 1200),
+        });
+        return { desktopSrcSet, mobileSrcSet, mobileImageProps };
+      })()
+    : null;
 
   async function togglePlayback() {
     const element = video.current;
@@ -89,26 +118,32 @@ export function CampaignHeroMedia({
   return (
     <div className="campaign-hero__media">
       {desktopPosterSource ? (
-        <>
-          {mobilePosterSource !== desktopPosterSource && (
-            <Image
-              alt={mobilePoster?.altText ?? name}
-              className="campaign-hero__poster campaign-hero__poster--mobile"
-              fill
-              preload
-              sizes="100vw"
-              src={mobilePosterSource ?? desktopPosterSource}
+        artDirectedPoster ? (
+          <picture className="campaign-hero__picture">
+            <source
+              media="(min-width: 601px)"
+              srcSet={artDirectedPoster.desktopSrcSet}
             />
-          )}
+            <source
+              media="(max-width: 600px)"
+              srcSet={artDirectedPoster.mobileSrcSet}
+            />
+            {/* Next.js documents getImageProps + picture for art direction. */}
+            <img
+              {...artDirectedPoster.mobileImageProps}
+              className="campaign-hero__poster"
+            />
+          </picture>
+        ) : (
           <Image
             alt={desktopPoster?.altText ?? name}
-            className="campaign-hero__poster campaign-hero__poster--desktop"
+            className="campaign-hero__poster"
             fill
             preload
             sizes="100vw"
             src={desktopPosterSource}
           />
-        </>
+        )
       ) : (
         <div className="campaign-hero__fallback" aria-hidden="true">
           <span>FARTA</span>

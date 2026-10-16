@@ -286,6 +286,7 @@ export function CheckoutPage() {
                   <MediaFrame
                     media={item.image}
                     fallbackLabel={item.product?.name ?? item.variant.sku}
+                    sizes="68px"
                   />
                 </div>
                 <div>

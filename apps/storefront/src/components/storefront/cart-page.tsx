@@ -100,6 +100,7 @@ export function CartPage() {
                 <MediaFrame
                   media={item.image}
                   fallbackLabel={item.product?.name ?? item.variant.sku}
+                  sizes="(max-width: 760px) 96px, 176px"
                 />
               </Link>
               <div className="cart-line__body">

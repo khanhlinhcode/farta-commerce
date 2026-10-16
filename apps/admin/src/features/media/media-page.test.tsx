@@ -25,7 +25,10 @@ describe("MediaPage", () => {
         );
       }
       if (url.includes("/api/v1/admin/media")) {
-        return new Response(JSON.stringify({ items: [] }), { status: 200 });
+        return new Response(
+          JSON.stringify({ items: [], page: 1, limit: 24, total: 0 }),
+          { status: 200 },
+        );
       }
       return new Response(null, { status: 404 });
     });

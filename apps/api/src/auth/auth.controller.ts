@@ -7,6 +7,7 @@ import {
   HttpStatus,
   Inject,
   Param,
+  Patch,
   Post,
   Req,
   Res,
@@ -25,6 +26,8 @@ import { LoginDto } from "./dto/login.dto";
 import { RegisterDto } from "./dto/register.dto";
 // eslint-disable-next-line @typescript-eslint/consistent-type-imports
 import { SessionParamDto } from "./dto/session-param.dto";
+// eslint-disable-next-line @typescript-eslint/consistent-type-imports
+import { UpdateCustomerProfileDto } from "./dto/customer-profile.dto";
 import { AuthService, type AuthResult } from "./services/auth.service";
 import { AuthCookieService } from "./services/cookie.service";
 import { CsrfService } from "./services/csrf.service";
@@ -136,7 +139,7 @@ abstract class RealmAuthController {
     return { user: result.user, csrfToken: result.csrfToken };
   }
 
-  private principal(request: Request): Express.AuthPrincipal {
+  protected principal(request: Request): Express.AuthPrincipal {
     if (!request.principal)
       throw new ApiException(
         HttpStatus.UNAUTHORIZED,
@@ -230,6 +233,32 @@ export class CustomerAuthController extends RealmAuthController {
   @RequireAuth("CUSTOMER")
   me(@Req() request: Request) {
     return this.currentUser(request);
+  }
+
+  @Patch("profile")
+  @RequireAuth("CUSTOMER")
+  @RequireCsrf({ realm: "CUSTOMER", binding: "SESSION" })
+  updateProfile(
+    @Body() input: UpdateCustomerProfileDto,
+    @Req() request: Request,
+  ) {
+    const principal = this.principal(request);
+    return this.auth.updateCustomerProfile(
+      principal.userId,
+      input,
+      String(request.id),
+    );
+  }
+
+  @Post("onboarding/complete")
+  @RequireAuth("CUSTOMER")
+  @RequireCsrf({ realm: "CUSTOMER", binding: "SESSION" })
+  completeOnboarding(@Req() request: Request) {
+    const principal = this.principal(request);
+    return this.auth.completeCustomerOnboarding(
+      principal.userId,
+      String(request.id),
+    );
   }
 
   @Get("sessions")

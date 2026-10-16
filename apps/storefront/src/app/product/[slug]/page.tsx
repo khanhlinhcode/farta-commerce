@@ -5,7 +5,7 @@ import { notFound } from "next/navigation";
 import { CatalogState } from "@/components/storefront/catalog-states";
 import { ProductExperience } from "@/components/storefront/product-experience";
 import { ProductGrid } from "@/components/storefront/product-grid";
-import { getProduct, getProducts } from "@/lib/catalog";
+import { getProduct, getProducts, primaryCategorySlug } from "@/lib/catalog";
 
 type Props = { params: Promise<{ slug: string }> };
 
@@ -64,9 +64,10 @@ export default async function ProductPage({ params }: Props) {
       media &&
       all.findIndex((candidate) => candidate?.id === media.id) === index,
   );
-  const related = item.categoryIds[0]
+  const relatedCategorySlug = primaryCategorySlug(item);
+  const related = relatedCategorySlug
     ? await getProducts({
-        category: item.categoryIds[0],
+        category: relatedCategorySlug,
         limit: 5,
         sort: "newest",
       })

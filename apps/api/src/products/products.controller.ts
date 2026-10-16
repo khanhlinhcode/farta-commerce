@@ -53,6 +53,11 @@ export class AdminProductsController {
   ) {
     return this.products.listAdmin(query);
   }
+  @Get(":productId")
+  @RequirePermissions("product.read")
+  get(@Param() params: ProductIdParamDto) {
+    return this.products.getAdminById(params.productId);
+  }
   @Post()
   @RequirePermissions("product.create")
   @RequireCsrf({ realm: "STAFF", binding: "SESSION" })

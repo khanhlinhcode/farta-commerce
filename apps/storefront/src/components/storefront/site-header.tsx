@@ -49,6 +49,7 @@ function trapFocus(event: ReactKeyboardEvent<HTMLElement>) {
 
 export function SiteHeader() {
   const pathname = usePathname();
+  const [hydrated, setHydrated] = useState(false);
   const [scrolled, setScrolled] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
@@ -86,6 +87,10 @@ export function SiteHeader() {
     if (restoreFocus)
       requestAnimationFrame(() => searchTrigger.current?.focus());
   }
+
+  useEffect(() => {
+    setHydrated(true);
+  }, []);
 
   useEffect(() => {
     setMenuOpen(false);
@@ -135,6 +140,7 @@ export function SiteHeader() {
             className="icon-button mobile-only"
             aria-label="Mở menu"
             aria-expanded={menuOpen}
+            disabled={!hydrated}
             onClick={() => setMenuOpen(true)}
             type="button"
           >
@@ -174,6 +180,7 @@ export function SiteHeader() {
               ref={searchTrigger}
               className="icon-button"
               aria-label="Mở tìm kiếm"
+              disabled={!hydrated}
               onClick={() => setSearchOpen(true)}
               type="button"
             >

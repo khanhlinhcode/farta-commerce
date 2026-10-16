@@ -8,6 +8,7 @@ import {
   Inject,
   Param,
   Post,
+  Query,
   Req,
 } from "@nestjs/common";
 import type { Request } from "express";
@@ -21,6 +22,7 @@ import {
   AuthorizeMediaUploadDto,
   FinalizeMediaDto,
   MediaIdParamDto,
+  MediaQueryDto,
 } from "./dto/media.dto";
 import { MediaService } from "./media.service";
 
@@ -29,8 +31,8 @@ import { MediaService } from "./media.service";
 export class MediaController {
   constructor(@Inject(MediaService) private readonly media: MediaService) {}
 
-  @Get() @RequirePermissions("media.read") list() {
-    return this.media.list();
+  @Get() @RequirePermissions("media.read") list(@Query() query: MediaQueryDto) {
+    return this.media.list(query);
   }
 
   @Post("upload-authorizations")

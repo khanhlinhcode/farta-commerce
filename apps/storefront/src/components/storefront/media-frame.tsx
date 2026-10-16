@@ -8,12 +8,14 @@ export function MediaFrame({
   priority = false,
   className = "",
   sizes = "(max-width: 768px) 50vw, (max-width: 1200px) 33vw, 25vw",
+  decorative = false,
 }: {
   media: Media | null;
   fallbackLabel: string;
   priority?: boolean;
   className?: string;
   sizes?: string;
+  decorative?: boolean;
 }) {
   if (!media || !canOptimizeCloudinary(media.secureUrl)) {
     return (
@@ -30,7 +32,7 @@ export function MediaFrame({
     <Image
       className={className}
       src={media.secureUrl}
-      alt={media.altText ?? fallbackLabel}
+      alt={decorative ? "" : (media.altText ?? fallbackLabel)}
       fill
       loading={priority ? "eager" : "lazy"}
       sizes={sizes}

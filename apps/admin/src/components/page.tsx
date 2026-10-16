@@ -1,4 +1,6 @@
-import { Surface } from "@farta/ui";
+import { useEffect, useId, useRef, type ReactNode } from "react";
+
+import { Button, Surface } from "@farta/ui";
 
 import { errorMessage } from "../lib/errors";
 
@@ -68,5 +70,72 @@ export function PermissionDeniedState() {
     <main className="center-state" role="alert">
       Bạn không có quyền truy cập khu vực quản trị này.
     </main>
+  );
+}
+
+export function ConfirmationDialog({
+  title,
+  children,
+  confirmLabel,
+  pending = false,
+  error,
+  onConfirm,
+  onCancel,
+}: {
+  title: string;
+  children: ReactNode;
+  confirmLabel: string;
+  pending?: boolean;
+  error?: unknown;
+  onConfirm: () => void;
+  onCancel: () => void;
+}) {
+  const titleId = useId();
+  const cancelRef = useRef<HTMLButtonElement>(null);
+  const onCancelRef = useRef(onCancel);
+  onCancelRef.current = onCancel;
+  const returnFocus = useRef<HTMLElement | null>(
+    typeof document === "undefined"
+      ? null
+      : (document.activeElement as HTMLElement | null),
+  );
+
+  useEffect(() => {
+    cancelRef.current?.focus();
+    const closeOnEscape = (event: KeyboardEvent) => {
+      if (event.key === "Escape") onCancelRef.current();
+    };
+    document.addEventListener("keydown", closeOnEscape);
+    return () => {
+      document.removeEventListener("keydown", closeOnEscape);
+      returnFocus.current?.focus();
+    };
+  }, []);
+
+  return (
+    <div
+      aria-labelledby={titleId}
+      aria-modal="true"
+      className="inline-confirmation"
+      role="alertdialog"
+    >
+      <Surface className="panel">
+        <h2 id={titleId}>{title}</h2>
+        {children}
+        {Boolean(error) && (
+          <p role="alert" className="form-error">
+            {errorMessage(error)}
+          </p>
+        )}
+        <div className="security-actions">
+          <Button disabled={pending} onClick={onConfirm}>
+            {confirmLabel}
+          </Button>
+          <button onClick={onCancel} ref={cancelRef} type="button">
+            Hủy
+          </button>
+        </div>
+      </Surface>
+    </div>
   );
 }

@@ -1,6 +1,11 @@
 import { describe, expect, it } from "vitest";
 
-import { formatVnd, parseCatalogQuery } from "./catalog";
+import {
+  formatVnd,
+  parseCatalogQuery,
+  primaryCategorySlug,
+  type Product,
+} from "./catalog";
 
 describe("catalog URL boundary", () => {
   it("allowlists supported scalar filters and bounds pagination", () => {
@@ -36,5 +41,28 @@ describe("catalog URL boundary", () => {
 
   it("formats integer VND without floating-point calculation", () => {
     expect(formatVnd(199_000)).toContain("199.000");
+  });
+
+  it("uses the public category slug for related-product queries", () => {
+    expect(
+      primaryCategorySlug({
+        categoryIds: ["507f1f77bcf86cd799439011"],
+        categories: [
+          {
+            id: "507f1f77bcf86cd799439011",
+            slug: "ao-thun-nu",
+            name: "Áo thun nữ",
+          },
+        ],
+      } as Product),
+    ).toBe("ao-thun-nu");
+  });
+
+  it("keeps the PDP available while an older cached product omits categories", () => {
+    expect(
+      primaryCategorySlug({
+        categoryIds: ["507f1f77bcf86cd799439011"],
+      } as Product),
+    ).toBeUndefined();
   });
 });

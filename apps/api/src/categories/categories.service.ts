@@ -14,6 +14,7 @@ import {
   MediaAsset,
   type MediaAssetDocument,
 } from "../media/schemas/media-asset.schema";
+import { assertActiveMediaReferences } from "../media/media-reference.validator";
 import type {
   CategoryListQueryDto,
   CreateCategoryDto,
@@ -69,6 +70,7 @@ export class CategoriesService {
     const parentCategoryId = input.parentCategoryId
       ? await this.validateParent(input.parentCategoryId)
       : null;
+    await this.validateImageReference(input.imageMediaId);
     try {
       const category = await this.categories.create({
         name: input.name.trim(),
@@ -141,6 +143,9 @@ export class CategoriesService {
           ? await this.validateParent(input.parentCategoryId, categoryId)
           : null;
     if (nextParent) await this.assertNoCycle(id, nextParent);
+    if (input.imageMediaId !== undefined) {
+      await this.validateImageReference(input.imageMediaId);
+    }
 
     const before = {
       name: existing.name,
@@ -384,7 +389,11 @@ export class CategoriesService {
       category.imageMediaId ? [category.imageMediaId] : [],
     );
     const assets = ids.length
-      ? await this.media.find({ _id: { $in: ids }, archivedAt: null })
+      ? await this.media.find({
+          _id: { $in: ids },
+          archivedAt: null,
+          resourceType: "image",
+        })
       : [];
     return new Map(
       assets.map((asset) => [
@@ -397,6 +406,18 @@ export class CategoriesService {
           altText: asset.altText,
         },
       ]),
+    );
+  }
+
+  private async validateImageReference(
+    imageMediaId: string | null | undefined,
+  ): Promise<void> {
+    await assertActiveMediaReferences(
+      this.media,
+      imageMediaId ? [imageMediaId] : [],
+      "image",
+      "CATEGORY_MEDIA_INVALID",
+      "Category media must reference an active image asset.",
     );
   }
 

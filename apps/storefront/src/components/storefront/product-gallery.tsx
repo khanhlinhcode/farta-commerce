@@ -25,7 +25,7 @@ export function ProductGallery({
           fallbackLabel={name}
           priority
           className="product-gallery__image"
-          sizes="(max-width: 960px) 100vw, 58vw"
+          sizes="(max-width: 960px) calc(100vw - 32px), 58vw"
         />
         {frames.length > 1 && (
           <figcaption className="product-gallery__count" aria-hidden="true">

@@ -21,6 +21,18 @@ function localEnvironmentValue(name: string): string | undefined {
 const storefrontUrl = process.env.E2E_STOREFRONT_URL ?? "http://localhost:3000";
 const adminUrl = process.env.E2E_ADMIN_URL ?? "http://localhost:5173";
 const apiUrl = process.env.E2E_API_URL ?? "http://localhost:4000";
+const storefrontPort = new URL(storefrontUrl).port || "3000";
+const adminPort = new URL(adminUrl).port || "5173";
+const apiPort = new URL(apiUrl).port || "4000";
+const storefrontCommand =
+  process.env.E2E_STOREFRONT_MODE === "production"
+    ? `pnpm --filter @farta/storefront exec next start --port ${storefrontPort}`
+    : `pnpm --filter @farta/storefront exec next dev --port ${storefrontPort}`;
+const apiCommand =
+  process.env.E2E_API_MODE === "production"
+    ? "pnpm --filter @farta/api start"
+    : "pnpm --filter @farta/api dev";
+const reuseExistingServers = process.env.E2E_REUSE_SERVERS === "true";
 const cloudName = localEnvironmentValue("CLOUDINARY_CLOUD_NAME") ?? "";
 for (const name of ["E2E_STAFF_EMAIL", "E2E_STAFF_PASSWORD"] as const) {
   const value = localEnvironmentValue(name);
@@ -73,13 +85,17 @@ export default defineConfig({
   webServer: [
     {
       name: "api",
-      command: "pnpm --filter @farta/api dev",
+      command: apiCommand,
       url: `${apiUrl}/api/v1/health/live`,
-      reuseExistingServer: !process.env.CI,
+      reuseExistingServer: reuseExistingServers,
       timeout: 120_000,
       gracefulShutdown: { signal: "SIGTERM", timeout: 5_000 },
       env: {
         ...serverEnvironment,
+        APP_ORIGIN: storefrontUrl,
+        ADMIN_ORIGIN: adminUrl,
+        API_ORIGIN: apiUrl,
+        PORT: apiPort,
         AUTH_LOGIN_LIMIT: "100",
         CART_MERGE_LIMIT: "300",
         CART_MUTATION_LIMIT: "1000",
@@ -89,9 +105,9 @@ export default defineConfig({
     },
     {
       name: "storefront",
-      command: "pnpm --filter @farta/storefront dev",
+      command: storefrontCommand,
       url: storefrontUrl,
-      reuseExistingServer: !process.env.CI,
+      reuseExistingServer: reuseExistingServers,
       timeout: 120_000,
       gracefulShutdown: { signal: "SIGTERM", timeout: 5_000 },
       env: {
@@ -104,10 +120,9 @@ export default defineConfig({
     },
     {
       name: "admin",
-      command:
-        "pnpm --filter @farta/admin exec vite --host localhost --port 5173",
+      command: `pnpm --filter @farta/admin exec vite --host localhost --port ${adminPort}`,
       url: adminUrl,
-      reuseExistingServer: !process.env.CI,
+      reuseExistingServer: reuseExistingServers,
       timeout: 120_000,
       gracefulShutdown: { signal: "SIGTERM", timeout: 5_000 },
       env: {

@@ -10,6 +10,7 @@ import type { AuthRealm } from "../auth.constants";
 import { ApiException } from "../../common/api-exception";
 import type { LoginDto } from "../dto/login.dto";
 import type { RegisterDto } from "../dto/register.dto";
+import type { UpdateCustomerProfileDto } from "../dto/customer-profile.dto";
 import type { UserDocument } from "../schemas/user.schema";
 import { CsrfService } from "./csrf.service";
 import { PasswordService } from "./password.service";
@@ -126,6 +127,25 @@ export class AuthService implements OnModuleInit {
         "Session is invalid or expired.",
       );
     return this.users.toSafeUser(user);
+  }
+
+  updateCustomerProfile(
+    userId: string,
+    input: UpdateCustomerProfileDto,
+    requestId: string,
+  ): Promise<SafeUser> {
+    return this.users.updateCustomerProfile(
+      userId,
+      input.displayName,
+      requestId,
+    );
+  }
+
+  completeCustomerOnboarding(
+    userId: string,
+    requestId: string,
+  ): Promise<SafeUser> {
+    return this.users.completeCustomerOnboarding(userId, requestId);
   }
 
   private async createAuthenticatedSession(

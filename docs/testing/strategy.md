@@ -40,3 +40,5 @@ Mocks are allowed only at external boundaries and must not replace tests for Mon
 ## Phase gates
 
 Every phase runs frozen install, lint, strict typecheck, relevant unit/integration/E2E/security tests and production build. A gate report records exact commands and results; skipped tests are explicit. Critical/high security defects block continuation.
+
+API E2E files run serially because every file boots a full Nest application and synchronizes a dedicated MongoDB database; concurrency behavior remains tested explicitly inside the relevant suites. Browser runs start services from the current checkout by default. Existing servers are reused only with `E2E_REUSE_SERVERS=true`; alternate `E2E_*_URL` ports and explicit production-artifact modes avoid terminating developer-owned processes. Existing Browser E2E records are never deleted without a reviewed allowlist, backup and stakeholder approval.

@@ -35,6 +35,12 @@ export type Product = {
   shortDescription: string | null;
   description: string | null;
   categoryIds: string[];
+  /**
+   * Present on the current public API. Optional while cached responses from a
+   * previous rolling deployment can still be served during the revalidation
+   * window.
+   */
+  categories?: Array<{ id: string; slug: string; name: string }>;
   coverMedia: Media | null;
   media: Media[];
   tags: string[];
@@ -191,6 +197,10 @@ export function getBanners(position = "home-hero") {
   return publicRequest<{ items: Banner[] }>(
     `/banners?position=${encodeURIComponent(position)}`,
   );
+}
+
+export function primaryCategorySlug(product: Product): string | undefined {
+  return product.categories?.[0]?.slug;
 }
 
 export function formatVnd(value: number): string {

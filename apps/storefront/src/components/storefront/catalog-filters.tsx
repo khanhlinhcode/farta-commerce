@@ -81,7 +81,12 @@ export function CatalogFilters({
     }
     next.delete("page");
     router.push(`${basePath}${next.size ? `?${next}` : ""}`);
-    setOpen(false);
+    if (open) closeDrawer();
+  }
+
+  function clearFilters() {
+    router.push(basePath);
+    if (open) closeDrawer();
   }
 
   const form = (
@@ -152,7 +157,7 @@ export function CatalogFilters({
         <button
           className="button button--quiet"
           type="button"
-          onClick={() => router.push(basePath)}
+          onClick={clearFilters}
         >
           Xóa lọc
         </button>

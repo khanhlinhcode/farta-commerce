@@ -189,6 +189,65 @@ describe("authentication security foundation", () => {
     }
   });
 
+  it("allows only customer-owned profile and idempotent onboarding mutations", async () => {
+    const agent = request.agent(app.getHttpServer());
+    const csrf = await agent.get("/api/v1/auth/customer/csrf").expect(200);
+    const registered = await agent
+      .post("/api/v1/auth/customer/register")
+      .set("origin", origin)
+      .set("x-csrf-token", csrf.body.csrfToken as string)
+      .send({
+        email: "profile@example.test",
+        password: "a secure profile password",
+        displayName: "Linh Profile",
+      })
+      .expect(201);
+
+    await agent
+      .patch("/api/v1/auth/customer/profile")
+      .set("origin", origin)
+      .set("x-csrf-token", registered.body.csrfToken as string)
+      .send({ displayName: "Linh Updated" })
+      .expect(200)
+      .expect(({ body }) => {
+        expect(body).toMatchObject({
+          displayName: "Linh Updated",
+          roles: ["CUSTOMER"],
+        });
+        expect(body).not.toHaveProperty("passwordHash");
+      });
+
+    await agent
+      .patch("/api/v1/auth/customer/profile")
+      .set("origin", origin)
+      .set("x-csrf-token", registered.body.csrfToken as string)
+      .send({ displayName: "Attacker", roles: ["OWNER"], status: "ACTIVE" })
+      .expect(400);
+
+    for (let attempt = 0; attempt < 2; attempt += 1) {
+      await agent
+        .post("/api/v1/auth/customer/onboarding/complete")
+        .set("origin", origin)
+        .set("x-csrf-token", registered.body.csrfToken as string)
+        .send({})
+        .expect(201)
+        .expect(({ body }) => {
+          expect(body.onboardingCompleted).toBe(true);
+        });
+    }
+
+    await agent
+      .get("/api/v1/auth/customer/me")
+      .expect(200)
+      .expect(({ body }) => {
+        expect(body.user).toMatchObject({
+          displayName: "Linh Updated",
+          onboardingCompleted: true,
+          roles: ["CUSTOMER"],
+        });
+      });
+  });
+
   it("resolves concurrent duplicate registration through the database unique index", async () => {
     const first = request.agent(app.getHttpServer());
     const second = request.agent(app.getHttpServer());

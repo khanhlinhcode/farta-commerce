@@ -47,6 +47,7 @@ export default async function CollectionsPage() {
                 <MediaFrame
                   media={category.image}
                   fallbackLabel={category.name}
+                  sizes="(max-width: 720px) calc(100vw - 32px), 50vw"
                 />
               </div>
               <span>{String(index + 1).padStart(2, "0")}</span>

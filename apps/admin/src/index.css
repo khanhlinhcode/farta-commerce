@@ -242,6 +242,145 @@ textarea {
   font-family: var(--farta-font-display);
   font-size: 1.6rem;
 }
+.panel-heading,
+.admin-toolbar,
+.table-actions,
+.pagination-controls,
+.inline-editor {
+  display: flex;
+  align-items: center;
+}
+.panel-heading {
+  justify-content: space-between;
+  gap: 1rem;
+}
+.panel-heading h2 {
+  margin-bottom: 1.25rem;
+}
+.admin-toolbar {
+  flex-wrap: wrap;
+  gap: 0.65rem;
+  margin-bottom: 1rem;
+}
+.admin-toolbar input,
+.admin-toolbar select,
+.admin-filter-control select {
+  min-width: 11rem;
+}
+.table-actions,
+.inline-editor {
+  flex-wrap: wrap;
+  gap: 0.6rem;
+}
+.table-actions button,
+.media-card button,
+.pagination-controls button,
+.icon-button {
+  display: inline-flex;
+  min-height: 2.5rem;
+  align-items: center;
+  justify-content: center;
+  gap: 0.35rem;
+  border: 1px solid var(--farta-color-border);
+  border-radius: var(--farta-radius-sm);
+  background: var(--farta-color-surface);
+  padding: 0.55rem 0.75rem;
+  color: inherit;
+  cursor: pointer;
+}
+.pagination-controls {
+  justify-content: flex-end;
+  gap: 0.75rem;
+  padding-top: 1rem;
+}
+.pagination-controls button:disabled {
+  cursor: not-allowed;
+  opacity: 0.45;
+}
+.admin-filter-control {
+  display: grid;
+  width: min(20rem, 100%);
+  gap: 0.45rem;
+  margin-top: 1rem;
+}
+.media-picker {
+  display: grid;
+  min-width: 0;
+  gap: 0.4rem;
+}
+.media-picker > label {
+  color: var(--farta-color-text-muted);
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+.media-picker .state-card {
+  margin: 0;
+  padding: 0.65rem;
+  font-size: 0.75rem;
+}
+.media-picker-pagination {
+  display: flex;
+  min-height: 2.75rem;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+.media-picker-pagination button {
+  min-height: 2.75rem;
+  border: 1px solid var(--farta-color-border);
+  border-radius: var(--farta-radius-sm);
+  background: var(--farta-color-surface);
+  padding: 0.5rem 0.7rem;
+}
+.product-editor {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.8rem;
+}
+.category-checklist {
+  display: flex;
+  min-width: 0;
+  flex-wrap: wrap;
+  gap: 0.45rem 0.85rem;
+  border: 1px solid var(--farta-color-border);
+  border-radius: var(--farta-radius-sm);
+  padding: 0.75rem;
+}
+.category-checklist legend {
+  padding: 0 0.35rem;
+  color: var(--farta-color-text-muted);
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+.category-checklist label {
+  display: inline-flex;
+  min-height: 2.75rem;
+  align-items: center;
+  gap: 0.4rem;
+}
+.product-editor label:nth-child(4),
+.product-editor label:nth-child(5),
+.product-editor .form-error,
+.product-editor button {
+  grid-column: 1 / -1;
+}
+.inline-confirmation {
+  position: fixed;
+  z-index: 60;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  background: rgb(23 23 20 / 0.48);
+  padding: 1rem;
+}
+.inline-confirmation > .panel {
+  width: min(30rem, 100%);
+  box-shadow: var(--farta-shadow-float);
+}
 .product-create {
   margin-bottom: 1rem;
 }
@@ -448,6 +587,29 @@ td small {
   gap: 1rem;
   margin-top: 1rem;
 }
+.banner-preview-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.6fr) minmax(14rem, 0.4fr);
+  gap: 1rem;
+  margin: 1rem 0;
+  align-items: start;
+}
+.banner-preview img,
+.banner-preview video {
+  display: block;
+  width: 100%;
+  border-radius: var(--farta-radius-sm);
+  background: #171714;
+  object-fit: cover;
+}
+.banner-preview-desktop img,
+.banner-preview-desktop video {
+  aspect-ratio: 16 / 7;
+}
+.banner-preview-mobile img,
+.banner-preview-mobile video {
+  aspect-ratio: 4 / 5;
+}
 .media-card {
   overflow: hidden;
   border: 1px solid var(--farta-color-border);
@@ -460,7 +622,7 @@ td small {
   background: #171714;
   object-fit: cover;
 }
-.media-card div {
+.media-card > div {
   display: grid;
   gap: 0.25rem;
   padding: 0.9rem;
@@ -503,6 +665,7 @@ td small {
   }
   .metric-grid,
   .split-grid,
+  .banner-preview-grid,
   .order-detail-grid,
   .order-filters {
     grid-template-columns: 1fr;
@@ -523,7 +686,8 @@ td small {
     padding: 1.25rem;
   }
   .inline-form,
-  .variant-form {
+  .variant-form,
+  .product-editor {
     grid-template-columns: 1fr;
   }
   .page-header h1 {

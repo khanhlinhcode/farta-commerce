@@ -4,19 +4,23 @@ All paths are below `/api/v1`. Browser credentials are cookies; access and refre
 
 ## Customer routes
 
-| Method   | Route                                | Auth | CSRF binding | Purpose                        |
-| -------- | ------------------------------------ | ---- | ------------ | ------------------------------ |
-| `GET`    | `/auth/customer/csrf`                | no   | none         | issue signed pre-auth token    |
-| `POST`   | `/auth/customer/register`            | no   | pre-auth     | create CUSTOMER + session      |
-| `POST`   | `/auth/customer/login`               | no   | pre-auth     | credential login               |
-| `POST`   | `/auth/customer/refresh`             | no   | refresh      | rotate refresh credential      |
-| `POST`   | `/auth/customer/logout`              | yes  | session      | revoke current session         |
-| `POST`   | `/auth/customer/logout-all`          | yes  | session      | revoke all customer sessions   |
-| `GET`    | `/auth/customer/me`                  | yes  | none         | safe current-user response     |
-| `GET`    | `/auth/customer/sessions`            | yes  | none         | list safe active session views |
-| `DELETE` | `/auth/customer/sessions/:sessionId` | yes  | session      | revoke an owned session        |
+| Method   | Route                                | Auth | CSRF binding | Purpose                         |
+| -------- | ------------------------------------ | ---- | ------------ | ------------------------------- |
+| `GET`    | `/auth/customer/csrf`                | no   | none         | issue signed pre-auth token     |
+| `POST`   | `/auth/customer/register`            | no   | pre-auth     | create CUSTOMER + session       |
+| `POST`   | `/auth/customer/login`               | no   | pre-auth     | credential login                |
+| `POST`   | `/auth/customer/refresh`             | no   | refresh      | rotate refresh credential       |
+| `POST`   | `/auth/customer/logout`              | yes  | session      | revoke current session          |
+| `POST`   | `/auth/customer/logout-all`          | yes  | session      | revoke all customer sessions    |
+| `GET`    | `/auth/customer/me`                  | yes  | none         | safe current-user response      |
+| `PATCH`  | `/auth/customer/profile`             | yes  | session      | update allowlisted display name |
+| `POST`   | `/auth/customer/onboarding/complete` | yes  | session      | persist onboarding once         |
+| `GET`    | `/auth/customer/sessions`            | yes  | none         | list safe active session views  |
+| `DELETE` | `/auth/customer/sessions/:sessionId` | yes  | session      | revoke an owned session         |
 
 Staff routes use the equivalent `/auth/staff/*` namespace but intentionally expose no public registration route.
+
+Password-reset request/confirm endpoints are not implemented. The recovery design remains blocked on an approved one-use token/outbox schema evolution and email-provider boundary; `/forgot-password` must not be interpreted as delivered recovery functionality.
 
 ## Cookies
 

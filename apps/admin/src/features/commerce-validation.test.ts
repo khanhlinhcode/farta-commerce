@@ -14,6 +14,7 @@ describe("Admin commerce form contracts", () => {
         name: "   ",
         status: "ACTIVE",
         parentCategoryId: "",
+        sortOrder: 0,
       }).success,
     ).toBe(false);
     expect(
@@ -21,6 +22,7 @@ describe("Admin commerce form contracts", () => {
         name: "Áo nữ",
         status: "ACTIVE",
         parentCategoryId: "",
+        sortOrder: 0,
       }).success,
     ).toBe(true);
   });
@@ -29,8 +31,9 @@ describe("Admin commerce form contracts", () => {
     expect(
       productSchema.safeParse({
         name: "Essential Tee",
-        categoryId: "",
+        categoryIds: [],
         coverMediaId: "",
+        status: "DRAFT",
       }).success,
     ).toBe(false);
   });
@@ -42,6 +45,7 @@ describe("Admin commerce form contracts", () => {
         color: "Black",
         size: "M",
         price: 299_000.5,
+        lowStockThreshold: 5,
       }).success,
     ).toBe(false);
     expect(
@@ -51,6 +55,7 @@ describe("Admin commerce form contracts", () => {
         size: "M",
         price: 299_000,
         compareAtPrice: 199_000,
+        lowStockThreshold: 5,
       }).success,
     ).toBe(false);
   });
@@ -70,7 +75,27 @@ describe("Admin commerce form contracts", () => {
 
   it("requires banner title and media", () => {
     expect(
-      bannerSchema.safeParse({ title: "", desktopMediaId: "" }).success,
+      bannerSchema.safeParse({
+        ...validBanner,
+        title: "",
+        desktopMediaId: "",
+      }).success,
+    ).toBe(false);
+  });
+
+  it("rejects unsafe banner CTA and invalid schedules", () => {
+    expect(
+      bannerSchema.safeParse({
+        ...validBanner,
+        ctaTarget: "https://evil.example",
+      }).success,
+    ).toBe(false);
+    expect(
+      bannerSchema.safeParse({
+        ...validBanner,
+        startAt: "2026-10-17T12:00",
+        endAt: "2026-10-17T11:00",
+      }).success,
     ).toBe(false);
   });
 
@@ -80,3 +105,11 @@ describe("Admin commerce form contracts", () => {
     expect(allowedOrderTransitions("CANCELLED")).toEqual([]);
   });
 });
+
+const validBanner = {
+  title: "FARTA Atelier",
+  desktopMediaId: "507f1f77bcf86cd799439011",
+  position: "home-hero",
+  priority: 0,
+  status: "DRAFT" as const,
+};

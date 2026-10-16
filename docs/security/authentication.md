@@ -2,6 +2,8 @@
 
 Implementation status (2026-10-03): email/password customer and staff realms, cookies, sessions, CSRF and permission guards are executable. Google/Apple have only the production-oriented boundary described below; no provider callback or successful social login is exposed without a concrete verified adapter.
 
+Remediation status (2026-10-16): customer-owned display-name updates and idempotent onboarding completion are executable and session-CSRF protected. Password recovery is still design-only because the one-use token/outbox schema evolution and email delivery boundary are not approved.
+
 ## Realms
 
 | Property        | Customer                   | Staff/admin                                              |
