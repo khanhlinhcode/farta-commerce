@@ -86,6 +86,7 @@ test("forms expose labels, validation associations, touch targets and reduced mo
   await expect(email).toHaveAttribute("aria-describedby", /.+/);
 
   await page.goto(`/product/${seed.productSlug}`);
+  await expect(page.locator(".variant-selector")).toBeVisible();
   for (const control of await page
     .locator(".choice-row button, .size-row button")
     .all()) {

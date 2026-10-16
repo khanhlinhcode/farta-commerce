@@ -7,29 +7,29 @@ import { useMemo, useState } from "react";
 import { addCartItem, cartQueryKey } from "@/lib/cart";
 import { formatVnd, type ProductVariant } from "@/lib/catalog";
 
-export function VariantSelector({ variants }: { variants: ProductVariant[] }) {
+export function VariantSelector({
+  variants,
+  selectedVariant,
+  onVariantChange,
+}: {
+  variants: ProductVariant[];
+  selectedVariant: ProductVariant | undefined;
+  onVariantChange: (variant: ProductVariant) => void;
+}) {
   const queryClient = useQueryClient();
   const [message, setMessage] = useState<string | null>(null);
   const colors = [
     ...new Map(variants.map((variant) => [variant.color, variant])).values(),
   ];
-  const initialVariant =
-    variants.find((variant) => variant.availability !== "OUT_OF_STOCK") ??
-    variants[0];
-  const [color, setColor] = useState(initialVariant?.color ?? "");
+  const color = selectedVariant?.color ?? "";
   const availableForColor = useMemo(
     () => variants.filter((variant) => variant.color === color),
     [color, variants],
   );
-  const [size, setSize] = useState(initialVariant?.size ?? "");
-  const selected =
-    variants.find(
-      (variant) => variant.color === color && variant.size === size,
-    ) ?? availableForColor[0];
   const add = useMutation({
     mutationFn: () => {
-      if (!selected) throw new Error("VARIANT_REQUIRED");
-      return addCartItem(selected.id);
+      if (!selectedVariant) throw new Error("VARIANT_REQUIRED");
+      return addCartItem(selectedVariant.id);
     },
     onSuccess: (cart) => {
       queryClient.setQueryData(cartQueryKey, cart);
@@ -42,24 +42,36 @@ export function VariantSelector({ variants }: { variants: ProductVariant[] }) {
     },
   });
 
+  function selectVariant(variant: ProductVariant) {
+    setMessage(null);
+    add.reset();
+    onVariantChange(variant);
+  }
+
   function chooseColor(nextColor: string) {
-    setColor(nextColor);
     const first =
       variants.find(
         (variant) =>
           variant.color === nextColor &&
           variant.availability !== "OUT_OF_STOCK",
       ) ?? variants.find((variant) => variant.color === nextColor);
-    setSize(first?.size ?? "");
+    if (first) selectVariant(first);
+  }
+
+  function chooseSize(nextSize: string) {
+    const next = availableForColor.find((variant) => variant.size === nextSize);
+    if (next) selectVariant(next);
   }
 
   return (
     <div className="variant-selector">
       <div className="variant-price">
-        <strong>{selected ? formatVnd(selected.price) : "Chưa có giá"}</strong>
-        {selected?.compareAtPrice &&
-        selected.compareAtPrice > selected.price ? (
-          <del>{formatVnd(selected.compareAtPrice)}</del>
+        <strong>
+          {selectedVariant ? formatVnd(selectedVariant.price) : "Chưa có giá"}
+        </strong>
+        {selectedVariant?.compareAtPrice &&
+        selectedVariant.compareAtPrice > selectedVariant.price ? (
+          <del>{formatVnd(selectedVariant.compareAtPrice)}</del>
         ) : null}
       </div>
       <fieldset>
@@ -78,6 +90,7 @@ export function VariantSelector({ variants }: { variants: ProductVariant[] }) {
               <span
                 className="color-swatch"
                 style={{ backgroundColor: variant.colorCode ?? "#d8d2c7" }}
+                aria-hidden="true"
               />
               {variant.color}
             </button>
@@ -85,15 +98,19 @@ export function VariantSelector({ variants }: { variants: ProductVariant[] }) {
         </div>
       </fieldset>
       <fieldset>
-        <legend>Kích cỡ</legend>
+        <legend>
+          Kích cỡ <span>{selectedVariant?.size ?? ""}</span>
+        </legend>
         <div className="size-row">
           {availableForColor.map((variant) => (
             <button
-              className={variant.size === size ? "is-selected" : ""}
+              className={
+                variant.id === selectedVariant?.id ? "is-selected" : ""
+              }
               disabled={variant.availability === "OUT_OF_STOCK"}
-              aria-pressed={variant.size === size}
+              aria-pressed={variant.id === selectedVariant?.id}
               key={variant.id}
-              onClick={() => setSize(variant.size)}
+              onClick={() => chooseSize(variant.size)}
               type="button"
             >
               {variant.size}
@@ -102,18 +119,21 @@ export function VariantSelector({ variants }: { variants: ProductVariant[] }) {
         </div>
       </fieldset>
       <p
-        className={`availability availability--${selected?.availability.toLowerCase() ?? "out_of_stock"}`}
+        className={`availability availability--${selectedVariant?.availability.toLowerCase() ?? "out_of_stock"}`}
+        aria-live="polite"
       >
-        {selected?.availability === "IN_STOCK"
+        {selectedVariant?.availability === "IN_STOCK"
           ? "Còn hàng"
-          : selected?.availability === "LOW_STOCK"
+          : selectedVariant?.availability === "LOW_STOCK"
             ? "Sắp hết"
             : "Tạm hết hàng"}
       </p>
       <button
         className="button button--primary button--wide"
         disabled={
-          !selected || selected.availability === "OUT_OF_STOCK" || add.isPending
+          !selectedVariant ||
+          selectedVariant.availability === "OUT_OF_STOCK" ||
+          add.isPending
         }
         onClick={() => {
           setMessage(null);

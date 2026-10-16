@@ -1,6 +1,6 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { cleanup, fireEvent, render, waitFor } from "@testing-library/react";
-import type { ReactNode } from "react";
+import { useState, type ReactNode } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import type { ProductVariant } from "@/lib/catalog";
@@ -11,18 +11,34 @@ const variant = (
   color: string,
   size: string,
   availability: ProductVariant["availability"] = "IN_STOCK",
+  price = 199_000,
 ): ProductVariant => ({
   id,
   sku: `FAR-${id}`,
   color,
   colorCode: null,
   size,
-  price: 199_000,
+  price,
   compareAtPrice: null,
   currency: "VND",
   media: [],
   availability,
 });
+
+function ControlledSelector({ variants }: { variants: ProductVariant[] }) {
+  const initial =
+    variants.find((item) => item.availability !== "OUT_OF_STOCK") ??
+    variants[0];
+  const [selectedId, setSelectedId] = useState(initial?.id ?? "");
+
+  return (
+    <VariantSelector
+      variants={variants}
+      selectedVariant={variants.find((item) => item.id === selectedId)}
+      onVariantChange={(item) => setSelectedId(item.id)}
+    />
+  );
+}
 
 describe("VariantSelector", () => {
   afterEach(() => {
@@ -41,7 +57,7 @@ describe("VariantSelector", () => {
 
   it("only presents combinations that exist for the selected color", () => {
     const { container } = renderSelector(
-      <VariantSelector
+      <ControlledSelector
         variants={[
           variant("black-s", "Black", "S"),
           variant("black-l", "Black", "L"),
@@ -84,7 +100,7 @@ describe("VariantSelector", () => {
       ),
     );
     const { getByRole } = renderSelector(
-      <VariantSelector
+      <ControlledSelector
         variants={[
           variant("black-s", "Black", "S"),
           variant("cream-m", "Cream", "M"),
@@ -100,6 +116,26 @@ describe("VariantSelector", () => {
       expect.objectContaining({
         body: JSON.stringify({ variantId: "cream-m", quantity: 1 }),
       }),
+    );
+  });
+
+  it("keeps price and availability aligned with the selected variant", () => {
+    const { getByRole, getByText } = renderSelector(
+      <ControlledSelector
+        variants={[
+          variant("black-s", "Black", "S", "IN_STOCK", 199_000),
+          variant("cream-m", "Cream", "M", "LOW_STOCK", 229_000),
+        ]}
+      />,
+    );
+
+    fireEvent.click(getByRole("button", { name: "Cream" }));
+
+    expect(getByText(/229\.000/)).toBeInTheDocument();
+    expect(getByText("Sắp hết")).toBeInTheDocument();
+    expect(getByRole("button", { name: "M" })).toHaveAttribute(
+      "aria-pressed",
+      "true",
     );
   });
 });

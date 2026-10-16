@@ -3,9 +3,8 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 
 import { CatalogState } from "@/components/storefront/catalog-states";
-import { ProductGallery } from "@/components/storefront/product-gallery";
+import { ProductExperience } from "@/components/storefront/product-experience";
 import { ProductGrid } from "@/components/storefront/product-grid";
-import { VariantSelector } from "@/components/storefront/variant-selector";
 import { getProduct, getProducts } from "@/lib/catalog";
 
 type Props = { params: Promise<{ slug: string }> };
@@ -112,43 +111,13 @@ export default async function ProductPage({ params }: Props) {
         <span aria-hidden="true">/</span>
         <span>{item.name}</span>
       </nav>
-      <div className="product-detail">
-        <ProductGallery
-          name={item.name}
-          media={gallery.flatMap((media) => (media ? [media] : []))}
-        />
-        <section className="product-detail__info">
-          <p className="eyebrow">
-            FARTA / {item.tags[0] ?? "Current collection"}
-          </p>
-          <h1>{item.name}</h1>
-          {item.shortDescription && (
-            <p className="product-lede">{item.shortDescription}</p>
-          )}
-          <VariantSelector variants={item.variants} />
-          <div className="product-accordions">
-            <details open>
-              <summary>Mô tả</summary>
-              <p>{item.description ?? "Thông tin mô tả đang được cập nhật."}</p>
-            </details>
-            <details>
-              <summary>Kích cỡ & chăm sóc</summary>
-              <p>
-                Size guide cá nhân hóa chưa có nguồn dữ liệu chính thức. Hãy đối
-                chiếu số đo sản phẩm trước khi mua; hướng dẫn chất liệu sẽ chỉ
-                hiển thị khi Catalog API cung cấp.
-              </p>
-            </details>
-            <details>
-              <summary>Giao hàng & đổi trả</summary>
-              <p>
-                Chính sách giao hàng và đổi trả chi tiết sẽ hiển thị sau khi
-                stakeholder phê duyệt nội dung vận hành chính thức.
-              </p>
-            </details>
-          </div>
-        </section>
-      </div>
+      <ProductExperience
+        name={item.name}
+        shortDescription={item.shortDescription}
+        description={item.description}
+        media={gallery.flatMap((media) => (media ? [media] : []))}
+        variants={item.variants}
+      />
       {relatedItems.length > 0 && (
         <section className="related-products">
           <div className="section-heading">

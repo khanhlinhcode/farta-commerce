@@ -126,7 +126,7 @@ export async function addSeedProductToCart(page: Page) {
   await expect(
     page.getByRole("heading", { name: seed.productName }),
   ).toBeVisible();
-  await page.getByRole("button", { name: "Kem" }).click();
+  await page.getByRole("button", { name: "Kem", exact: true }).click();
   await page.getByRole("button", { name: "M", exact: true }).click();
   await page.getByRole("button", { name: "Thêm vào giỏ" }).click();
   await expect(

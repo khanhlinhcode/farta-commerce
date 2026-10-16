@@ -7,11 +7,13 @@ export function MediaFrame({
   fallbackLabel,
   priority = false,
   className = "",
+  sizes = "(max-width: 768px) 50vw, (max-width: 1200px) 33vw, 25vw",
 }: {
   media: Media | null;
   fallbackLabel: string;
   priority?: boolean;
   className?: string;
+  sizes?: string;
 }) {
   if (!media || !canOptimizeCloudinary(media.secureUrl)) {
     return (
@@ -31,7 +33,7 @@ export function MediaFrame({
       alt={media.altText ?? fallbackLabel}
       fill
       loading={priority ? "eager" : "lazy"}
-      sizes="(max-width: 768px) 50vw, (max-width: 1200px) 33vw, 25vw"
+      sizes={sizes}
     />
   );
 }

@@ -22,6 +22,30 @@ test("Home → New Arrivals → Product uses the development catalog", async ({
   ).toBeVisible();
 });
 
+test("PDP keeps gallery, variant state and Cart selection synchronized", async ({
+  page,
+}) => {
+  await page.goto(`/product/${seed.productSlug}`);
+  const primaryImage = page.locator(".product-gallery__primary img");
+  await expect(primaryImage).toHaveAttribute("alt", /màu đen/i);
+
+  const cream = page.getByRole("button", { name: "Kem", exact: true });
+  await cream.focus();
+  await page.keyboard.press("Enter");
+
+  await expect(cream).toHaveAttribute("aria-pressed", "true");
+  await expect(primaryImage).toHaveAttribute("alt", /màu kem/i);
+  await page.getByRole("button", { name: "M", exact: true }).click();
+  await expect(page.getByText("Sắp hết")).toBeVisible();
+  await page.getByRole("button", { name: "Thêm vào giỏ" }).click();
+  await expect(
+    page.getByText("Đã thêm lựa chọn này vào giỏ hàng."),
+  ).toBeVisible();
+
+  await page.getByRole("link", { name: /Giỏ hàng, 1 sản phẩm/ }).click();
+  await expect(page.getByText("Kem · M")).toBeVisible();
+});
+
 test("Shop filter, supported sort and Search resolve real products", async ({
   page,
 }) => {
