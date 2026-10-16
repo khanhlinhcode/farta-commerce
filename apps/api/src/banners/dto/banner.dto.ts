@@ -22,6 +22,8 @@ export class CreateBannerDto {
   @IsOptional() @IsString() @MaxLength(500) subtitle?: string | null;
   @IsMongoId() desktopMediaId!: string;
   @IsOptional() @IsMongoId() mobileMediaId?: string | null;
+  @IsOptional() @IsMongoId() desktopVideoMediaId?: string | null;
+  @IsOptional() @IsMongoId() mobileVideoMediaId?: string | null;
   @IsOptional() @IsString() @MaxLength(80) ctaLabel?: string | null;
   @IsOptional() @IsString() @MaxLength(500) ctaTarget?: string | null;
   @IsString() @MinLength(1) @MaxLength(80) position!: string;
@@ -41,6 +43,8 @@ export class UpdateBannerDto {
   @IsOptional() @IsString() @MaxLength(500) subtitle?: string | null;
   @IsOptional() @IsMongoId() desktopMediaId?: string;
   @IsOptional() @IsMongoId() mobileMediaId?: string | null;
+  @IsOptional() @IsMongoId() desktopVideoMediaId?: string | null;
+  @IsOptional() @IsMongoId() mobileVideoMediaId?: string | null;
   @IsOptional() @IsString() @MaxLength(80) ctaLabel?: string | null;
   @IsOptional() @IsString() @MaxLength(500) ctaTarget?: string | null;
   @IsOptional() @IsString() @MinLength(1) @MaxLength(80) position?: string;

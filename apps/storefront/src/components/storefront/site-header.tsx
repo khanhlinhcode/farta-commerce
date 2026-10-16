@@ -49,6 +49,7 @@ function trapFocus(event: ReactKeyboardEvent<HTMLElement>) {
 
 export function SiteHeader() {
   const pathname = usePathname();
+  const [scrolled, setScrolled] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
   const menuTrigger = useRef<HTMLButtonElement>(null);
@@ -116,9 +117,18 @@ export function SiteHeader() {
     };
   }, [menuOpen, searchOpen]);
 
+  useEffect(() => {
+    const update = () => setScrolled(window.scrollY > 24);
+    update();
+    window.addEventListener("scroll", update, { passive: true });
+    return () => window.removeEventListener("scroll", update);
+  }, []);
+
   return (
     <>
-      <header className="site-header">
+      <header
+        className={`site-header${pathname === "/" ? " site-header--home" : ""}${scrolled ? " is-scrolled" : ""}`}
+      >
         <div className="site-header__inner">
           <button
             ref={menuTrigger}

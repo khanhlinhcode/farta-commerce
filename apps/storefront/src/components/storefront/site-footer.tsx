@@ -9,22 +9,23 @@ export function SiteFooter() {
       </div>
       <div className="footer-links">
         <div>
-          <h2>Khám phá</h2>
+          <h2>Mua sắm</h2>
           <Link href="/shop">Shop</Link>
           <Link href="/new-arrivals">Hàng mới</Link>
           <Link href="/collections">Bộ sưu tập</Link>
         </div>
         <div>
-          <h2>Hỗ trợ</h2>
+          <h2>Dịch vụ</h2>
+          <Link href="/order-lookup">Tra cứu đơn hàng</Link>
+          <Link href="/cart">Giỏ hàng</Link>
           <Link href="/account">Tài khoản</Link>
-          <Link href="/account/orders">Đơn hàng</Link>
-          <span>Chính sách — chờ cấu hình</span>
         </div>
         <div>
           <h2>FARTA</h2>
-          <span>Instagram — chờ cấu hình</span>
-          <span>TikTok — chờ cấu hình</span>
-          <span>Liên hệ — chờ cấu hình</span>
+          <p>
+            Phom dáng hiện đại dành cho nhịp sống Việt Nam — rõ ràng, tự do và
+            không chạy theo tiếng ồn.
+          </p>
         </div>
       </div>
       <div className="site-footer__base">

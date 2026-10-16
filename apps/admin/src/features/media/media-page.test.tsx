@@ -40,10 +40,10 @@ describe("MediaPage", () => {
     const file = new File([new Uint8Array([0xff, 0xd8, 0xff])], "look.jpg", {
       type: "image/jpeg",
     });
-    fireEvent.change(screen.getByLabelText("Ảnh"), {
+    fireEvent.change(screen.getByLabelText("Tệp ảnh"), {
       target: { files: [file] },
     });
-    fireEvent.click(screen.getByRole("button", { name: "Tải ảnh" }));
+    fireEvent.click(screen.getByRole("button", { name: "Tải media" }));
     expect(await screen.findByRole("alert")).toHaveTextContent(
       "Dịch vụ media tạm thời không khả dụng.",
     );

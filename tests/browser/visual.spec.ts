@@ -27,7 +27,11 @@ async function stableScreenshot(page: Page, name: string) {
       }),
     );
   });
-  await page.evaluate(() => window.scrollTo({ top: 0, behavior: "instant" }));
+  await page.evaluate(() => {
+    document.documentElement.style.scrollBehavior = "auto";
+    window.scrollTo(0, 0);
+  });
+  await page.waitForFunction(() => window.scrollY === 0);
   await expect(page).toHaveScreenshot(name, {
     animations: "disabled",
     caret: "hide",

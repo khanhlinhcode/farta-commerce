@@ -7,6 +7,7 @@ import { isDuplicateKey, objectId } from "../catalog/catalog.utils";
 import { ApiException } from "../common/api-exception";
 import { CloudinarySignatureService } from "./cloudinary-signature.service";
 import type { FinalizeMediaDto } from "./dto/media.dto";
+import { MEDIA_FORMATS, type MediaResourceType } from "./media.constants";
 import {
   MediaAsset,
   type MediaAssetDocument,
@@ -25,23 +26,51 @@ export class MediaService {
     @Inject(AuditService) private readonly audit: AuditService,
   ) {}
 
-  authorizeUpload() {
-    return this.cloudinary.createUploadAuthorization();
+  authorizeUpload(resourceType: MediaResourceType = "image") {
+    return this.cloudinary.createUploadAuthorization(resourceType);
   }
 
   async finalize(input: FinalizeMediaDto, actor: Actor) {
+    if (!input.publicId.startsWith(`farta/catalog/${input.resourceType}/`)) {
+      throw new ApiException(
+        HttpStatus.BAD_REQUEST,
+        "MEDIA_RESOURCE_TYPE_MISMATCH",
+        "Media resource type does not match its upload authorization.",
+      );
+    }
     this.cloudinary.verifyResponse(
       input.publicId,
       input.version,
       input.signature,
     );
-    this.cloudinary.validateUrl(input.secureUrl);
-    const maxBytes = this.cloudinary.createUploadAuthorization().maxBytes;
+    this.cloudinary.validateUrl(input.secureUrl, input.resourceType);
+    const authorization = this.cloudinary.createUploadAuthorization(
+      input.resourceType,
+    );
+    const maxBytes = authorization.maxBytes;
     if (input.bytes > maxBytes) {
       throw new ApiException(
         HttpStatus.PAYLOAD_TOO_LARGE,
         "MEDIA_TOO_LARGE",
         "Media exceeds the configured size limit.",
+      );
+    }
+    const allowedFormats: readonly string[] = MEDIA_FORMATS[input.resourceType];
+    if (!allowedFormats.includes(input.format.toLowerCase())) {
+      throw new ApiException(
+        HttpStatus.BAD_REQUEST,
+        "MEDIA_FORMAT_INVALID",
+        "Media format is not allowed for this resource type.",
+      );
+    }
+    if (
+      input.resourceType === "video" &&
+      typeof input.durationSeconds !== "number"
+    ) {
+      throw new ApiException(
+        HttpStatus.BAD_REQUEST,
+        "MEDIA_DURATION_REQUIRED",
+        "Video duration is required.",
       );
     }
     const originalFilename = input.originalFilename
@@ -58,11 +87,15 @@ export class MediaService {
         provider: "CLOUDINARY",
         publicId: input.publicId,
         secureUrl: input.secureUrl,
-        resourceType: "image",
+        resourceType: input.resourceType,
         format: input.format.toLowerCase(),
         width: input.width,
         height: input.height,
         bytes: input.bytes,
+        durationSeconds:
+          input.resourceType === "video"
+            ? (input.durationSeconds ?? null)
+            : null,
         originalFilename,
         altText: input.altText?.trim() || null,
         createdBy: objectId(actor.userId),
@@ -106,7 +139,17 @@ export class MediaService {
       ["products", { $or: [{ coverMediaId: id }, { mediaIds: id }] }],
       ["product_variants", { mediaIds: id }],
       ["categories", { imageMediaId: id }],
-      ["banners", { $or: [{ desktopMediaId: id }, { mobileMediaId: id }] }],
+      [
+        "banners",
+        {
+          $or: [
+            { desktopMediaId: id },
+            { mobileMediaId: id },
+            { desktopVideoMediaId: id },
+            { mobileVideoMediaId: id },
+          ],
+        },
+      ],
     ];
     for (const [collection, filter] of collections) {
       if (
@@ -151,6 +194,7 @@ export class MediaService {
       width: asset.width,
       height: asset.height,
       bytes: asset.bytes,
+      durationSeconds: asset.durationSeconds ?? null,
       originalFilename: asset.originalFilename,
       altText: asset.altText,
       createdAt: asset.createdAt.toISOString(),

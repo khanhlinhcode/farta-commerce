@@ -26,6 +26,9 @@ export function BannersPage() {
       adminApi.createBanner({
         title: value.title,
         desktopMediaId: value.desktopMediaId,
+        mobileMediaId: value.mobileMediaId || null,
+        desktopVideoMediaId: value.desktopVideoMediaId || null,
+        mobileVideoMediaId: value.mobileVideoMediaId || null,
         position: "home-hero",
         ctaTarget: "/shop",
         status: "DRAFT",
@@ -35,6 +38,12 @@ export function BannersPage() {
       await queryClient.invalidateQueries({ queryKey: ["banners"] });
     },
   });
+  const imageMedia = media.data?.items.filter(
+    (item) => item.resourceType === "image",
+  );
+  const videoMedia = media.data?.items.filter(
+    (item) => item.resourceType === "video",
+  );
   return (
     <>
       <PageHeader
@@ -55,7 +64,40 @@ export function BannersPage() {
             Desktop media
             <select {...form.register("desktopMediaId")}>
               <option value="">Chọn media</option>
-              {media.data?.items.map((item) => (
+              {imageMedia?.map((item) => (
+                <option key={item.id} value={item.id}>
+                  {item.altText ?? item.publicId}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label>
+            Mobile poster
+            <select {...form.register("mobileMediaId")}>
+              <option value="">Dùng desktop poster</option>
+              {imageMedia?.map((item) => (
+                <option key={item.id} value={item.id}>
+                  {item.altText ?? item.publicId}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label>
+            Desktop video
+            <select {...form.register("desktopVideoMediaId")}>
+              <option value="">Không dùng video</option>
+              {videoMedia?.map((item) => (
+                <option key={item.id} value={item.id}>
+                  {item.altText ?? item.publicId}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label>
+            Mobile video
+            <select {...form.register("mobileVideoMediaId")}>
+              <option value="">Dùng desktop video</option>
+              {videoMedia?.map((item) => (
                 <option key={item.id} value={item.id}>
                   {item.altText ?? item.publicId}
                 </option>

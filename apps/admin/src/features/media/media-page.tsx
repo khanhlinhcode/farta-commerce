@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { UploadCloud } from "lucide-react";
+import { Film, Image as ImageIcon, UploadCloud } from "lucide-react";
 import { useState } from "react";
 
 import { Button, Surface } from "@farta/ui";
@@ -13,10 +13,12 @@ export function MediaPage() {
   const query = useQuery({ queryKey: ["media"], queryFn: adminApi.media });
   const [file, setFile] = useState<File | null>(null);
   const [alt, setAlt] = useState("");
+  const [resourceType, setResourceType] = useState<"image" | "video">("image");
   const upload = useMutation({
     mutationFn: () => {
-      if (!file) throw new ApiFailure("MEDIA_REQUIRED", "Chọn một ảnh.", 400);
-      return adminApi.uploadMedia(file, alt);
+      if (!file)
+        throw new ApiFailure("MEDIA_REQUIRED", "Chọn một tệp media.", 400);
+      return adminApi.uploadMedia(file, alt, resourceType);
     },
     onSuccess: async () => {
       setFile(null);
@@ -40,9 +42,27 @@ export function MediaPage() {
           }}
         >
           <label>
-            Ảnh
+            Loại media
+            <select
+              onChange={(event) => {
+                setResourceType(event.target.value as "image" | "video");
+                setFile(null);
+              }}
+              value={resourceType}
+            >
+              <option value="image">Ảnh</option>
+              <option value="video">Video campaign</option>
+            </select>
+          </label>
+          <label>
+            Tệp {resourceType === "video" ? "video" : "ảnh"}
             <input
-              accept="image/jpeg,image/png,image/webp,image/avif"
+              accept={
+                resourceType === "video"
+                  ? "video/mp4,video/webm"
+                  : "image/jpeg,image/png,image/webp,image/avif"
+              }
+              key={resourceType}
               onChange={(event) => setFile(event.target.files?.[0] ?? null)}
               type="file"
             />
@@ -56,7 +76,7 @@ export function MediaPage() {
           </label>
           <Button disabled={upload.isPending || !file} type="submit">
             <UploadCloud aria-hidden="true" size={17} strokeWidth={1.7} />
-            {upload.isPending ? "Đang tải…" : "Tải ảnh"}
+            {upload.isPending ? "Đang tải…" : "Tải media"}
           </Button>
         </form>
         {upload.error && (
@@ -69,11 +89,27 @@ export function MediaPage() {
       <section className="media-grid">
         {query.data?.items.map((item) => (
           <Surface className="media-card" key={item.id}>
-            <img alt={item.altText ?? ""} src={item.secureUrl} />
+            {item.resourceType === "video" ? (
+              <video
+                aria-label={item.altText ?? "Video campaign"}
+                controls
+                muted
+                playsInline
+                preload="metadata"
+                src={item.secureUrl}
+              />
+            ) : (
+              <img alt={item.altText ?? ""} src={item.secureUrl} />
+            )}
             <div>
-              <strong>{item.altText ?? "Chưa có alt text"}</strong>
+              <strong>{item.altText ?? "Chưa có mô tả media"}</strong>
               <span>
-                {item.width} × {item.height}
+                {item.resourceType === "video" ? (
+                  <Film aria-hidden="true" size={15} />
+                ) : (
+                  <ImageIcon aria-hidden="true" size={15} />
+                )}
+                {item.width} × {item.height} · {item.format.toUpperCase()}
               </span>
             </div>
           </Surface>

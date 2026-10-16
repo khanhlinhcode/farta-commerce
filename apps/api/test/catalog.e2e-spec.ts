@@ -359,6 +359,76 @@ describe("Phase 2 catalog and inventory", () => {
       .expect(201);
     expect(media.body.originalFilename).toBe("campaign.jpg");
 
+    const videoAuthorization = await admin
+      .post("/api/v1/admin/media/upload-authorizations")
+      .set("origin", adminOrigin)
+      .set("x-csrf-token", csrfToken)
+      .send({ resourceType: "video" })
+      .expect(201);
+    expect(videoAuthorization.body).toMatchObject({
+      resourceType: "video",
+      allowedFormats: ["mp4", "webm"],
+    });
+    expect(videoAuthorization.body.uploadUrl).toContain("/video/upload");
+    const videoVersion = version + 1;
+    const videoSignature = createHash("sha1")
+      .update(
+        `public_id=${videoAuthorization.body.publicId as string}&version=${videoVersion}test-cloudinary-secret`,
+      )
+      .digest("hex");
+    const videoPayload = {
+      publicId: videoAuthorization.body.publicId,
+      secureUrl: `https://res.cloudinary.com/farta-test/video/upload/v${videoVersion}/${videoAuthorization.body.publicId as string}.mp4`,
+      resourceType: "video",
+      format: "mp4",
+      width: 1080,
+      height: 1350,
+      bytes: 2_400_000,
+      durationSeconds: 9.4,
+      version: videoVersion,
+      signature: videoSignature,
+      originalFilename: "campaign-film.mp4",
+      altText: "FARTA campaign film",
+    };
+    await admin
+      .post("/api/v1/admin/media/finalize")
+      .set("origin", adminOrigin)
+      .set("x-csrf-token", csrfToken)
+      .send({
+        ...videoPayload,
+        secureUrl: videoPayload.secureUrl.replace("/video/", "/image/"),
+      })
+      .expect(400);
+    await admin
+      .post("/api/v1/admin/media/finalize")
+      .set("origin", adminOrigin)
+      .set("x-csrf-token", csrfToken)
+      .send({ ...videoPayload, durationSeconds: null })
+      .expect(400);
+    const video = await admin
+      .post("/api/v1/admin/media/finalize")
+      .set("origin", adminOrigin)
+      .set("x-csrf-token", csrfToken)
+      .send(videoPayload)
+      .expect(201);
+    expect(video.body).toMatchObject({
+      resourceType: "video",
+      format: "mp4",
+      durationSeconds: 9.4,
+    });
+
+    await admin
+      .post("/api/v1/admin/banners")
+      .set("origin", adminOrigin)
+      .set("x-csrf-token", csrfToken)
+      .send({
+        title: "Mismatched media types",
+        desktopMediaId: media.body.id,
+        desktopVideoMediaId: media.body.id,
+        position: "home-hero",
+      })
+      .expect(400);
+
     await admin
       .post("/api/v1/admin/banners")
       .set("origin", adminOrigin)
@@ -366,6 +436,7 @@ describe("Phase 2 catalog and inventory", () => {
       .send({
         title: "Unsafe campaign",
         desktopMediaId: media.body.id,
+        desktopVideoMediaId: video.body.id,
         position: "home-hero",
         ctaTarget: "https://evil.example",
       })
@@ -379,6 +450,7 @@ describe("Phase 2 catalog and inventory", () => {
         title: "FARTA Modern Essentials",
         subtitle: "Một nhịp điệu mới cho tủ đồ hằng ngày.",
         desktopMediaId: media.body.id,
+        desktopVideoMediaId: video.body.id,
         position: "home-hero",
         priority: 100,
         ctaLabel: "Khám phá",
@@ -394,11 +466,21 @@ describe("Phase 2 catalog and inventory", () => {
       id: banner.body.id,
       ctaTarget: "/shop",
       desktopMedia: { id: media.body.id },
+      desktopVideo: {
+        id: video.body.id,
+        resourceType: "video",
+        format: "mp4",
+      },
     });
     expect(publicBanners.body.items[0]).not.toHaveProperty("createdBy");
 
     await admin
       .delete(`/api/v1/admin/media/${media.body.id as string}`)
+      .set("origin", adminOrigin)
+      .set("x-csrf-token", csrfToken)
+      .expect(409);
+    await admin
+      .delete(`/api/v1/admin/media/${video.body.id as string}`)
       .set("origin", adminOrigin)
       .set("x-csrf-token", csrfToken)
       .expect(409);

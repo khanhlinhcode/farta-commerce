@@ -4,6 +4,7 @@ import { createHash, randomUUID, timingSafeEqual } from "node:crypto";
 
 import { ApiException } from "../common/api-exception";
 import type { Environment } from "../config/environment";
+import { MEDIA_FORMATS, type MediaResourceType } from "./media.constants";
 
 @Injectable()
 export class CloudinarySignatureService {
@@ -12,10 +13,10 @@ export class CloudinarySignatureService {
     private readonly config: ConfigService<Environment, true>,
   ) {}
 
-  createUploadAuthorization() {
+  createUploadAuthorization(resourceType: MediaResourceType = "image") {
     const credentials = this.credentials();
     const timestamp = Math.floor(Date.now() / 1_000);
-    const publicId = `farta/catalog/${randomUUID()}`;
+    const publicId = `farta/catalog/${resourceType}/${randomUUID()}`;
     const signature = createHash("sha256")
       .update(
         `public_id=${publicId}&timestamp=${timestamp}${credentials.secret}`,
@@ -24,14 +25,14 @@ export class CloudinarySignatureService {
     return {
       cloudName: credentials.cloudName,
       apiKey: credentials.apiKey,
-      resourceType: "image" as const,
-      uploadUrl: `https://api.cloudinary.com/v1_1/${encodeURIComponent(credentials.cloudName)}/image/upload`,
+      resourceType,
+      uploadUrl: `https://api.cloudinary.com/v1_1/${encodeURIComponent(credentials.cloudName)}/${resourceType}/upload`,
       publicId,
       timestamp,
       signature,
       signatureAlgorithm: "sha256" as const,
       maxBytes: this.config.get("CLOUDINARY_UPLOAD_MAX_BYTES", { infer: true }),
-      allowedFormats: ["jpg", "jpeg", "png", "webp", "avif"] as const,
+      allowedFormats: MEDIA_FORMATS[resourceType],
     };
   }
 
@@ -52,13 +53,13 @@ export class CloudinarySignatureService {
     }
   }
 
-  validateUrl(value: string): void {
+  validateUrl(value: string, resourceType: MediaResourceType): void {
     const url = new URL(value);
     const cloudName = this.credentials().cloudName;
     if (
       url.protocol !== "https:" ||
       url.hostname !== "res.cloudinary.com" ||
-      !url.pathname.startsWith(`/${cloudName}/image/upload/`)
+      !url.pathname.startsWith(`/${cloudName}/${resourceType}/upload/`)
     ) {
       throw new ApiException(
         HttpStatus.BAD_REQUEST,

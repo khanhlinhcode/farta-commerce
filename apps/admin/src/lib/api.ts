@@ -42,6 +42,9 @@ export type MediaAsset = {
   width: number;
   height: number;
   bytes: number;
+  resourceType: "image" | "video";
+  format: string;
+  durationSeconds: number | null;
   altText: string | null;
 };
 
@@ -53,6 +56,9 @@ export type Banner = {
   status: string;
   ctaTarget: string | null;
   desktopMedia: MediaAsset | null;
+  mobileMedia: MediaAsset | null;
+  desktopVideo: MediaAsset | null;
+  mobileVideo: MediaAsset | null;
 };
 
 export type AdminOrderListItem = {
@@ -250,16 +256,24 @@ export const adminApi = {
       },
     ),
   media: () => api<{ items: MediaAsset[] }>("/admin/media"),
-  async uploadMedia(file: File, altText: string) {
+  async uploadMedia(
+    file: File,
+    altText: string,
+    resourceType: "image" | "video",
+  ) {
     const authorization = await api<{
       uploadUrl: string;
       apiKey: string;
       timestamp: number;
       publicId: string;
       signature: string;
+      resourceType: "image" | "video";
       maxBytes: number;
       allowedFormats: readonly string[];
-    }>("/admin/media/upload-authorizations", { method: "POST" });
+    }>("/admin/media/upload-authorizations", {
+      method: "POST",
+      body: JSON.stringify({ resourceType }),
+    });
     if (file.size > authorization.maxBytes)
       throw new ApiFailure(
         "MEDIA_TOO_LARGE",
@@ -285,13 +299,14 @@ export const adminApi = {
     const result = (await upload.json()) as {
       public_id: string;
       secure_url: string;
-      resource_type: "image";
+      resource_type: "image" | "video";
       format: string;
       width: number;
       height: number;
       bytes: number;
       version: number;
       signature: string;
+      duration?: number;
     };
     return api<MediaAsset>("/admin/media/finalize", {
       method: "POST",
@@ -303,6 +318,7 @@ export const adminApi = {
         width: result.width,
         height: result.height,
         bytes: result.bytes,
+        durationSeconds: result.duration,
         version: result.version,
         signature: result.signature,
         originalFilename: file.name,
@@ -314,6 +330,9 @@ export const adminApi = {
   createBanner: (input: {
     title: string;
     desktopMediaId: string;
+    mobileMediaId?: string | null;
+    desktopVideoMediaId?: string | null;
+    mobileVideoMediaId?: string | null;
     position: string;
     ctaTarget?: string;
     status: string;

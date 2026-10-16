@@ -26,13 +26,24 @@ export class BannersService {
   async create(input: CreateBannerDto, actor: Actor) {
     this.validateSchedule(input.startAt ?? null, input.endAt ?? null);
     this.validateCta(input.ctaTarget ?? null);
-    await this.validateMedia(input.desktopMediaId, input.mobileMediaId ?? null);
+    await this.validateMedia(
+      input.desktopMediaId,
+      input.mobileMediaId ?? null,
+      input.desktopVideoMediaId ?? null,
+      input.mobileVideoMediaId ?? null,
+    );
     if (input.status === "ARCHIVED") this.invalidStatus();
     const banner = await this.banners.create({
       title: input.title.trim(),
       subtitle: input.subtitle?.trim() || null,
       desktopMediaId: objectId(input.desktopMediaId),
       mobileMediaId: input.mobileMediaId ? objectId(input.mobileMediaId) : null,
+      desktopVideoMediaId: input.desktopVideoMediaId
+        ? objectId(input.desktopVideoMediaId)
+        : null,
+      mobileVideoMediaId: input.mobileVideoMediaId
+        ? objectId(input.mobileVideoMediaId)
+        : null,
       ctaLabel: input.ctaLabel?.trim() || null,
       ctaTarget: input.ctaTarget?.trim() || null,
       position: input.position.trim().toLowerCase(),
@@ -83,7 +94,20 @@ export class BannersService {
       input.mobileMediaId === undefined
         ? (banner.mobileMediaId?.toString() ?? null)
         : input.mobileMediaId;
-    await this.validateMedia(desktopMediaId, mobileMediaId);
+    const desktopVideoMediaId =
+      input.desktopVideoMediaId === undefined
+        ? (banner.desktopVideoMediaId?.toString() ?? null)
+        : input.desktopVideoMediaId;
+    const mobileVideoMediaId =
+      input.mobileVideoMediaId === undefined
+        ? (banner.mobileVideoMediaId?.toString() ?? null)
+        : input.mobileVideoMediaId;
+    await this.validateMedia(
+      desktopMediaId,
+      mobileMediaId,
+      desktopVideoMediaId,
+      mobileVideoMediaId,
+    );
     const before = {
       title: banner.title,
       status: banner.status,
@@ -97,6 +121,14 @@ export class BannersService {
     if (input.mobileMediaId !== undefined)
       banner.mobileMediaId = input.mobileMediaId
         ? objectId(input.mobileMediaId)
+        : null;
+    if (input.desktopVideoMediaId !== undefined)
+      banner.desktopVideoMediaId = input.desktopVideoMediaId
+        ? objectId(input.desktopVideoMediaId)
+        : null;
+    if (input.mobileVideoMediaId !== undefined)
+      banner.mobileVideoMediaId = input.mobileVideoMediaId
+        ? objectId(input.mobileVideoMediaId)
         : null;
     if (input.ctaLabel !== undefined)
       banner.ctaLabel = input.ctaLabel?.trim() || null;
@@ -185,16 +217,29 @@ export class BannersService {
   private async validateMedia(
     desktopId: string,
     mobileId: string | null,
+    desktopVideoId: string | null,
+    mobileVideoId: string | null,
   ): Promise<void> {
-    const ids = [desktopId, ...(mobileId ? [mobileId] : [])].map((id) =>
-      objectId(id),
-    );
-    const count = await this.media.countDocuments({
+    const imageIds = [desktopId, ...(mobileId ? [mobileId] : [])];
+    const videoIds = [
+      ...(desktopVideoId ? [desktopVideoId] : []),
+      ...(mobileVideoId ? [mobileVideoId] : []),
+    ];
+    const ids = [...imageIds, ...videoIds].map((id) => objectId(id));
+    const assets = await this.media.find({
       _id: { $in: ids },
       archivedAt: null,
-      resourceType: "image",
     });
-    if (count !== new Set(ids.map(String)).size) {
+    const resourceTypes = new Map(
+      assets.map((asset) => [asset.id, asset.resourceType]),
+    );
+    const imagesValid = imageIds.every(
+      (id) => resourceTypes.get(id) === "image",
+    );
+    const videosValid = videoIds.every(
+      (id) => resourceTypes.get(id) === "video",
+    );
+    if (!imagesValid || !videosValid) {
       throw new ApiException(
         HttpStatus.BAD_REQUEST,
         "BANNER_MEDIA_INVALID",
@@ -233,6 +278,8 @@ export class BannersService {
     const ids = banners.flatMap((banner) => [
       banner.desktopMediaId,
       ...(banner.mobileMediaId ? [banner.mobileMediaId] : []),
+      ...(banner.desktopVideoMediaId ? [banner.desktopVideoMediaId] : []),
+      ...(banner.mobileVideoMediaId ? [banner.mobileVideoMediaId] : []),
     ]);
     const assets = ids.length
       ? await this.media.find({ _id: { $in: ids }, archivedAt: null })
@@ -246,6 +293,10 @@ export class BannersService {
           width: asset.width,
           height: asset.height,
           altText: asset.altText,
+          resourceType: asset.resourceType,
+          format: asset.format,
+          bytes: asset.bytes,
+          durationSeconds: asset.durationSeconds ?? null,
         },
       ]),
     );
@@ -261,6 +312,10 @@ export class BannersService {
         width: number;
         height: number;
         altText: string | null;
+        resourceType: "image" | "video";
+        format: string;
+        bytes: number;
+        durationSeconds: number | null;
       }
     >,
     publicOnly = false,
@@ -272,6 +327,12 @@ export class BannersService {
       desktopMedia: media.get(banner.desktopMediaId.toString()) ?? null,
       mobileMedia: banner.mobileMediaId
         ? (media.get(banner.mobileMediaId.toString()) ?? null)
+        : null,
+      desktopVideo: banner.desktopVideoMediaId
+        ? (media.get(banner.desktopVideoMediaId.toString()) ?? null)
+        : null,
+      mobileVideo: banner.mobileVideoMediaId
+        ? (media.get(banner.mobileVideoMediaId.toString()) ?? null)
         : null,
       ctaLabel: banner.ctaLabel,
       ctaTarget: banner.ctaTarget,

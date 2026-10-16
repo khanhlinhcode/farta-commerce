@@ -75,6 +75,21 @@ test("mobile menu, Search and filter drawer manage keyboard focus", async ({
   await expect(filter).toBeFocused();
 });
 
+test("Home Header changes from campaign overlay to readable scrolled surface", async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await page.goto("/");
+
+  const header = page.locator("header.site-header");
+  await expect(header).toHaveClass(/site-header--home/);
+  await expect(header).not.toHaveClass(/is-scrolled/);
+
+  await page.evaluate(() => window.scrollTo(0, 300));
+  await expect(header).toHaveClass(/is-scrolled/);
+  await assertNoHorizontalOverflow(page);
+});
+
 test("forms expose labels, validation associations, touch targets and reduced motion", async ({
   page,
 }) => {

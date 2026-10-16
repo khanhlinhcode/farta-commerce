@@ -21,6 +21,12 @@ export class Banner {
   @Prop({ type: mongoose.Schema.Types.ObjectId, default: null })
   mobileMediaId!: Types.ObjectId | null;
 
+  @Prop({ type: mongoose.Schema.Types.ObjectId, default: null })
+  desktopVideoMediaId!: Types.ObjectId | null;
+
+  @Prop({ type: mongoose.Schema.Types.ObjectId, default: null })
+  mobileVideoMediaId!: Types.ObjectId | null;
+
   @Prop({ type: String, default: null, maxlength: 80 })
   ctaLabel!: string | null;
 

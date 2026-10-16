@@ -6,7 +6,7 @@
 
 FARTA is composed like a contemporary runway programme and seasonal product dossier: decisive type, calibrated white space, full-bleed garment imagery and small pieces of operational notation. The experience is editorial without becoming a magazine pastiche; every spread still makes shopping tasks obvious.
 
-The dominant move is the **runway frame**: the opening viewport pairs one campaign image with a strong typographic title and a compact season/index rail. Product grids become the quieter catalogue after that first statement.
+The dominant move is the **runway film**: the opening viewport places approved campaign media behind a strong typographic title and one clear shopping action. A CMS-managed poster remains the authoritative first frame and fallback; optional silent campaign video is progressive enhancement. Product grids become the quieter catalogue after that first statement.
 
 ## Mode
 
@@ -33,7 +33,7 @@ The dominant move is the **runway frame**: the opening viewport pairs one campai
 
 ## Composition
 
-- Desktop uses a twelve-column editorial grid with asymmetric hero splits and alternating section widths.
+- Desktop uses a twelve-column editorial grid with a full-bleed campaign opening and alternating section widths.
 - Catalog grids use stable 4:5 image frames; 2 columns on small mobile when cards retain usable width, 3 on tablet and 4 on desktop.
 - Section rhythm alternates between dense catalog passages and quiet editorial fields. Not every section receives a card or identical wrapper.
 - Navigation stays slim and spatially stable. Mobile navigation and filters are dedicated drawers, not compressed desktop menus.
@@ -49,13 +49,14 @@ The dominant move is the **runway frame**: the opening viewport pairs one campai
 ## Imagery
 
 - Real Cloudinary product and banner media are authoritative.
+- Banner video is optional, limited to validated Cloudinary `video/upload` assets, and always paired with an image poster. Image-only banners remain valid.
 - When no CMS campaign exists, the fallback is a designed typographic composition, not invented merchandise or a fake sale.
 - Development-only generated imagery must be documented as such and never presented as stakeholder-owned campaign photography.
 - Use descriptive alt text from media/catalog data; decorative framing receives empty alt text.
 
 ## Motion
 
-- One authored page moment: hero image/title settle into place with a short editorial reveal while remaining visible without animation.
+- One authored page moment: an approved short campaign film may autoplay muted and inline over its poster. A visible play/pause control is provided; video failure and reduced motion preserve the poster.
 - Drawers and overlays communicate spatial movement; product hover transitions are subtle.
 - `prefers-reduced-motion` removes nonessential movement and never hides content.
 

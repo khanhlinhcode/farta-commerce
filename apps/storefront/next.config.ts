@@ -15,7 +15,7 @@ const contentSecurityPolicy = [
   `img-src 'self' blob: data: https://vietqr.app${cloudinarySource}`,
   "font-src 'self' data:",
   "connect-src 'self'",
-  "media-src 'self'",
+  `media-src 'self'${cloudinarySource}`,
   "frame-src 'none'",
   "object-src 'none'",
   "base-uri 'self'",

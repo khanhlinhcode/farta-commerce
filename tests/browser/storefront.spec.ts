@@ -36,7 +36,7 @@ test("PDP keeps gallery, variant state and Cart selection synchronized", async (
   await expect(cream).toHaveAttribute("aria-pressed", "true");
   await expect(primaryImage).toHaveAttribute("alt", /màu kem/i);
   await page.getByRole("button", { name: "M", exact: true }).click();
-  await expect(page.getByText("Sắp hết")).toBeVisible();
+  await expect(page.getByText("Còn hàng")).toBeVisible();
   await page.getByRole("button", { name: "Thêm vào giỏ" }).click();
   await expect(
     page.getByText("Đã thêm lựa chọn này vào giỏ hàng."),

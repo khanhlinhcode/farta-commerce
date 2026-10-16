@@ -32,5 +32,22 @@ describe("premium storefront home", () => {
     expect(
       screen.getByText("Chưa có bộ sưu tập công khai"),
     ).toBeInTheDocument();
+    expect(
+      screen.getByRole("heading", { level: 2, name: "Hàng mới" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("heading", {
+        level: 2,
+        name: "Phom dáng cho từng nhịp sống",
+      }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("heading", {
+        level: 2,
+        name: "Trang phục theo nhịp sống, không chạy theo tiếng ồn.",
+      }),
+    ).toBeInTheDocument();
+    expect(screen.queryByText("01", { exact: true })).not.toBeInTheDocument();
+    expect(screen.queryByText("02", { exact: true })).not.toBeInTheDocument();
   });
 });

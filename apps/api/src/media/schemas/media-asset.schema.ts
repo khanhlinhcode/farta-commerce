@@ -2,6 +2,11 @@ import { Prop, Schema, SchemaFactory } from "@nestjs/mongoose";
 import type { HydratedDocument, Types } from "mongoose";
 import mongoose from "mongoose";
 
+import {
+  MEDIA_RESOURCE_TYPES,
+  type MediaResourceType,
+} from "../media.constants";
+
 @Schema({ collection: "media_assets", strict: "throw", timestamps: true })
 export class MediaAsset {
   @Prop({ required: true, type: String, enum: ["CLOUDINARY"] })
@@ -13,8 +18,8 @@ export class MediaAsset {
   @Prop({ required: true, type: String, trim: true, maxlength: 2_000 })
   secureUrl!: string;
 
-  @Prop({ required: true, type: String, enum: ["image"] })
-  resourceType!: "image";
+  @Prop({ required: true, type: String, enum: MEDIA_RESOURCE_TYPES })
+  resourceType!: MediaResourceType;
 
   @Prop({
     required: true,
@@ -33,6 +38,9 @@ export class MediaAsset {
 
   @Prop({ required: true, type: Number, min: 1 })
   bytes!: number;
+
+  @Prop({ type: Number, default: null, min: 0, max: 86_400 })
+  durationSeconds!: number | null;
 
   @Prop({ type: String, default: null, maxlength: 255 })
   originalFilename!: string | null;

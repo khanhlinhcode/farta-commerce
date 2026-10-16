@@ -452,10 +452,12 @@ td small {
   overflow: hidden;
   border: 1px solid var(--farta-color-border);
 }
-.media-card img {
+.media-card img,
+.media-card video {
   display: block;
   width: 100%;
   aspect-ratio: 4 / 5;
+  background: #171714;
   object-fit: cover;
 }
 .media-card div {
@@ -464,6 +466,9 @@ td small {
   padding: 0.9rem;
 }
 .media-card span {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
   color: var(--farta-color-text-muted);
   font-size: 0.75rem;
 }

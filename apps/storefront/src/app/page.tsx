@@ -1,12 +1,11 @@
-import Image from "next/image";
 import Link from "next/link";
 import { ArrowRight } from "lucide-react";
 
+import { CampaignHeroMedia } from "@/components/storefront/campaign-hero-media";
 import { CatalogState } from "@/components/storefront/catalog-states";
 import { MediaFrame } from "@/components/storefront/media-frame";
 import { ProductGrid } from "@/components/storefront/product-grid";
 import {
-  canOptimizeCloudinary,
   getBanners,
   getCategories,
   getProducts,
@@ -14,67 +13,39 @@ import {
 } from "@/lib/catalog";
 
 function Hero({ banner }: { banner: Banner | null }) {
-  const remoteImage = banner?.desktopMedia?.secureUrl;
   const developmentFallback =
     process.env.NODE_ENV === "development"
       ? "/images/farta-edit-01-hero.webp"
       : null;
-  const imageSource =
-    remoteImage && canOptimizeCloudinary(remoteImage)
-      ? remoteImage
-      : developmentFallback;
   const title = banner?.title ?? "Chuyển động, được may đo.";
   const subtitle =
     banner?.subtitle ??
     "Những thiết kế dành cho người phụ nữ Việt hiện đại — tự do trong chuyển động, tinh tế trong từng chi tiết.";
   const ctaTarget = banner?.ctaTarget ?? "/shop";
   const ctaLabel = banner?.ctaLabel ?? "Khám phá bộ sưu tập";
-  const [titleLead, ...titleTail] = title.split(",");
 
   return (
-    <section className="runway-hero" aria-labelledby="home-hero-title">
-      <div className="runway-hero__copy">
-        <p className="runway-season">FARTA / 2026 — EDIT 01</p>
-        <ol className="runway-index" aria-label="Chỉ mục biên tập">
-          <li className="is-active">01</li>
-          <li>02</li>
-          <li>03</li>
-          <li>04</li>
-        </ol>
-        <h1 id="home-hero-title">
-          {titleTail.length > 0 ? (
-            <>
-              {titleLead}, <span>{titleTail.join(",").trim()}</span>
-            </>
-          ) : (
-            title
-          )}
-        </h1>
-        <p className="runway-hero__lede">{subtitle}</p>
+    <section className="campaign-hero" aria-labelledby="home-hero-title">
+      <CampaignHeroMedia
+        name={title}
+        desktopPoster={banner?.desktopMedia ?? null}
+        mobilePoster={banner?.mobileMedia ?? null}
+        desktopVideo={banner?.desktopVideo ?? null}
+        mobileVideo={banner?.mobileVideo ?? null}
+        developmentFallback={developmentFallback}
+      />
+      <div className="campaign-hero__veil" aria-hidden="true" />
+      <div className="campaign-hero__copy">
+        <h1 id="home-hero-title">{title}</h1>
+        <p>{subtitle}</p>
         <Link className="editorial-link" href={ctaTarget}>
           {ctaLabel}
           <ArrowRight aria-hidden="true" size={17} strokeWidth={1.5} />
         </Link>
       </div>
-      <div className={`runway-hero__media${imageSource ? "" : " is-empty"}`}>
-        {imageSource ? (
-          <Image
-            alt={
-              banner?.desktopMedia?.altText ??
-              "FARTA Edit 01 — chuyển động và phom dáng"
-            }
-            fill
-            preload
-            sizes="(max-width: 767px) 100vw, 60vw"
-            src={imageSource}
-          />
-        ) : (
-          <div className="runway-hero__fallback" aria-hidden="true">
-            <span>FARTA</span>
-            <span>EDIT 01</span>
-          </div>
-        )}
-      </div>
+      <p className="campaign-hero__signature" aria-hidden="true">
+        FARTA
+      </p>
     </section>
   );
 }
@@ -89,17 +60,25 @@ export default async function HomePage() {
   const banner = bannerResult.ok ? (bannerResult.data.items[0] ?? null) : null;
   const products = productResult.ok ? productResult.data.items : [];
   const categories = categoryResult.ok ? categoryResult.data.items : [];
+  const featuredCategory = categories[0] ?? null;
+  const categoryCards = categories.slice(featuredCategory ? 1 : 0, 4);
 
   return (
     <main id="main-content">
       <Hero banner={banner} />
 
       <section
-        className="home-section home-arrivals"
+        className="home-section home-arrivals home-section--catalog"
         aria-labelledby="new-arrivals-title"
       >
-        <div className="section-heading">
-          <h2 id="new-arrivals-title">Hàng mới</h2>
+        <div className="home-section__heading home-section__heading--catalog">
+          <div>
+            <h2 id="new-arrivals-title">Hàng mới</h2>
+            <p>
+              Những phom dáng vừa xuất hiện trong catalog FARTA, được trình bày
+              đúng theo màu sắc và tình trạng hiện có.
+            </p>
+          </div>
           <Link href="/new-arrivals">
             Xem tất cả
             <ArrowRight aria-hidden="true" size={16} strokeWidth={1.5} />
@@ -124,19 +103,46 @@ export default async function HomePage() {
         )}
       </section>
 
+      {featuredCategory && (
+        <section
+          className="home-feature"
+          aria-labelledby="featured-collection-title"
+        >
+          <div className="home-feature__media">
+            <MediaFrame
+              fallbackLabel={featuredCategory.name}
+              media={featuredCategory.image}
+              sizes="(max-width: 900px) 100vw, 62vw"
+            />
+          </div>
+          <div className="home-feature__copy">
+            <h2 id="featured-collection-title">{featuredCategory.name}</h2>
+            <p>
+              {featuredCategory.description ??
+                "Khám phá những thiết kế đang hiện diện trong danh mục FARTA."}
+            </p>
+            <Link
+              className="editorial-link"
+              href={`/category/${featuredCategory.slug}`}
+            >
+              Xem tuyển chọn
+              <ArrowRight aria-hidden="true" size={17} strokeWidth={1.5} />
+            </Link>
+          </div>
+        </section>
+      )}
+
       <section
-        className="home-section home-categories"
+        className="home-section home-categories home-section--editorial"
         aria-labelledby="collections-title"
       >
-        <div className="section-heading section-heading--editorial">
-          <h2 id="collections-title">Bộ sưu tập</h2>
-          <p>
-            Những câu chuyện về phong cách, chất liệu và phụ nữ Việt đương đại.
-          </p>
+        <div className="home-section__heading home-section__heading--editorial">
+          <h2 id="collections-title">Phom dáng cho từng nhịp sống</h2>
+          <p>Đi từ danh mục thực tế, không từ những xu hướng được dựng sẵn.</p>
         </div>
-        {categories.length > 0 ? (
+        {categoryCards.length > 0 ? (
           <div className="category-grid">
-            {categories.slice(0, 3).map((category, index) => (
+            {categoryCards.map((category) => (
               <Link
                 className="category-card"
                 href={`/category/${category.slug}`}
@@ -146,11 +152,9 @@ export default async function HomePage() {
                   <MediaFrame
                     fallbackLabel={category.name}
                     media={category.image}
-                    priority={index === 0}
                   />
                 </div>
                 <div>
-                  <span>0{index + 1}</span>
                   <h3>{category.name}</h3>
                   {category.description ? <p>{category.description}</p> : null}
                 </div>
@@ -171,10 +175,13 @@ export default async function HomePage() {
       </section>
 
       <section className="brand-note" aria-labelledby="brand-note-title">
-        <p>FARTA / VIETNAM</p>
         <h2 id="brand-note-title">
           Trang phục theo nhịp sống, không chạy theo tiếng ồn.
         </h2>
+        <p>
+          FARTA đặt phom dáng, chuyển động và trải nghiệm mặc ở trung tâm của
+          từng lựa chọn.
+        </p>
         <Link className="editorial-link editorial-link--light" href="/shop">
           Xem toàn bộ thiết kế
           <ArrowRight aria-hidden="true" size={17} strokeWidth={1.5} />

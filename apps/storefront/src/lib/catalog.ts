@@ -6,6 +6,13 @@ export type Media = {
   altText: string | null;
 };
 
+export type VideoMedia = Media & {
+  resourceType: "video";
+  format: "mp4" | "webm";
+  bytes: number;
+  durationSeconds: number;
+};
+
 export type Availability = "IN_STOCK" | "LOW_STOCK" | "OUT_OF_STOCK";
 
 export type ProductVariant = {
@@ -55,6 +62,8 @@ export type Banner = {
   subtitle: string | null;
   desktopMedia: Media | null;
   mobileMedia: Media | null;
+  desktopVideo: VideoMedia | null;
+  mobileVideo: VideoMedia | null;
   ctaLabel: string | null;
   ctaTarget: string | null;
   position: string;
@@ -201,6 +210,21 @@ export function canOptimizeCloudinary(url: string): boolean {
       parsed.protocol === "https:" &&
       parsed.hostname === "res.cloudinary.com" &&
       parsed.pathname.startsWith(`/${cloud}/`)
+    );
+  } catch {
+    return false;
+  }
+}
+
+export function canDeliverCloudinaryVideo(url: string): boolean {
+  const cloud = process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME;
+  if (!cloud) return false;
+  try {
+    const parsed = new URL(url);
+    return (
+      parsed.protocol === "https:" &&
+      parsed.hostname === "res.cloudinary.com" &&
+      parsed.pathname.startsWith(`/${cloud}/video/upload/`)
     );
   } catch {
     return false;

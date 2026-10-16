@@ -17,7 +17,11 @@ import { RequireCsrf } from "../auth/decorators/csrf.decorator";
 import { RequirePermissions } from "../auth/decorators/permissions.decorator";
 // Nest requires DTO classes as runtime decorator metadata.
 // eslint-disable-next-line @typescript-eslint/consistent-type-imports
-import { FinalizeMediaDto, MediaIdParamDto } from "./dto/media.dto";
+import {
+  AuthorizeMediaUploadDto,
+  FinalizeMediaDto,
+  MediaIdParamDto,
+} from "./dto/media.dto";
 import { MediaService } from "./media.service";
 
 @Controller("admin/media")
@@ -32,8 +36,8 @@ export class MediaController {
   @Post("upload-authorizations")
   @RequirePermissions("media.create")
   @RequireCsrf({ realm: "STAFF", binding: "SESSION" })
-  authorizeUpload() {
-    return this.media.authorizeUpload();
+  authorizeUpload(@Body() input: AuthorizeMediaUploadDto) {
+    return this.media.authorizeUpload(input.resourceType ?? "image");
   }
 
   @Post("finalize")
