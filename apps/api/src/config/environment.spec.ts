@@ -103,6 +103,30 @@ describe("environment validation", () => {
       SEPAY_WEBHOOK_SECRET: "",
     });
   });
+  it("requires complete AI secrets and HTTPS service URL when enabled", () => {
+    expect(() => validateEnvironment({ ...valid, AI_ENABLED: "true" })).toThrow(
+      "AI_GATEWAY_SHARED_SECRET",
+    );
+    const ai = {
+      ...valid,
+      AI_ENABLED: "true",
+      AI_GATEWAY_SHARED_SECRET: "g".repeat(32),
+      AI_TOOLS_SHARED_SECRET: "t".repeat(32),
+      AI_CONVERSATION_SECRET: "c".repeat(32),
+    };
+    expect(validateEnvironment(ai)).toMatchObject({ AI_ENABLED: true });
+    expect(() =>
+      validateEnvironment({
+        ...validStaging,
+        ...ai,
+        APP_ENV: "staging",
+        APP_ORIGIN: validStaging.APP_ORIGIN,
+        ADMIN_ORIGIN: validStaging.ADMIN_ORIGIN,
+        API_ORIGIN: validStaging.API_ORIGIN,
+        AI_SERVICE_URL: "http://ai.internal",
+      }),
+    ).toThrow("AI_SERVICE_URL");
+  });
   it("rejects staging placeholder secrets without echoing their values", () => {
     const placeholder = "replace-with-a-secret-that-must-not-be-logged";
     let message = "";

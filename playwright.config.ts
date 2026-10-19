@@ -1,5 +1,6 @@
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
+import { randomBytes } from "node:crypto";
 
 import { defineConfig, devices } from "@playwright/test";
 
@@ -21,9 +22,11 @@ function localEnvironmentValue(name: string): string | undefined {
 const storefrontUrl = process.env.E2E_STOREFRONT_URL ?? "http://localhost:3000";
 const adminUrl = process.env.E2E_ADMIN_URL ?? "http://localhost:5173";
 const apiUrl = process.env.E2E_API_URL ?? "http://localhost:4000";
+const aiUrl = process.env.E2E_AI_URL ?? "http://127.0.0.1:8000";
 const storefrontPort = new URL(storefrontUrl).port || "3000";
 const adminPort = new URL(adminUrl).port || "5173";
 const apiPort = new URL(apiUrl).port || "4000";
+const aiPort = new URL(aiUrl).port || "8000";
 const storefrontCommand =
   process.env.E2E_STOREFRONT_MODE === "production"
     ? `pnpm --filter @farta/storefront exec next start --port ${storefrontPort}`
@@ -33,6 +36,9 @@ const apiCommand =
     ? "pnpm --filter @farta/api start"
     : "pnpm --filter @farta/api dev";
 const reuseExistingServers = process.env.E2E_REUSE_SERVERS === "true";
+const aiGatewaySecret = randomBytes(32).toString("base64url");
+const aiToolsSecret = randomBytes(32).toString("base64url");
+const aiConversationSecret = randomBytes(32).toString("base64url");
 const cloudName = localEnvironmentValue("CLOUDINARY_CLOUD_NAME") ?? "";
 for (const name of ["E2E_STAFF_EMAIL", "E2E_STAFF_PASSWORD"] as const) {
   const value = localEnvironmentValue(name);
@@ -101,6 +107,30 @@ export default defineConfig({
         CART_MUTATION_LIMIT: "1000",
         CHECKOUT_LIMIT: "300",
         ORDER_LOOKUP_LIMIT: "300",
+        AI_ENABLED: "true",
+        AI_SERVICE_URL: aiUrl,
+        AI_GATEWAY_SHARED_SECRET: aiGatewaySecret,
+        AI_TOOLS_SHARED_SECRET: aiToolsSecret,
+        AI_CONVERSATION_SECRET: aiConversationSecret,
+      },
+    },
+    {
+      name: "ai-service",
+      command: `uv run uvicorn app.main:app --host 127.0.0.1 --port ${aiPort}`,
+      cwd: "apps/ai-service",
+      url: `${aiUrl}/health/live`,
+      reuseExistingServer: reuseExistingServers,
+      timeout: 120_000,
+      gracefulShutdown: { signal: "SIGTERM", timeout: 5_000 },
+      env: {
+        ...serverEnvironment,
+        AI_APP_ENV: "development",
+        AI_ENABLED: "true",
+        AI_API_BASE_URL: apiUrl,
+        AI_GATEWAY_SHARED_SECRET: aiGatewaySecret,
+        AI_TOOLS_SHARED_SECRET: aiToolsSecret,
+        AI_GEMINI_ENABLED: "false",
+        AI_GROQ_ENABLED: "false",
       },
     },
     {

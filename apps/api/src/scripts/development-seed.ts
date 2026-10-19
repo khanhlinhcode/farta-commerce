@@ -9,7 +9,6 @@ import type { INestApplicationContext } from "@nestjs/common";
 import { getConnectionToken } from "@nestjs/mongoose";
 import { Types, type Connection } from "mongoose";
 
-import { AppModule } from "../app.module";
 import { UsersService } from "../auth/services/users.service";
 import { BannersService } from "../banners/banners.service";
 import { CategoriesService } from "../categories/categories.service";
@@ -566,6 +565,7 @@ async function runDevelopmentSeed(
 
 async function main(): Promise<void> {
   assertDevelopmentSeedEnvironment(process.env.APP_ENV);
+  const { AppModule } = await import("../app.module");
   const app = await NestFactory.createApplicationContext(AppModule, {
     logger: ["error", "warn"],
   });

@@ -53,6 +53,12 @@ export class RedisService implements OnModuleInit, OnApplicationShutdown {
   async getAndDelete(key: string): Promise<string | null> {
     return this.client.getdel(key);
   }
+  async get(key: string): Promise<string | null> {
+    return this.client.get(key);
+  }
+  async set(key: string, value: string, ttlSeconds: number): Promise<void> {
+    await this.client.set(key, value, "EX", ttlSeconds);
+  }
   async onApplicationShutdown(): Promise<void> {
     await this.client.quit();
   }

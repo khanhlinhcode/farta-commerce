@@ -147,6 +147,13 @@ export class RateLimitGuard implements CanActivate {
             infer: true,
           }),
         };
+      case "AI_CHAT":
+        return {
+          limit: this.config.get("AI_CHAT_LIMIT", { infer: true }),
+          windowSeconds: this.config.get("AI_CHAT_WINDOW_SECONDS", {
+            infer: true,
+          }),
+        };
     }
   }
 }

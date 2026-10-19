@@ -1,7 +1,7 @@
 from functools import lru_cache
 from typing import Literal
 
-from pydantic import HttpUrl, model_validator
+from pydantic import HttpUrl, SecretStr, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -9,13 +9,84 @@ class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_prefix="AI_", extra="ignore")
 
     app_env: Literal["development", "test", "staging", "production"] = "development"
+    enabled: bool = False
     api_base_url: HttpUrl = HttpUrl("http://localhost:4000")
+    gateway_shared_secret: SecretStr = SecretStr("")
+    tools_shared_secret: SecretStr = SecretStr("")
+    internal_request_tolerance_seconds: int = 60
+
+    gemini_enabled: bool = False
+    gemini_free_tier_verified: bool = False
+    gemini_api_key: SecretStr = SecretStr("")
+    gemini_model: Literal["gemini-3.8-flash"] = "gemini-3.8-flash"
+    groq_enabled: bool = False
+    groq_free_tier_verified: bool = False
+    groq_api_key: SecretStr = SecretStr("")
+    groq_model: Literal["openai/gpt-oss-120b"] = "openai/gpt-oss-120b"
+    primary_provider: Literal["gemini", "groq"] = "gemini"
+    fallback_enabled: bool = False
+
+    max_agent_iterations: int = 3
+    max_tool_executions: int = 3
+    max_history_turns: int = 6
+    output_token_limit: int = 768
+    request_timeout_seconds: float = 25.0
+    llm_timeout_seconds: float = 12.0
+    tool_timeout_seconds: float = 6.0
 
     @model_validator(mode="after")
-    def require_secure_deployed_api(self) -> "Settings":
+    def validate_security_and_limits(self) -> "Settings":
         if self.app_env in {"staging", "production"} and self.api_base_url.scheme != "https":
             raise ValueError("Deployed-environment API URL must use HTTPS.")
+        if not 1 <= self.max_agent_iterations <= 3:
+            raise ValueError("Agent iterations must be between 1 and 3.")
+        if not 1 <= self.max_tool_executions <= 3:
+            raise ValueError("Tool executions must be between 1 and 3.")
+        if not 1 <= self.max_history_turns <= 6:
+            raise ValueError("Conversation history must contain at most 6 turns.")
+        if not 128 <= self.output_token_limit <= 768:
+            raise ValueError("Output token limit must be between 128 and 768.")
+        if not 1 <= self.llm_timeout_seconds <= 12:
+            raise ValueError("LLM timeout must be between 1 and 12 seconds.")
+        if not 1 <= self.request_timeout_seconds <= 25:
+            raise ValueError("Request timeout must be between 1 and 25 seconds.")
+        if self.enabled:
+            self._require_secret(self.gateway_shared_secret, "gateway shared secret")
+            self._require_secret(self.tools_shared_secret, "tools shared secret")
+        self._validate_provider(
+            self.gemini_enabled,
+            self.gemini_free_tier_verified,
+            self.gemini_api_key,
+            "Gemini",
+        )
+        self._validate_provider(
+            self.groq_enabled,
+            self.groq_free_tier_verified,
+            self.groq_api_key,
+            "Groq",
+        )
+        if self.fallback_enabled and not (self.gemini_enabled and self.groq_enabled):
+            raise ValueError("Fallback requires both approved providers to be enabled.")
         return self
+
+    @staticmethod
+    def _require_secret(secret: SecretStr, name: str) -> None:
+        if len(secret.get_secret_value()) < 32:
+            raise ValueError(f"AI {name} must contain at least 32 characters.")
+
+    @classmethod
+    def _validate_provider(
+        cls,
+        enabled: bool,
+        free_tier_verified: bool,
+        api_key: SecretStr,
+        name: str,
+    ) -> None:
+        if not enabled:
+            return
+        if not free_tier_verified:
+            raise ValueError(f"{name} cannot be enabled before free-tier verification.")
+        cls._require_secret(api_key, f"{name} API key")
 
 
 @lru_cache

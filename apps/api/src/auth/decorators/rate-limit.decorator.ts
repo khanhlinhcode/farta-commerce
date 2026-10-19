@@ -8,7 +8,8 @@ export type RateLimitPolicy =
   | "CHECKOUT"
   | "ORDER_LOOKUP"
   | "PAYMENT_INITIATE"
-  | "PAYMENT_STATUS";
+  | "PAYMENT_STATUS"
+  | "AI_CHAT";
 export const RATE_LIMIT_KEY = "farta.rate-limit.policy";
 export const RateLimit = (policy: RateLimitPolicy) =>
   SetMetadata(RATE_LIMIT_KEY, policy);

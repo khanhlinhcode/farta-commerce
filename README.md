@@ -12,7 +12,7 @@ Greenfield production-oriented fashion-commerce monorepo. Phase 0 architecture i
 | CI browser lane                                     | Deferred until approved non-production media bootstrap exists   |
 | Release remediation                                 | Partial; correctness/Admin work landed locally, blockers remain |
 | Staging deployment and external-provider validation | Security defaults hardened; deployment blocked on inputs        |
-| Controlled AI shopping assistant                    | Not started; remains behind the API tool boundary               |
+| Controlled AI shopping assistant                    | Phase 1 provider-off vertical slice implemented locally         |
 
 ## Stack baseline (verified 2026-10-03)
 
@@ -43,6 +43,13 @@ cd apps/ai-service
 uv sync --frozen
 uv run uvicorn app.main:app --reload --port 8000
 ```
+
+The Product Advisor is fail-closed by default. Keep `AI_ENABLED=false` until
+`AI_GATEWAY_SHARED_SECRET`, `AI_TOOLS_SHARED_SECRET` and
+`AI_CONVERSATION_SECRET` are generated independently and configured in both the
+appropriate API/AI-service environments. Gemini and Groq have separate enable and
+free-tier-verification flags; a public pricing page is not sufficient evidence to
+turn either provider on. See [`docs/api/ai-agent.md`](docs/api/ai-agent.md).
 
 Default local ports: storefront `3000`, API `4000`, admin `5173`, AI service `8000`, MongoDB `27017`, Redis `6379`.
 

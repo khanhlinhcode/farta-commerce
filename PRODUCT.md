@@ -29,7 +29,7 @@ FARTA combines an editorial, product-photography-led Vietnamese fashion experien
 
 ## Capabilities and Constraints
 
-- pnpm monorepo with Next.js/React storefront, Vite/React Admin, NestJS/Mongoose/Redis API and a health-only FastAPI AI scaffold.
+- pnpm monorepo with Next.js/React storefront, Vite/React Admin, NestJS/Mongoose/Redis API and a read-only FastAPI/Pydantic AI Product Advisor boundary.
 - Prices use authoritative integer VND values; browser-calculated totals are never authoritative.
 - Products contain real color/size variants and expose semantic availability rather than internal warehouse quantity.
 - Browser sessions use realm-separated secure cookie authentication, CSRF protection and server-side session authority.
@@ -69,15 +69,15 @@ FARTA combines an editorial, product-photography-led Vietnamese fashion experien
 
 ## Current Release Status
 
-| Area                                  | Status                   | Evidence boundary                                                         |
-| ------------------------------------- | ------------------------ | ------------------------------------------------------------------------- |
-| Phase 0–4 commerce foundation         | Implemented locally      | Unit, integration, security, concurrency and build gates                  |
-| Development catalog and media         | Implemented locally      | Idempotent seed with finalized development Cloudinary assets              |
-| Browser release coverage              | Implemented for Chromium | Local seeded Storefront/Admin journeys and reviewed snapshots             |
-| Staging deployment                    | Readiness audited        | Deployment blocked on hosting, managed services and provider credentials  |
-| SePay/OAuth/email provider validation | Not validated externally | Test-mode accounts, public HTTPS callbacks and provider delivery required |
-| AI shopping assistant                 | Not started              | Must use controlled API tools after staging commerce validation           |
-| Release remediation                   | Partial                  | Local code/API gates pass; recovery approval and browser rerun remain     |
+| Area                                  | Status                   | Evidence boundary                                                          |
+| ------------------------------------- | ------------------------ | -------------------------------------------------------------------------- |
+| Phase 0–4 commerce foundation         | Implemented locally      | Unit, integration, security, concurrency and build gates                   |
+| Development catalog and media         | Implemented locally      | Idempotent seed with finalized development Cloudinary assets               |
+| Browser release coverage              | Implemented for Chromium | Local seeded Storefront/Admin journeys and reviewed snapshots              |
+| Staging deployment                    | Readiness audited        | Deployment blocked on hosting, managed services and provider credentials   |
+| SePay/OAuth/email provider validation | Not validated externally | Test-mode accounts, public HTTPS callbacks and provider delivery required  |
+| AI shopping assistant                 | Implemented provider-off | Deterministic catalog path and bounded Agent tests; live providers pending |
+| Release remediation                   | Partial                  | Local code/API gates pass; recovery approval and browser rerun remain      |
 
 ## Accessibility & Inclusion
 

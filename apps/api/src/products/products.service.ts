@@ -278,8 +278,14 @@ export class ProductsService {
       status: "ACTIVE",
       archivedAt: null,
     };
-    if (query.q?.trim())
-      filter.name = { $regex: escapeRegex(query.q.trim()), $options: "i" };
+    if (query.q?.trim()) {
+      const search = { $regex: escapeRegex(query.q.trim()), $options: "i" };
+      filter.$or = [
+        { name: search },
+        { shortDescription: search },
+        { tags: search },
+      ];
+    }
     if (query.category) {
       const category = await this.categories
         .findOne({ slug: normalizeSlug(query.category), status: "ACTIVE" })

@@ -68,6 +68,26 @@ test("Cart and Checkout visual baselines", async ({ page }) => {
   await stableScreenshot(page, "checkout-desktop.png");
 });
 
+test("Product Advisor visual baselines", async ({ page }) => {
+  test.setTimeout(90_000);
+  for (const [name, width, height] of [
+    ["ai-advisor-desktop.png", 1440, 900],
+    ["ai-advisor-mobile.png", 390, 844],
+  ] as const) {
+    await page.setViewportSize({ width, height });
+    await page.goto("/shop");
+    await page
+      .getByRole("button", { name: "Mở FARTA Product Advisor" })
+      .click();
+    const dialog = page.getByRole("dialog", { name: "Product Advisor" });
+    await dialog.getByRole("button", { name: "Tìm áo màu đen size M" }).click();
+    await expect(
+      dialog.getByRole("heading", { name: seed.productName }),
+    ).toBeVisible();
+    await stableScreenshot(page, name);
+  }
+});
+
 test("Admin catalog and order detail visual baselines", async ({
   page,
   browser,

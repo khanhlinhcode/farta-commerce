@@ -15,6 +15,60 @@ export type HealthStatus = {
 export type Realm = "CUSTOMER" | "STAFF";
 export type Role = "CUSTOMER" | "STAFF" | "ADMIN" | "OWNER";
 
+export type AiAvailability = "IN_STOCK" | "LOW_STOCK" | "OUT_OF_STOCK";
+export type AiRoute =
+  "deterministic" | "agent" | "clarification" | "unsupported";
+export type AiChatStatus = "completed" | "clarification" | "unavailable";
+
+export type AiProductReference = {
+  id: string;
+  slug: string;
+  name: string;
+  shortDescription: string | null;
+  imageUrl: string | null;
+  priceVnd: number;
+  maxPriceVnd: number;
+  availability: AiAvailability;
+  variants: ReadonlyArray<{
+    id: string;
+    color: string;
+    colorCode: string | null;
+    size: string;
+    priceVnd: number;
+    compareAtPriceVnd: number | null;
+    availability: AiAvailability;
+  }>;
+};
+
+export type AiChatRequest = {
+  message: string;
+  conversationId?: string | null;
+};
+
+export type AiChatResponse = {
+  requestId: string;
+  conversationId: string;
+  status: AiChatStatus;
+  route: AiRoute;
+  message: string;
+  products: ReadonlyArray<AiProductReference>;
+  citations: ReadonlyArray<never>;
+  error: { code: string; message: string } | null;
+};
+
+export type AiToolName =
+  "search_products" | "get_product_details" | "get_product_availability";
+
+export type AiToolRequest = {
+  tool: AiToolName;
+  arguments: Record<string, unknown>;
+};
+
+export type AiToolResponse = {
+  tool: AiToolName;
+  products: ReadonlyArray<AiProductReference>;
+};
+
 export type CartConflictCode =
   | "PRODUCT_UNAVAILABLE"
   | "VARIANT_UNAVAILABLE"

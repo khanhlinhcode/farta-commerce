@@ -3,6 +3,7 @@ import { Be_Vietnam_Pro, Cormorant_Garamond } from "next/font/google";
 import type { ReactNode } from "react";
 
 import { Providers } from "@/components/providers";
+import { AiChatWidget } from "@/components/ai/ai-chat-widget";
 import { SiteFooter } from "@/components/storefront/site-footer";
 import { SiteHeader } from "@/components/storefront/site-header";
 
@@ -56,6 +57,7 @@ export default function RootLayout({
           <SiteHeader />
           {children}
           <SiteFooter />
+          <AiChatWidget />
         </Providers>
       </body>
     </html>

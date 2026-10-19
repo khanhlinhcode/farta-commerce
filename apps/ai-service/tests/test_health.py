@@ -18,6 +18,6 @@ async def test_liveness() -> None:
     assert response.json() == {"status": "ok"}
 
 
-def test_no_commerce_or_agent_routes_exist() -> None:
+def test_only_health_and_internal_agent_routes_exist() -> None:
     paths = set(app.openapi()["paths"])
-    assert paths == {"/health/live", "/health/ready"}
+    assert paths == {"/health/live", "/health/ready", "/v1/chat"}

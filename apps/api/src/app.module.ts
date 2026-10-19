@@ -2,6 +2,8 @@ import { Module } from "@nestjs/common";
 import { ConfigModule } from "@nestjs/config";
 
 import { AuthModule } from "./auth/auth.module";
+import { AiToolsModule } from "./ai-tools/ai-tools.module";
+import { AiGatewayModule } from "./ai-gateway/ai-gateway.module";
 import { AuditModule } from "./audit/audit.module";
 import { CategoriesModule } from "./categories/categories.module";
 import { BannersModule } from "./banners/banners.module";
@@ -31,6 +33,8 @@ import { RedisModule } from "./infrastructure/redis.module";
     DatabaseModule,
     RedisModule,
     AuthModule,
+    AiToolsModule,
+    AiGatewayModule,
     AuditModule,
     CategoriesModule,
     MediaModule,

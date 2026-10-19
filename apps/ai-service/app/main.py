@@ -1,5 +1,6 @@
 from fastapi import FastAPI
 
+from app.api.chat import router as chat_router
 from app.config import get_settings
 
 settings = get_settings()
@@ -9,6 +10,7 @@ app = FastAPI(
     docs_url="/docs" if settings.app_env != "production" else None,
     redoc_url=None,
 )
+app.include_router(chat_router)
 
 
 @app.get("/health/live", tags=["health"])
@@ -18,5 +20,4 @@ def liveness() -> dict[str, str]:
 
 @app.get("/health/ready", tags=["health"])
 def readiness() -> dict[str, str]:
-    # No external AI/provider dependency exists in Phase 1.
     return {"status": "ok"}

@@ -145,6 +145,39 @@ const environmentSchema = z
       .min(60)
       .max(3600)
       .default(300),
+    AI_ENABLED: z
+      .enum(["true", "false"])
+      .default("false")
+      .transform((value) => value === "true"),
+    AI_SERVICE_URL: url.default("http://localhost:8000"),
+    AI_GATEWAY_SHARED_SECRET: z.string().default(""),
+    AI_TOOLS_SHARED_SECRET: z.string().default(""),
+    AI_CONVERSATION_SECRET: z.string().default(""),
+    AI_INTERNAL_REQUEST_TOLERANCE_SECONDS: z.coerce
+      .number()
+      .int()
+      .min(30)
+      .max(300)
+      .default(60),
+    AI_REQUEST_TIMEOUT_MS: z.coerce
+      .number()
+      .int()
+      .min(1_000)
+      .max(25_000)
+      .default(25_000),
+    AI_CHAT_LIMIT: z.coerce.number().int().min(1).max(300).default(30),
+    AI_CHAT_WINDOW_SECONDS: z.coerce
+      .number()
+      .int()
+      .min(10)
+      .max(3600)
+      .default(300),
+    AI_CONVERSATION_TTL_SECONDS: z.coerce
+      .number()
+      .int()
+      .min(300)
+      .max(86_400)
+      .default(1_800),
     SEPAY_ENABLED: z
       .enum(["true", "false"])
       .default("false")
@@ -302,6 +335,21 @@ const environmentSchema = z
         message: "Global payment status limit must cover one order limit.",
       });
     }
+    if (environment.AI_ENABLED) {
+      for (const key of [
+        "AI_GATEWAY_SHARED_SECRET",
+        "AI_TOOLS_SHARED_SECRET",
+        "AI_CONVERSATION_SECRET",
+      ] as const) {
+        if (environment[key].length < 32) {
+          context.addIssue({
+            code: "custom",
+            path: [key],
+            message: "AI service secrets must contain at least 32 characters.",
+          });
+        }
+      }
+    }
     if (
       environment.SEPAY_DEPOSIT_MODE === "FIXED" &&
       (environment.SEPAY_DEPOSIT_FIXED_VND === null ||
@@ -345,6 +393,16 @@ const environmentSchema = z
         });
       }
     }
+    if (
+      environment.AI_ENABLED &&
+      new URL(environment.AI_SERVICE_URL).protocol !== "https:"
+    ) {
+      context.addIssue({
+        code: "custom",
+        path: ["AI_SERVICE_URL"],
+        message: "Deployed AI service URL must use HTTPS.",
+      });
+    }
     for (const key of [
       "JWT_ACCESS_SECRET",
       "JWT_REFRESH_SECRET",
@@ -352,6 +410,9 @@ const environmentSchema = z
       "CART_CREDENTIAL_SECRET",
       "ORDER_LOOKUP_SECRET",
       "SEPAY_WEBHOOK_SECRET",
+      "AI_GATEWAY_SHARED_SECRET",
+      "AI_TOOLS_SHARED_SECRET",
+      "AI_CONVERSATION_SECRET",
     ] as const) {
       if (
         environment[key] &&
