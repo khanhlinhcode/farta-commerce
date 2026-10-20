@@ -6,10 +6,7 @@ import { getConnectionToken } from "@nestjs/mongoose";
 import { readFileSync } from "node:fs";
 import type { Connection } from "mongoose";
 
-import { AppModule } from "../app.module";
 import type { Environment } from "../config/environment";
-import { PasswordService } from "../auth/services/password.service";
-import { UsersService } from "../auth/services/users.service";
 
 type BootstrapInput = {
   email: string;
@@ -53,6 +50,14 @@ function stagingInput(): BootstrapInput {
 }
 
 export async function bootstrapOwner(): Promise<void> {
+  // Keep AppModule lazy so importing the pure environment guard in unit tests
+  // does not initialize ConfigModule or require a complete runtime environment.
+  const [{ AppModule }, { PasswordService }, { UsersService }] =
+    await Promise.all([
+      import("../app.module"),
+      import("../auth/services/password.service"),
+      import("../auth/services/users.service"),
+    ]);
   const app = await NestFactory.createApplicationContext(AppModule, {
     logger: ["error", "warn"],
   });
