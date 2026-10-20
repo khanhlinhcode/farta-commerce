@@ -95,7 +95,7 @@ async function assertRemoteAsset(asset: (typeof assets)[AssetKey]) {
   }
 }
 
-async function main(): Promise<void> {
+export async function runStagingSampleSeed(): Promise<void> {
   assertStagingSampleSeedEnvironment(
     process.env.APP_ENV,
     process.env.ALLOW_STAGING_SAMPLE_SEED,
@@ -164,7 +164,7 @@ async function main(): Promise<void> {
 }
 
 if (require.main === module) {
-  void main().catch((error: unknown) => {
+  void runStagingSampleSeed().catch((error: unknown) => {
     const message = error instanceof Error ? error.message : "Unknown error";
     process.stderr.write(`Staging sample seed failed: ${message}\n`);
     process.exitCode = 1;
