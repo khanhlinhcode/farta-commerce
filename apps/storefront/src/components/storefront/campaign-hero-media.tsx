@@ -82,7 +82,7 @@ export function CampaignHeroMedia({
           sizes: "100vw",
         };
         const {
-          props: { srcSet: desktopSrcSet },
+          props: { srcSet: generatedDesktopSrcSet },
         } = getImageProps({
           ...common,
           src: desktopPosterSource!,
@@ -90,14 +90,21 @@ export function CampaignHeroMedia({
           height: Math.max(1, desktopPoster?.height ?? 1080),
         });
         const {
-          props: { srcSet: mobileSrcSet, ...mobileImageProps },
+          props: { srcSet: generatedMobileSrcSet, ...mobileImageProps },
         } = getImageProps({
           ...common,
           src: mobilePosterSource!,
           width: Math.max(1, mobilePoster?.width ?? 900),
           height: Math.max(1, mobilePoster?.height ?? 1200),
         });
-        return { desktopSrcSet, mobileSrcSet, mobileImageProps };
+        // Cloudflare Workers intentionally uses `images.unoptimized`. In that
+        // mode Next.js returns no generated srcSet, so preserve art direction
+        // with the authoritative media URL instead of leaving empty sources.
+        return {
+          desktopSrcSet: generatedDesktopSrcSet ?? desktopPosterSource!,
+          mobileSrcSet: generatedMobileSrcSet ?? mobilePosterSource!,
+          mobileImageProps,
+        };
       })()
     : null;
 

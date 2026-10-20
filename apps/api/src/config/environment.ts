@@ -150,6 +150,10 @@ const environmentSchema = z
       .default("false")
       .transform((value) => value === "true"),
     AI_SERVICE_URL: url.default("http://localhost:8000"),
+    AI_ALLOW_STAGING_PRIVATE_HTTP: z
+      .enum(["true", "false"])
+      .default("false")
+      .transform((value) => value === "true"),
     AI_GATEWAY_SHARED_SECRET: z.string().default(""),
     AI_TOOLS_SHARED_SECRET: z.string().default(""),
     AI_CONVERSATION_SECRET: z.string().default(""),
@@ -393,14 +397,25 @@ const environmentSchema = z
         });
       }
     }
+    const aiServiceUrl = new URL(environment.AI_SERVICE_URL);
+    const stagingPrivateHttp =
+      environment.APP_ENV === "staging" &&
+      environment.AI_ALLOW_STAGING_PRIVATE_HTTP &&
+      aiServiceUrl.protocol === "http:" &&
+      /^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$/i.test(aiServiceUrl.hostname) &&
+      aiServiceUrl.hostname !== "localhost" &&
+      aiServiceUrl.username === "" &&
+      aiServiceUrl.password === "";
     if (
       environment.AI_ENABLED &&
-      new URL(environment.AI_SERVICE_URL).protocol !== "https:"
+      aiServiceUrl.protocol !== "https:" &&
+      !stagingPrivateHttp
     ) {
       context.addIssue({
         code: "custom",
         path: ["AI_SERVICE_URL"],
-        message: "Deployed AI service URL must use HTTPS.",
+        message:
+          "Deployed AI service URL must use HTTPS unless staging explicitly uses a single-label private service host.",
       });
     }
     for (const key of [

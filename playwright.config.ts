@@ -4,9 +4,15 @@ import { randomBytes } from "node:crypto";
 
 import { defineConfig, devices } from "@playwright/test";
 
+const e2eTarget = process.env.E2E_TARGET ?? "local";
+if (!["local", "staging"].includes(e2eTarget)) {
+  throw new Error("E2E_TARGET must be either local or staging.");
+}
+const isStagingTarget = e2eTarget === "staging";
+
 function localEnvironmentValue(name: string): string | undefined {
   if (process.env[name]) return process.env[name];
-  if (process.env.CI) return undefined;
+  if (process.env.CI || isStagingTarget) return undefined;
   try {
     const source = readFileSync(resolve("apps/api/.env"), "utf8");
     const line = source
@@ -19,9 +25,21 @@ function localEnvironmentValue(name: string): string | undefined {
   }
 }
 
-const storefrontUrl = process.env.E2E_STOREFRONT_URL ?? "http://localhost:3000";
-const adminUrl = process.env.E2E_ADMIN_URL ?? "http://localhost:5173";
-const apiUrl = process.env.E2E_API_URL ?? "http://localhost:4000";
+function targetUrl(name: string, localFallback: string): string {
+  const value =
+    process.env[name] ?? (isStagingTarget ? undefined : localFallback);
+  if (!value)
+    throw new Error(`${name} is required for the staging browser target.`);
+  const parsed = new URL(value);
+  if (isStagingTarget && parsed.protocol !== "https:") {
+    throw new Error(`${name} must use HTTPS for the staging browser target.`);
+  }
+  return parsed.origin;
+}
+
+const storefrontUrl = targetUrl("E2E_STOREFRONT_URL", "http://localhost:3000");
+const adminUrl = targetUrl("E2E_ADMIN_URL", "http://localhost:5173");
+const apiUrl = targetUrl("E2E_API_URL", "http://localhost:4000");
 const aiUrl = process.env.E2E_AI_URL ?? "http://127.0.0.1:8000";
 const storefrontPort = new URL(storefrontUrl).port || "3000";
 const adminPort = new URL(adminUrl).port || "5173";
@@ -54,7 +72,7 @@ export default defineConfig({
   testDir: "./tests/browser",
   outputDir: "test-results/browser",
   fullyParallel: false,
-  forbidOnly: Boolean(process.env.CI),
+  forbidOnly: Boolean(process.env.CI) || isStagingTarget,
   retries: process.env.CI ? 1 : 0,
   workers: 1,
   timeout: 45_000,
@@ -88,77 +106,79 @@ export default defineConfig({
       use: { ...devices["Desktop Chrome"], browserName: "chromium" },
     },
   ],
-  webServer: [
-    {
-      name: "api",
-      command: apiCommand,
-      url: `${apiUrl}/api/v1/health/live`,
-      reuseExistingServer: reuseExistingServers,
-      timeout: 120_000,
-      gracefulShutdown: { signal: "SIGTERM", timeout: 5_000 },
-      env: {
-        ...serverEnvironment,
-        APP_ORIGIN: storefrontUrl,
-        ADMIN_ORIGIN: adminUrl,
-        API_ORIGIN: apiUrl,
-        PORT: apiPort,
-        AUTH_LOGIN_LIMIT: "100",
-        CART_MERGE_LIMIT: "300",
-        CART_MUTATION_LIMIT: "1000",
-        CHECKOUT_LIMIT: "300",
-        ORDER_LOOKUP_LIMIT: "300",
-        AI_ENABLED: "true",
-        AI_SERVICE_URL: aiUrl,
-        AI_GATEWAY_SHARED_SECRET: aiGatewaySecret,
-        AI_TOOLS_SHARED_SECRET: aiToolsSecret,
-        AI_CONVERSATION_SECRET: aiConversationSecret,
-      },
-    },
-    {
-      name: "ai-service",
-      command: `uv run uvicorn app.main:app --host 127.0.0.1 --port ${aiPort}`,
-      cwd: "apps/ai-service",
-      url: `${aiUrl}/health/live`,
-      reuseExistingServer: reuseExistingServers,
-      timeout: 120_000,
-      gracefulShutdown: { signal: "SIGTERM", timeout: 5_000 },
-      env: {
-        ...serverEnvironment,
-        AI_APP_ENV: "development",
-        AI_ENABLED: "true",
-        AI_API_BASE_URL: apiUrl,
-        AI_GATEWAY_SHARED_SECRET: aiGatewaySecret,
-        AI_TOOLS_SHARED_SECRET: aiToolsSecret,
-        AI_GEMINI_ENABLED: "false",
-        AI_GROQ_ENABLED: "false",
-      },
-    },
-    {
-      name: "storefront",
-      command: storefrontCommand,
-      url: storefrontUrl,
-      reuseExistingServer: reuseExistingServers,
-      timeout: 120_000,
-      gracefulShutdown: { signal: "SIGTERM", timeout: 5_000 },
-      env: {
-        ...serverEnvironment,
-        API_INTERNAL_URL: apiUrl,
-        NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME: cloudName,
-        NEXT_PUBLIC_INDEXABLE: "false",
-        NEXT_PUBLIC_SITE_URL: storefrontUrl,
-      },
-    },
-    {
-      name: "admin",
-      command: `pnpm --filter @farta/admin exec vite --host localhost --port ${adminPort}`,
-      url: adminUrl,
-      reuseExistingServer: reuseExistingServers,
-      timeout: 120_000,
-      gracefulShutdown: { signal: "SIGTERM", timeout: 5_000 },
-      env: {
-        ...serverEnvironment,
-        API_PROXY_TARGET: apiUrl,
-      },
-    },
-  ],
+  webServer: isStagingTarget
+    ? undefined
+    : [
+        {
+          name: "api",
+          command: apiCommand,
+          url: `${apiUrl}/api/v1/health/live`,
+          reuseExistingServer: reuseExistingServers,
+          timeout: 120_000,
+          gracefulShutdown: { signal: "SIGTERM", timeout: 5_000 },
+          env: {
+            ...serverEnvironment,
+            APP_ORIGIN: storefrontUrl,
+            ADMIN_ORIGIN: adminUrl,
+            API_ORIGIN: apiUrl,
+            PORT: apiPort,
+            AUTH_LOGIN_LIMIT: "100",
+            CART_MERGE_LIMIT: "300",
+            CART_MUTATION_LIMIT: "1000",
+            CHECKOUT_LIMIT: "300",
+            ORDER_LOOKUP_LIMIT: "300",
+            AI_ENABLED: "true",
+            AI_SERVICE_URL: aiUrl,
+            AI_GATEWAY_SHARED_SECRET: aiGatewaySecret,
+            AI_TOOLS_SHARED_SECRET: aiToolsSecret,
+            AI_CONVERSATION_SECRET: aiConversationSecret,
+          },
+        },
+        {
+          name: "ai-service",
+          command: `uv run uvicorn app.main:app --host 127.0.0.1 --port ${aiPort}`,
+          cwd: "apps/ai-service",
+          url: `${aiUrl}/health/live`,
+          reuseExistingServer: reuseExistingServers,
+          timeout: 120_000,
+          gracefulShutdown: { signal: "SIGTERM", timeout: 5_000 },
+          env: {
+            ...serverEnvironment,
+            AI_APP_ENV: "development",
+            AI_ENABLED: "true",
+            AI_API_BASE_URL: apiUrl,
+            AI_GATEWAY_SHARED_SECRET: aiGatewaySecret,
+            AI_TOOLS_SHARED_SECRET: aiToolsSecret,
+            AI_GEMINI_ENABLED: "false",
+            AI_GROQ_ENABLED: "false",
+          },
+        },
+        {
+          name: "storefront",
+          command: storefrontCommand,
+          url: storefrontUrl,
+          reuseExistingServer: reuseExistingServers,
+          timeout: 120_000,
+          gracefulShutdown: { signal: "SIGTERM", timeout: 5_000 },
+          env: {
+            ...serverEnvironment,
+            API_INTERNAL_URL: apiUrl,
+            NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME: cloudName,
+            NEXT_PUBLIC_INDEXABLE: "false",
+            NEXT_PUBLIC_SITE_URL: storefrontUrl,
+          },
+        },
+        {
+          name: "admin",
+          command: `pnpm --filter @farta/admin exec vite --host localhost --port ${adminPort}`,
+          url: adminUrl,
+          reuseExistingServer: reuseExistingServers,
+          timeout: 120_000,
+          gracefulShutdown: { signal: "SIGTERM", timeout: 5_000 },
+          env: {
+            ...serverEnvironment,
+            API_PROXY_TARGET: apiUrl,
+          },
+        },
+      ],
 });

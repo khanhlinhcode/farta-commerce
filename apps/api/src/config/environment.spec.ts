@@ -127,6 +127,43 @@ describe("environment validation", () => {
       }),
     ).toThrow("AI_SERVICE_URL");
   });
+  it("allows only an explicit single-label private HTTP AI host in staging", () => {
+    const enabledAi = {
+      ...validStaging,
+      AI_ENABLED: "true",
+      AI_GATEWAY_SHARED_SECRET: "g".repeat(32),
+      AI_TOOLS_SHARED_SECRET: "t".repeat(32),
+      AI_CONVERSATION_SECRET: "c".repeat(32),
+      AI_ALLOW_STAGING_PRIVATE_HTTP: "true",
+    };
+    expect(
+      validateEnvironment({
+        ...enabledAi,
+        AI_SERVICE_URL: "http://farta-ai:8000",
+      }),
+    ).toMatchObject({
+      APP_ENV: "staging",
+      AI_ENABLED: true,
+      AI_ALLOW_STAGING_PRIVATE_HTTP: true,
+    });
+    for (const unsafeUrl of [
+      "http://localhost:8000",
+      "http://127.0.0.1:8000",
+      "http://ai.internal:8000",
+      "http://user:password@farta-ai:8000",
+    ]) {
+      expect(() =>
+        validateEnvironment({ ...enabledAi, AI_SERVICE_URL: unsafeUrl }),
+      ).toThrow("AI_SERVICE_URL");
+    }
+    expect(() =>
+      validateEnvironment({
+        ...enabledAi,
+        APP_ENV: "production",
+        AI_SERVICE_URL: "http://farta-ai:8000",
+      }),
+    ).toThrow("AI_SERVICE_URL");
+  });
   it("rejects staging placeholder secrets without echoing their values", () => {
     const placeholder = "replace-with-a-secret-that-must-not-be-logged";
     let message = "";

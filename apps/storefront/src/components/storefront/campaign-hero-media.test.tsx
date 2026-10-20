@@ -4,6 +4,8 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { Media, VideoMedia } from "@/lib/catalog";
 import { CampaignHeroMedia } from "./campaign-hero-media";
 
+let emitGeneratedSrcSet = true;
+
 vi.mock("next/image", () => ({
   default: (
     props: React.ImgHTMLAttributes<HTMLImageElement> & {
@@ -30,7 +32,7 @@ vi.mock("next/image", () => ({
   }) => ({
     props: {
       src,
-      srcSet: `${src}?w=${width} ${width}w`,
+      ...(emitGeneratedSrcSet ? { srcSet: `${src}?w=${width} ${width}w` } : {}),
       alt,
       width,
       height,
@@ -64,6 +66,7 @@ describe("CampaignHeroMedia", () => {
   beforeEach(() => {
     process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME = "farta-test";
     reduceMotion = false;
+    emitGeneratedSrcSet = true;
     Object.defineProperty(window, "matchMedia", {
       configurable: true,
       value: vi.fn().mockImplementation(() => ({
@@ -125,6 +128,44 @@ describe("CampaignHeroMedia", () => {
     expect(picture?.querySelectorAll("img")).toHaveLength(1);
     expect(picture?.querySelectorAll("source")).toHaveLength(2);
     expect(picture?.querySelector("img")).toHaveAttribute("loading", "eager");
+    expect(
+      picture?.querySelector('source[media="(min-width: 601px)"]'),
+    ).toHaveAttribute("srcset", expect.stringContaining(poster.secureUrl));
+    expect(
+      picture?.querySelector('source[media="(max-width: 600px)"]'),
+    ).toHaveAttribute(
+      "srcset",
+      expect.stringContaining(mobilePoster.secureUrl),
+    );
+  });
+
+  it("keeps desktop and mobile art direction when image optimization is disabled", () => {
+    emitGeneratedSrcSet = false;
+    const mobilePoster = {
+      ...poster,
+      id: "mobile-poster-unoptimized",
+      secureUrl:
+        "https://res.cloudinary.com/farta-test/image/upload/mobile-unoptimized.jpg",
+      width: 900,
+      height: 1200,
+    };
+    render(
+      <CampaignHeroMedia
+        name="Quiet Form"
+        desktopPoster={poster}
+        mobilePoster={mobilePoster}
+        desktopVideo={null}
+        mobileVideo={null}
+        developmentFallback={null}
+      />,
+    );
+
+    expect(
+      document.querySelector('source[media="(min-width: 601px)"]'),
+    ).toHaveAttribute("srcset", poster.secureUrl);
+    expect(
+      document.querySelector('source[media="(max-width: 600px)"]'),
+    ).toHaveAttribute("srcset", mobilePoster.secureUrl);
   });
 
   it("does not mount autoplay video when reduced motion is requested", () => {
