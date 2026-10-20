@@ -2,7 +2,7 @@
 
 Date: 2026-10-20
 
-Status: **BLOCKED pending email-forwarding migration and DNS approval**
+Status: **BLOCKED pending complete DNS inventory and Cloudflare write access**
 
 No DNS record, nameserver, Cloudflare zone or application origin was mutated
 during this review.
@@ -48,14 +48,20 @@ requires Namecheap `namecheap.domains.dns.getHosts` or an exported DNS record
 list from the Namecheap dashboard. Zone creation, record replication and
 nameserver cutover therefore remain fail-closed.
 
-The stakeholder confirmed on 2026-10-20 that at least one Namecheap Email
-Forwarding alias is actively used. Namecheap documents that Free Email
-Forwarding is available only while the domain uses Namecheap BasicDNS,
-PremiumDNS or FreeDNS. Its redirect/host-record controls are unavailable when
-the domain uses third-party nameservers. Therefore changing authoritative
-nameservers to Cloudflare before migrating and validating the alias would risk
-mail interruption. Copying Namecheap's MX/SPF values into Cloudflare is not
-treated as proof that the Namecheap forwarding backend will continue.
+The stakeholder initially described Email Forwarding as used, but the
+authoritative Namecheap Domain screen subsequently showed `You haven't defined
+any Email Redirect yet` and offered only `Add Forwarder` / `Add Catch-All`.
+Therefore there is no configured alias or catch-all to migrate. The MX/SPF
+records exist because the Mail Settings mode is set to Email Forwarding, not
+because a forwarding rule exists.
+
+Namecheap documents that Free Email Forwarding is available only while the
+domain uses Namecheap BasicDNS, PremiumDNS or FreeDNS, and its redirect controls
+are unavailable with third-party nameservers. Because no redirect exists, the
+Cloudflare cutover does not need an email migration. The obsolete Namecheap
+forwarding MX/SPF records must not be represented as an operational mail
+service after delegation. Cloudflare Email Routing may be configured later if
+the stakeholder intentionally creates an alias and verifies a destination.
 
 Official sources checked 2026-10-20:
 
@@ -64,31 +70,13 @@ Official sources checked 2026-10-20:
 - <https://developers.cloudflare.com/email-service/get-started/route-emails/>
 - <https://developers.cloudflare.com/api/resources/email_routing/subresources/dns/methods/create/>
 
-## Email migration gate
+## Email decision
 
-No nameserver change is allowed until an approved mail path passes all of the
-following:
-
-1. Inventory every active alias and whether a catch-all is enabled. Destination
-   mailbox values must be handled directly in the provider dashboard or secret
-   channel, not committed to this repository.
-2. Select one of these policies:
-   - migrate aliases to Cloudflare Email Routing, verify every destination,
-     create equivalent routing rules, and use Cloudflare-managed mail DNS;
-   - migrate to another approved mail provider and validate its MX/SPF/DKIM/DMARC
-     requirements;
-   - retain Namecheap BasicDNS and Email Forwarding, and defer Cloudflare Worker
-     custom domains while continuing to use the `workers.dev` staging URLs.
-3. Before nameserver cutover, send an external test message to every alias and
-   catch-all path using the current Namecheap configuration and record receipt.
-4. Configure and verify the replacement destination/rules before moving
-   nameservers. Cloudflare requires destination addresses to be verified before
-   they can be used by Email Routing rules.
-5. After cutover, repeat external delivery tests. If any alias fails, restore
-   Namecheap BasicDNS immediately and verify delivery before retrying.
-
-The alias list, catch-all status and chosen migration policy are not yet
-available. Email migration and DNS cutover therefore remain **BLOCKED**.
+No current forwarding rule needs migration. Do not click `Add Forwarder` or
+`Add Catch-All` merely to satisfy the deployment process. If a branded inbound
+address is required later, create it deliberately through Cloudflare Email
+Routing, enter the destination only in Cloudflare, verify that destination, and
+test external delivery before treating it as operational.
 
 ## Required change for Cloudflare Worker custom domains
 
@@ -100,12 +88,11 @@ The exact proposed change is:
 
 1. Add `fartacommerce.me` as a Cloudflare zone in the same account that owns
    the two Workers.
-2. After completing the Email Forwarding migration gate, recreate and verify all
-   approved existing records before delegation:
+2. Recreate and verify all approved operational records before delegation:
    - four apex GitHub Pages A records;
    - `www` CNAME;
-   - the approved replacement mail provider's exact MX/SPF and authentication
-     records; do not copy obsolete Namecheap forwarding records after migration;
+   - no mail records unless an approved mail service is configured; do not copy
+     the unused Namecheap forwarding MX/SPF records as if they were operational;
    - existing verification TXT;
    - `api-staging` Northflank CNAME;
    - `_acme-challenge.api-staging` Northflank CNAME.

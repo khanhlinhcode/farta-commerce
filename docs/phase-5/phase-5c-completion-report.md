@@ -120,10 +120,9 @@ capacity evidence is not treated as permanently remediated.
   read-only for zones and lacks DNS-record write permission. No Namecheap API
   credential is configured, and AXFR is refused, so complete record parity and
   nameserver mutation remain fail-closed.
-- The stakeholder confirmed that Namecheap Email Forwarding is actively used.
-  Namecheap's documented forwarding boundary depends on its DNS service, so
-  nameserver cutover is now explicitly blocked until aliases are inventoried,
-  migrated and externally tested on an approved replacement route.
+- The Namecheap Domain screen confirmed that no Email Redirect or catch-all is
+  configured. Email migration is therefore not a cutover blocker; the existing
+  forwarding MX/SPF records reflect the selected mail mode, not an active rule.
 - The exact DNS delegation and record-preservation plan is documented in
   `staging-domain-security-review.md` and awaits explicit approval.
 - Current Worker origins have exact CORS behavior and an untrusted origin is
@@ -142,7 +141,7 @@ not executed while domain/provider/capacity work is incomplete, so rollback is
 
 | Acceptance criterion                               | Status                                                                      |
 | -------------------------------------------------- | --------------------------------------------------------------------------- |
-| Storefront/Admin custom domains and TLS            | BLOCKED — active email forwarding must be migrated before DNS cutover       |
+| Storefront/Admin custom domains and TLS            | BLOCKED — complete DNS inventory and Cloudflare write access required       |
 | API custom domain healthy                          | PASS                                                                        |
 | Staging non-indexable                              | PASS on current Worker URL                                                  |
 | Final-domain cookies/CORS/CSP/CSRF                 | BLOCKED — final domains absent                                              |
