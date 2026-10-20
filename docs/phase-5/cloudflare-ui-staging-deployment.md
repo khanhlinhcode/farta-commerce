@@ -9,8 +9,8 @@ proxy API traffic to the existing Northflank NestJS service.
 
 | Application | Runtime                                                 | Staging URL                                                     | Cloudflare version                     |
 | ----------- | ------------------------------------------------------- | --------------------------------------------------------------- | -------------------------------------- |
-| Storefront  | Next.js 16.4.2 through `@opennextjs/cloudflare` 1.20.12 | `https://farta-storefront-staging.linhto01012000cm.workers.dev` | `48d3a6a4-3a70-4675-bc32-013b4e6bff2b` |
-| Admin       | Vite static assets plus a bounded `/api/*` Worker proxy | `https://farta-admin-staging.linhto01012000cm.workers.dev`      | `01f02fff-6045-45c8-9f43-f7821eff33f8` |
+| Storefront  | Next.js 16.4.2 through `@opennextjs/cloudflare` 1.20.12 | `https://farta-storefront-staging.linhto01012000cm.workers.dev` | `b24843d1-36f9-4a22-a966-c9f9b81861e5` |
+| Admin       | Vite static assets plus a bounded `/api/*` Worker proxy | `https://farta-admin-staging.linhto01012000cm.workers.dev`      | `8248a66a-3fdf-436c-bcb6-acf392cadd09` |
 
 Both Workers now use `https://api-staging.fartacommerce.me`. The hostname
 resolves through the Northflank custom-domain target, presents a valid TLS
@@ -82,6 +82,8 @@ Results:
 - Storefront Worker bundle: 6,061.88 KiB raw, 1,218.30 KiB gzip; startup 16 ms.
 - Admin Worker code: 1.15 KiB raw, 0.55 KiB gzip; startup 2 ms. Static assets
   are uploaded separately.
+- Final Cloudflare deployments used the pinned, release-age-compliant Wrangler
+  4.151.1 package from the repository lockfile.
 - `/`, `/shop`, `/login`, both Admin SPA routes, and both proxied API health
   paths returned HTTP 200.
 - Browser smoke at 390x844 and 1440x900 found no horizontal overflow, page
