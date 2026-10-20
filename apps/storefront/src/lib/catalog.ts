@@ -104,12 +104,15 @@ export type CatalogQuery = {
 const apiBase = (
   process.env.API_INTERNAL_URL ?? "http://localhost:4000"
 ).replace(/\/$/, "");
+const bypassCatalogCache = process.env.CATALOG_CACHE_MODE === "no-store";
 
 async function publicRequest<T>(path: string): Promise<CatalogResult<T>> {
   try {
     const response = await fetch(`${apiBase}/api/v1${path}`, {
       headers: { Accept: "application/json" },
-      next: { revalidate: 60 },
+      ...(bypassCatalogCache
+        ? { cache: "no-store" as const }
+        : { next: { revalidate: 60 } }),
       signal: AbortSignal.timeout(5_000),
     });
     if (response.status === 404) return { ok: false, error: "NOT_FOUND" };

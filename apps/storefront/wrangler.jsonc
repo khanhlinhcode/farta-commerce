@@ -1,0 +1,20 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "farta-storefront-staging",
+  "main": ".open-next/worker.js",
+  "compatibility_date": "2026-10-20",
+  "compatibility_flags": ["nodejs_compat", "global_fetch_strictly_public"],
+  "workers_dev": true,
+  "preview_urls": true,
+  "assets": {
+    "directory": ".open-next/assets",
+    "binding": "ASSETS",
+  },
+  "vars": {
+    "API_INTERNAL_URL": "https://http--farta-api--fjb5kqgqg6nn.code.run",
+    "CATALOG_CACHE_MODE": "no-store",
+    "NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME": "ddkizvngm",
+    "NEXT_PUBLIC_SITE_URL": "https://farta-storefront-staging.linhto01012000cm.workers.dev",
+    "NEXT_PUBLIC_INDEXABLE": "false",
+  },
+}

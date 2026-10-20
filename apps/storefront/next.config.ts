@@ -7,6 +7,7 @@ const apiTarget =
     : undefined);
 const cloudName = process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME;
 const isDevelopment = process.env.NODE_ENV === "development";
+const isCloudflareWorker = process.env.CLOUDFLARE_WORKERS === "1";
 const cloudinarySource = cloudName ? " https://res.cloudinary.com" : "";
 const contentSecurityPolicy = [
   "default-src 'self'",
@@ -29,6 +30,9 @@ const nextConfig: NextConfig = {
   reactStrictMode: true,
   transpilePackages: ["@farta/ui", "@farta/types"],
   images: {
+    // Cloudinary already performs delivery transformations. The staging Worker
+    // deliberately avoids the optional Cloudflare Images binding.
+    unoptimized: isCloudflareWorker,
     maximumRedirects: 0,
     remotePatterns: [
       {
