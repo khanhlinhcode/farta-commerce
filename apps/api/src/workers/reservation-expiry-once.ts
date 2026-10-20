@@ -5,7 +5,6 @@ import { ConfigService } from "@nestjs/config";
 import { NestFactory } from "@nestjs/core";
 import { randomUUID } from "node:crypto";
 
-import { AppModule } from "../app.module";
 import type { Environment } from "../config/environment";
 import { ReservationsService } from "../reservations/reservations.service";
 
@@ -13,8 +12,12 @@ const logger = new Logger("ReservationExpiryOnce");
 
 type ApplicationContextFactory = () => Promise<INestApplicationContext>;
 
-const createApplicationContext: ApplicationContextFactory = () =>
-  NestFactory.createApplicationContext(AppModule);
+const createApplicationContext: ApplicationContextFactory = async () => {
+  // Keep the production module bootstrap lazy so unit tests that inject an
+  // application context do not load and validate the complete runtime env.
+  const { AppModule } = await import("../app.module");
+  return NestFactory.createApplicationContext(AppModule);
+};
 
 export async function runReservationExpiryOnce(
   createContext: ApplicationContextFactory = createApplicationContext,
