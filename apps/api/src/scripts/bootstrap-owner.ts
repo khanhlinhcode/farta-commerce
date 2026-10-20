@@ -2,45 +2,121 @@ import "reflect-metadata";
 
 import { ConfigService } from "@nestjs/config";
 import { NestFactory } from "@nestjs/core";
+import { getConnectionToken } from "@nestjs/mongoose";
+import { readFileSync } from "node:fs";
+import type { Connection } from "mongoose";
 
 import { AppModule } from "../app.module";
 import type { Environment } from "../config/environment";
 import { PasswordService } from "../auth/services/password.service";
 import { UsersService } from "../auth/services/users.service";
 
-async function bootstrapOwner(): Promise<void> {
+type BootstrapInput = {
+  email: string;
+  password: string;
+  displayName: string;
+};
+
+export function assertOwnerBootstrapEnvironment(
+  appEnvironment: Environment["APP_ENV"],
+  stagingGate: string | undefined,
+): void {
+  if (appEnvironment === "development" || appEnvironment === "test") return;
+  if (
+    appEnvironment === "staging" &&
+    stagingGate === "ONE_TIME_STAGING_OWNER_V1"
+  )
+    return;
+  throw new Error(
+    "Owner bootstrap is restricted to development/test or an explicitly enabled one-time staging run.",
+  );
+}
+
+function stagingInput(): BootstrapInput {
+  const path = process.env.STAGING_BOOTSTRAP_CONFIG_FILE;
+  if (!path) throw new Error("Set STAGING_BOOTSTRAP_CONFIG_FILE for staging.");
+  const parsed = JSON.parse(
+    readFileSync(path, "utf8"),
+  ) as Partial<BootstrapInput>;
+  if (
+    typeof parsed.email !== "string" ||
+    typeof parsed.password !== "string" ||
+    typeof parsed.displayName !== "string"
+  ) {
+    throw new Error("Staging bootstrap configuration is invalid.");
+  }
+  return {
+    email: parsed.email,
+    password: parsed.password,
+    displayName: parsed.displayName,
+  };
+}
+
+export async function bootstrapOwner(): Promise<void> {
   const app = await NestFactory.createApplicationContext(AppModule, {
     logger: ["error", "warn"],
   });
   try {
     const config = app.get<ConfigService<Environment, true>>(ConfigService);
     const appEnvironment = config.get("APP_ENV", { infer: true });
-    if (appEnvironment !== "development" && appEnvironment !== "test")
-      throw new Error("Owner bootstrap is restricted to development and test.");
-
-    const email = config.get("BOOTSTRAP_OWNER_EMAIL", { infer: true });
-    const password = config.get("BOOTSTRAP_OWNER_PASSWORD", { infer: true });
-    const displayName = config.get("BOOTSTRAP_OWNER_DISPLAY_NAME", {
-      infer: true,
-    });
-    if (!email || !displayName || password.length < 12)
+    assertOwnerBootstrapEnvironment(
+      appEnvironment,
+      process.env.ALLOW_STAGING_OWNER_BOOTSTRAP,
+    );
+    const input =
+      appEnvironment === "staging"
+        ? stagingInput()
+        : {
+            email: config.get("BOOTSTRAP_OWNER_EMAIL", { infer: true }),
+            password: config.get("BOOTSTRAP_OWNER_PASSWORD", { infer: true }),
+            displayName: config.get("BOOTSTRAP_OWNER_DISPLAY_NAME", {
+              infer: true,
+            }),
+          };
+    const minimumLength = appEnvironment === "staging" ? 20 : 12;
+    if (
+      !input.email ||
+      !input.displayName ||
+      input.password.length < minimumLength
+    )
       throw new Error(
-        "Set BOOTSTRAP_OWNER_EMAIL, BOOTSTRAP_OWNER_DISPLAY_NAME and a password of at least 12 characters.",
+        `Set owner email, display name and a password of at least ${minimumLength} characters.`,
       );
 
     const passwords = app.get(PasswordService);
     const users = app.get(UsersService);
+    const connection = app.get<Connection>(getConnectionToken());
+    const normalizedEmail = users.normalizeEmail(input.email);
+    const existingOwner = await connection.collection("users").findOne({
+      roles: "OWNER",
+      status: "ACTIVE",
+    });
+    if (existingOwner) {
+      if (existingOwner.normalizedEmail === normalizedEmail) {
+        process.stdout.write("Owner already exists; no changes applied.\n");
+        return;
+      }
+      throw new Error(
+        "An active OWNER already exists; refusing to create another bootstrap owner.",
+      );
+    }
     await users.createDevelopmentOwner({
-      email,
-      displayName,
-      passwordHash: await passwords.hash(password),
+      email: input.email,
+      displayName: input.displayName,
+      passwordHash: await passwords.hash(input.password),
     });
     process.stdout.write(
-      "Development owner created. Clear bootstrap variables now.\n",
+      "Owner created. Clear the one-time bootstrap input now.\n",
     );
   } finally {
     await app.close();
   }
 }
 
-void bootstrapOwner();
+if (require.main === module) {
+  void bootstrapOwner().catch((error: unknown) => {
+    const message = error instanceof Error ? error.message : "Unknown error";
+    process.stderr.write(`Owner bootstrap failed: ${message}\n`);
+    process.exitCode = 1;
+  });
+}

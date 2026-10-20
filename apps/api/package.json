@@ -11,6 +11,7 @@
     "worker:reservations:dev": "node scripts/dev.mjs dist/workers/reservation-expiry.worker.js",
     "bootstrap:owner": "pnpm build && node dist/scripts/bootstrap-owner.js",
     "seed:development": "pnpm build && node --env-file=.env dist/scripts/development-seed.js",
+    "seed:staging-sample": "node dist/scripts/staging-sample-seed.js",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "test": "vitest run",
     "test:e2e": "vitest run --config vitest.e2e.config.mts"

@@ -5,6 +5,8 @@ import {
   assertSeedOwnership,
   parseDevelopmentSeedManifest,
 } from "./development-seed";
+import { assertOwnerBootstrapEnvironment } from "./bootstrap-owner";
+import { assertStagingSampleSeedEnvironment } from "./staging-sample-seed";
 
 const asset = (id: string, suffix: string) => ({
   id,
@@ -84,5 +86,36 @@ describe("development seed safety", () => {
         "product:test",
       ),
     ).toThrow(/namespace collision/);
+  });
+
+  it("requires explicit one-time gates for staging bootstrap and sample seed", () => {
+    expect(() =>
+      assertOwnerBootstrapEnvironment("staging", "ONE_TIME_STAGING_OWNER_V1"),
+    ).not.toThrow();
+    expect(() => assertOwnerBootstrapEnvironment("staging", undefined)).toThrow(
+      /explicitly enabled/,
+    );
+    expect(() =>
+      assertOwnerBootstrapEnvironment(
+        "production",
+        "ONE_TIME_STAGING_OWNER_V1",
+      ),
+    ).toThrow(/restricted/);
+
+    expect(() =>
+      assertStagingSampleSeedEnvironment(
+        "staging",
+        "ONE_TIME_STAGING_SAMPLE_V1",
+      ),
+    ).not.toThrow();
+    expect(() =>
+      assertStagingSampleSeedEnvironment("development", undefined),
+    ).toThrow(/APP_ENV=staging/);
+    expect(() =>
+      assertStagingSampleSeedEnvironment(
+        "production",
+        "ONE_TIME_STAGING_SAMPLE_V1",
+      ),
+    ).toThrow(/APP_ENV=staging/);
   });
 });

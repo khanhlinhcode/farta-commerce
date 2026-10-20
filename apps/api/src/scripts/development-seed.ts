@@ -23,7 +23,7 @@ const SEED_MEDIA_MANIFEST = resolve(
 const SEED_TAG = "development-seed";
 
 type SeedActor = { userId: string; requestId: string };
-type SeedStats = { created: number; updated: number; skipped: number };
+export type SeedStats = { created: number; updated: number; skipped: number };
 type SeedAssetKey =
   | "heroDesktop"
   | "heroMobile"
@@ -37,7 +37,7 @@ type SeedAsset = {
   height: number;
   altText: string;
 };
-type SeedMediaManifest = {
+export type SeedMediaManifest = {
   schemaVersion: 1;
   provider: "CLOUDINARY";
   generatedBy: string;
@@ -282,31 +282,28 @@ async function validateMedia(
   }
 }
 
-async function runDevelopmentSeed(
+export async function runSampleCatalogSeed(
   app: INestApplicationContext,
+  options: {
+    actorEmail: string;
+    manifest: SeedMediaManifest;
+    requestPrefix: string;
+    inventoryReason: string;
+    inventoryIdempotencyPrefix: string;
+  },
 ): Promise<SeedStats> {
-  assertDevelopmentSeedEnvironment(process.env.APP_ENV);
-  const actorEmail = process.env.DEVELOPMENT_SEED_ACTOR_EMAIL?.trim();
-  if (!actorEmail) {
-    throw new Error(
-      "Set DEVELOPMENT_SEED_ACTOR_EMAIL to an existing active OWNER account.",
-    );
-  }
-
   const connection = app.get<Connection>(getConnectionToken());
   const users = app.get(UsersService);
-  const actorUser = await users.findForLogin(actorEmail);
+  const actorUser = await users.findForLogin(options.actorEmail);
   if (
     !actorUser ||
     actorUser.status !== "ACTIVE" ||
     !actorUser.roles.includes("OWNER")
   ) {
-    throw new Error("Development seed actor must be an existing active OWNER.");
+    throw new Error("Sample seed actor must be an existing active OWNER.");
   }
 
-  const manifest = parseDevelopmentSeedManifest(
-    readFileSync(SEED_MEDIA_MANIFEST, "utf8"),
-  );
+  const manifest = options.manifest;
   await validateMedia(connection, manifest);
 
   const categoryService = app.get(CategoriesService);
@@ -316,7 +313,7 @@ async function runDevelopmentSeed(
   const bannerService = app.get(BannersService);
   const actor: SeedActor = {
     userId: actorUser.id,
-    requestId: `development-seed-${randomUUID()}`,
+    requestId: `${options.requestPrefix}-${randomUUID()}`,
   };
   const stats: SeedStats = { created: 0, updated: 0, skipped: 0 };
   const categoryIds = new Map<string, string>();
@@ -480,8 +477,8 @@ async function runDevelopmentSeed(
         await inventoryService.adjust(
           variantId,
           variant.stock,
-          "Initial development catalog stock",
-          `development-seed-v1:${variant.sku}:stock:${variant.stock}`,
+          options.inventoryReason,
+          `${options.inventoryIdempotencyPrefix}:${variant.sku}:stock:${variant.stock}`,
           actor,
         );
         stats.updated += 1;
@@ -561,6 +558,27 @@ async function runDevelopmentSeed(
   }
 
   return stats;
+}
+
+async function runDevelopmentSeed(
+  app: INestApplicationContext,
+): Promise<SeedStats> {
+  assertDevelopmentSeedEnvironment(process.env.APP_ENV);
+  const actorEmail = process.env.DEVELOPMENT_SEED_ACTOR_EMAIL?.trim();
+  if (!actorEmail) {
+    throw new Error(
+      "Set DEVELOPMENT_SEED_ACTOR_EMAIL to an existing active OWNER account.",
+    );
+  }
+  return runSampleCatalogSeed(app, {
+    actorEmail,
+    manifest: parseDevelopmentSeedManifest(
+      readFileSync(SEED_MEDIA_MANIFEST, "utf8"),
+    ),
+    requestPrefix: "development-seed",
+    inventoryReason: "Initial development catalog stock",
+    inventoryIdempotencyPrefix: "development-seed-v1",
+  });
 }
 
 async function main(): Promise<void> {

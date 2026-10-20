@@ -1,10 +1,12 @@
 import { HttpStatus, Inject, Injectable } from "@nestjs/common";
+import { ConfigService } from "@nestjs/config";
 import { InjectConnection, InjectModel } from "@nestjs/mongoose";
 import type { Connection, Model } from "mongoose";
 
 import { AuditService } from "../audit/audit.service";
 import { isDuplicateKey, objectId } from "../catalog/catalog.utils";
 import { ApiException } from "../common/api-exception";
+import type { Environment } from "../config/environment";
 import { CloudinarySignatureService } from "./cloudinary-signature.service";
 import type { FinalizeMediaDto, MediaQueryDto } from "./dto/media.dto";
 import { MEDIA_FORMATS, type MediaResourceType } from "./media.constants";
@@ -15,6 +17,18 @@ import {
 
 type Actor = { userId: string; requestId: string };
 
+export type TrustedStagingMediaInput = {
+  publicId: string;
+  secureUrl: string;
+  resourceType: "image";
+  format: string;
+  width: number;
+  height: number;
+  bytes: number;
+  originalFilename: string;
+  altText: string;
+};
+
 @Injectable()
 export class MediaService {
   constructor(
@@ -24,6 +38,8 @@ export class MediaService {
     @Inject(CloudinarySignatureService)
     private readonly cloudinary: CloudinarySignatureService,
     @Inject(AuditService) private readonly audit: AuditService,
+    @Inject(ConfigService)
+    private readonly config: ConfigService<Environment, true>,
   ) {}
 
   authorizeUpload(resourceType: MediaResourceType = "image") {
@@ -144,6 +160,83 @@ export class MediaService {
       limit: query.limit,
       total,
     };
+  }
+
+  async registerTrustedStagingSample(
+    input: TrustedStagingMediaInput,
+    actor: Actor,
+  ) {
+    if (
+      this.config.get("APP_ENV", { infer: true }) !== "staging" ||
+      process.env.ALLOW_STAGING_SAMPLE_SEED !== "ONE_TIME_STAGING_SAMPLE_V1"
+    ) {
+      throw new Error(
+        "Trusted sample media registration is restricted to an explicitly enabled staging run.",
+      );
+    }
+    const url = new URL(input.secureUrl);
+    if (
+      url.protocol !== "https:" ||
+      url.hostname !== "res.cloudinary.com" ||
+      !url.pathname.includes("/image/upload/") ||
+      !input.publicId.startsWith("farta/catalog/") ||
+      input.resourceType !== "image" ||
+      !MEDIA_FORMATS.image.includes(input.format.toLowerCase() as never) ||
+      !Number.isSafeInteger(input.width) ||
+      !Number.isSafeInteger(input.height) ||
+      !Number.isSafeInteger(input.bytes) ||
+      input.width < 1 ||
+      input.height < 1 ||
+      input.bytes < 1
+    ) {
+      throw new Error("Trusted staging sample media metadata is invalid.");
+    }
+    const existing = await this.assets.findOne({ publicId: input.publicId });
+    if (existing) {
+      if (
+        existing.archivedAt ||
+        existing.createdBy.toString() !== actor.userId ||
+        existing.secureUrl !== input.secureUrl ||
+        existing.resourceType !== input.resourceType ||
+        existing.format !== input.format.toLowerCase() ||
+        existing.width !== input.width ||
+        existing.height !== input.height ||
+        existing.bytes !== input.bytes
+      ) {
+        throw new Error(
+          `Staging sample media collision for ${input.publicId}; refusing to overwrite it.`,
+        );
+      }
+      return this.response(existing);
+    }
+    const asset = await this.assets.create({
+      provider: "CLOUDINARY",
+      publicId: input.publicId,
+      secureUrl: input.secureUrl,
+      resourceType: input.resourceType,
+      format: input.format.toLowerCase(),
+      width: input.width,
+      height: input.height,
+      bytes: input.bytes,
+      durationSeconds: null,
+      originalFilename: input.originalFilename,
+      altText: input.altText,
+      createdBy: objectId(actor.userId),
+      archivedAt: null,
+    });
+    await this.audit.record({
+      action: "media.staging-sample.import",
+      resourceType: "MediaAsset",
+      resourceId: asset.id,
+      actorId: actor.userId,
+      requestId: actor.requestId,
+      after: {
+        publicId: asset.publicId,
+        format: asset.format,
+        bytes: asset.bytes,
+      },
+    });
+    return this.response(asset);
   }
 
   async archive(mediaId: string, actor: Actor): Promise<void> {
