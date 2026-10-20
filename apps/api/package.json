@@ -7,6 +7,7 @@
     "build": "tsc -p tsconfig.build.json",
     "start": "node dist/main.js",
     "worker:reservations": "node dist/workers/reservation-expiry.worker.js",
+    "worker:reservations:once": "node dist/workers/reservation-expiry-once.js",
     "worker:reservations:dev": "node scripts/dev.mjs dist/workers/reservation-expiry.worker.js",
     "bootstrap:owner": "pnpm build && node dist/scripts/bootstrap-owner.js",
     "seed:development": "pnpm build && node --env-file=.env dist/scripts/development-seed.js",
