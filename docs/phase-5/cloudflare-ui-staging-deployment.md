@@ -9,12 +9,13 @@ proxy API traffic to the existing Northflank NestJS service.
 
 | Application | Runtime                                                 | Staging URL                                                     | Cloudflare version                     |
 | ----------- | ------------------------------------------------------- | --------------------------------------------------------------- | -------------------------------------- |
-| Storefront  | Next.js 16.4.2 through `@opennextjs/cloudflare` 1.20.12 | `https://farta-storefront-staging.linhto01012000cm.workers.dev` | `29c2cc3f-2df1-4dff-8e4a-a72bd83e6a12` |
-| Admin       | Vite static assets plus a bounded `/api/*` Worker proxy | `https://farta-admin-staging.linhto01012000cm.workers.dev`      | `41ab87b3-70c2-44d7-8545-b8ab2371dc6d` |
+| Storefront  | Next.js 16.4.2 through `@opennextjs/cloudflare` 1.20.12 | `https://farta-storefront-staging.linhto01012000cm.workers.dev` | `48d3a6a4-3a70-4675-bc32-013b4e6bff2b` |
+| Admin       | Vite static assets plus a bounded `/api/*` Worker proxy | `https://farta-admin-staging.linhto01012000cm.workers.dev`      | `01f02fff-6045-45c8-9f43-f7821eff33f8` |
 
-The API origin used by both Workers is the Northflank-generated HTTPS domain.
-The custom API domain remains outside this deployment because its
-Northflank-generated DNS target was not publicly resolvable during validation.
+Both Workers now use `https://api-staging.fartacommerce.me`. The hostname
+resolves through the Northflank custom-domain target, presents a valid TLS
+certificate and returned HTTP 200 from `/api/v1/health/ready` during final
+validation.
 
 ## Architecture
 
@@ -59,7 +60,7 @@ uv run ruff check .
 uv run pytest
 pnpm --filter @farta/admin build
 pnpm --filter @farta/admin exec wrangler deploy --dry-run
-pnpm --filter @farta/storefront build:cloudflare
+pnpm --filter @farta/storefront build:cloudflare:staging
 pnpm --filter @farta/storefront exec wrangler deploy --dry-run
 docker run --rm -v "$PWD:/repo" -w /repo zricethezav/gitleaks:v8.24.3 git --redact=100 --verbose --exit-code=2 --log-opts='--all'
 ```
@@ -90,7 +91,8 @@ Results:
   Cloudflare Static Assets `_headers` configuration.
 - Invalid Staff and Customer login attempts returned
   `401 AUTH_INVALID_CREDENTIALS` after a valid CSRF preflight. This confirms the
-  proxy preserved the cookie and the configured Origin passed CSRF validation.
+  proxies preserved the cookies and the configured Origins passed CSRF
+  validation after both UIs switched to the custom API domain.
 - Staging `robots.txt` returns `Disallow: /`.
 
 ## Known limitations and next checks
@@ -103,7 +105,9 @@ Results:
 3. `fartacommerce.me` is still delegated to Namecheap DNS. A Cloudflare Worker
    Custom Domain requires the hostname to be in a Cloudflare-managed zone.
    Nameserver migration must recreate and verify the existing GitHub Pages,
-   Northflank API, ACME, mail and verification records before cutover.
+   Northflank API, ACME, mail and verification records before cutover. The API
+   custom domain itself is working; `staging` and `admin-staging` UI hostnames
+   are the remaining custom-domain gap.
 4. No real Staff credential, customer registration, Cart, COD checkout, OAuth,
    Cloudinary upload, SePay Test transfer, or email delivery was exercised in
    this UI deployment.

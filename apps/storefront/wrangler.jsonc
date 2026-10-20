@@ -11,7 +11,7 @@
     "binding": "ASSETS",
   },
   "vars": {
-    "API_INTERNAL_URL": "https://http--farta-api--fjb5kqgqg6nn.code.run",
+    "API_INTERNAL_URL": "https://api-staging.fartacommerce.me",
     "CATALOG_CACHE_MODE": "no-store",
     "NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME": "ddkizvngm",
     "NEXT_PUBLIC_SITE_URL": "https://farta-storefront-staging.linhto01012000cm.workers.dev",
