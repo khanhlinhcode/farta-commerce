@@ -101,22 +101,23 @@ describe("ProductExperience", () => {
   });
 
   it("falls back to product media and clears stale Cart feedback", async () => {
-    vi.spyOn(globalThis, "fetch").mockResolvedValue(
-      new Response(
-        JSON.stringify({
-          id: "cart-id",
-          status: "ACTIVE",
-          currency: "VND",
-          version: 1,
-          itemCount: 1,
-          subtotal: 199_000,
-          total: 199_000,
-          expiresAt: new Date().toISOString(),
-          conflicts: [],
-          items: [],
-        }),
-        { status: 201, headers: { "content-type": "application/json" } },
-      ),
+    vi.spyOn(globalThis, "fetch").mockImplementation(
+      async () =>
+        new Response(
+          JSON.stringify({
+            id: "cart-id",
+            status: "ACTIVE",
+            currency: "VND",
+            version: 1,
+            itemCount: 1,
+            subtotal: 199_000,
+            total: 199_000,
+            expiresAt: new Date().toISOString(),
+            conflicts: [],
+            items: [],
+          }),
+          { status: 201, headers: { "content-type": "application/json" } },
+        ),
     );
     const { container, getByRole, getByText, queryByText } = renderExperience(
       <ProductExperience

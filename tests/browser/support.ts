@@ -210,8 +210,10 @@ export async function cancelBrowserOrder(page: Page, orderCode: string) {
   expect(status).toBe(201);
 }
 
-export async function cancelBrowserOrderAsStaff(orderCode: string) {
-  const cookies = await staffSessionCookies();
+async function cancelBrowserOrderWithStaffSession(
+  orderCode: string,
+  cookies: Awaited<ReturnType<typeof staffSessionCookies>>,
+) {
   const csrf = cookies.find(({ name }) => name.includes("staff_csrf"));
   if (!csrf) throw new Error("Staff session returned no CSRF cookie.");
   const response = await fetch(
@@ -228,6 +230,16 @@ export async function cancelBrowserOrderAsStaff(orderCode: string) {
     },
   );
   expect(response.status).toBe(201);
+}
+
+export function prepareBrowserOrderCancellation() {
+  const cookies = staffSessionCookies();
+  return async (orderCode: string) =>
+    cancelBrowserOrderWithStaffSession(orderCode, await cookies);
+}
+
+export async function cancelBrowserOrderAsStaff(orderCode: string) {
+  return prepareBrowserOrderCancellation()(orderCode);
 }
 
 export async function createOrderInNewContext(browser: Browser) {

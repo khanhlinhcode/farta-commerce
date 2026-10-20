@@ -1,6 +1,6 @@
 # FARTA Commerce
 
-Greenfield production-oriented fashion-commerce monorepo. Phase 0 architecture is approved; Phase 1 provides the executable security foundation; Phase 2 provides catalog and inventory; Phase 3 provides the premium storefront; Phase 4A provides the server-authoritative Cart; Phase 4B provides atomic Checkout, Reservations, immutable Orders and COD; Phase 4C adds the SePay/VietQR payment boundary and verified bank webhooks; Phase 4D adds permissioned Admin order operations, inventory sale/cancellation workflows, reservation expiry and a notification outbox. Phase 4.1 adds local runtime stabilization, an idempotent development catalog seed, Chromium browser release coverage and feature-oriented Admin modules. The repository is **not production-ready**: real SePay Test-mode/live validation, notification delivery, production worker supervision, provider configuration and deployment validation remain gated work.
+Greenfield production-oriented fashion-commerce monorepo. Phase 0 architecture is approved; Phase 1 provides the executable security foundation; Phase 2 provides catalog and inventory; Phase 3 provides the premium storefront; Phase 4A provides the server-authoritative Cart; Phase 4B provides atomic Checkout, Reservations, immutable Orders and COD; Phase 4C adds the SePay/VietQR payment boundary and verified bank webhooks; Phase 4D adds permissioned Admin order operations, inventory sale/cancellation workflows, reservation expiry and a notification outbox. Phase 4.1 adds local runtime stabilization, an idempotent development catalog seed, browser release coverage and feature-oriented Admin modules. Phase 5B deploys and validates the Chromium staging commerce path. Phase 5C external-provider and custom-domain validation is in progress. The repository is **not production-ready**: real SePay Test-mode delivery, OAuth adapters, notification delivery, alerting, final custom-domain validation and rollback evidence remain gated work.
 
 ## Current status
 
@@ -8,16 +8,16 @@ Greenfield production-oriented fashion-commerce monorepo. Phase 0 architecture i
 | --------------------------------------------------- | --------------------------------------------------------------- |
 | Local commerce implementation and automated gates   | Implemented                                                     |
 | Development Cloudinary-backed catalog seed          | Implemented; environment-specific manifest required             |
-| Chromium Storefront/Admin browser release coverage  | Implemented locally                                             |
+| Chromium Storefront/Admin browser release coverage  | 31/31 passed against deployed staging                           |
 | CI browser lane                                     | Deferred until approved non-production media bootstrap exists   |
 | Release remediation                                 | Partial; correctness/Admin work landed locally, blockers remain |
-| Staging deployment and external-provider validation | Security defaults hardened; deployment blocked on inputs        |
+| Staging deployment and external-provider validation | Runtime deployed; Phase 5C provider/domain gates remain blocked |
 | Controlled AI shopping assistant                    | Phase 1 provider-off vertical slice implemented locally         |
 
-## Stack baseline (verified 2026-10-03)
+## Stack baseline (verified 2026-10-20)
 
 - Node.js 22.23.2, pnpm 10.34.3, TypeScript 5.9.3
-- Next.js 16.3.8 / React 19.3.0
+- Next.js 16.4.2 / React 19.3.0
 - Vite 8.3.2 / React 19.3.0
 - NestJS 12.1.2, MongoDB/Mongoose, Redis/ioredis
 - Python 3.12–3.14, FastAPI 0.142.2
@@ -67,7 +67,7 @@ cd apps/ai-service && uv run ruff check . && uv run pytest
 
 ### Browser release coverage
 
-Browser coverage is pinned to `@playwright/test` 1.64.0 and Chromium. After the development Cloudinary media manifest and catalog seed are available, install the matching browser once and provide an existing local STAFF/OWNER account through the process environment:
+Browser coverage is pinned to `@playwright/test` 1.64.0. Chromium remains the default; the runner also accepts `E2E_BROWSERS=firefox`, `webkit`, or a comma-separated combination. After the development Cloudinary media manifest and catalog seed are available, install the matching browser once and provide an existing local STAFF/OWNER account through the process environment:
 
 ```bash
 pnpm test:browser:install
@@ -78,7 +78,11 @@ pnpm test:browser
 
 For local-only use, the same `E2E_STAFF_EMAIL` and `E2E_STAFF_PASSWORD` values may instead be stored in the ignored `apps/api/.env`. They are loaded only by the Playwright runner and are filtered out of the API, Storefront and Admin child-process environments. Use a development-only account; never place production credentials in this file or commit them.
 
-`test:browser` reruns the idempotent development seed before Playwright. It starts API, Storefront and Admin through the checked-in `webServer` configuration, uses one Chromium worker, and never embeds credentials in source or snapshots. Update reviewed visual baselines only with `pnpm test:browser:update`.
+`test:browser` reruns the idempotent development seed before Playwright. It starts API, Storefront and Admin through the checked-in `webServer` configuration, uses one browser worker, and never embeds credentials in source or snapshots. Update reviewed Chromium visual baselines only with `pnpm test:browser:update`.
+
+Current deployed staging evidence and Phase 5C blockers are recorded under
+[`docs/phase-5/`](docs/phase-5/), especially
+[`phase-5c-completion-report.md`](docs/phase-5/phase-5c-completion-report.md).
 
 The CI browser lane is intentionally not enabled yet: a fresh CI MongoDB cannot reproduce the real Cloudinary-backed seed from the ignored environment-specific media manifest alone. A dedicated non-production Cloudinary account and an approved MediaAsset bootstrap/finalization mechanism are required first; CI must not substitute fake media or production provider credentials.
 

@@ -4,7 +4,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import Link from "next/link";
 import { useMemo, useState } from "react";
 
-import { addCartItem, cartQueryKey } from "@/lib/cart";
+import { addCartItem, cartQueryKey, getCart } from "@/lib/cart";
 import { formatVnd, type ProductVariant } from "@/lib/catalog";
 
 export function VariantSelector({
@@ -27,8 +27,17 @@ export function VariantSelector({
     [color, variants],
   );
   const add = useMutation({
-    mutationFn: () => {
+    mutationFn: async () => {
       if (!selectedVariant) throw new Error("VARIANT_REQUIRED");
+
+      // The header hydrates the guest Cart on mount. Wait for that shared
+      // query before mutating so two first requests cannot create competing
+      // guest-cart cookies and let the slower response overwrite the winner.
+      await queryClient.ensureQueryData({
+        queryKey: cartQueryKey,
+        queryFn: getCart,
+        staleTime: 15_000,
+      });
       return addCartItem(selectedVariant.id);
     },
     onSuccess: (cart) => {

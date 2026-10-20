@@ -110,12 +110,70 @@ describe("VariantSelector", () => {
     fireEvent.click(getByRole("button", { name: /Cream/ }));
     fireEvent.click(getByRole("button", { name: "Thêm vào giỏ" }));
 
-    await waitFor(() => expect(fetchMock).toHaveBeenCalledOnce());
-    expect(fetchMock).toHaveBeenCalledWith(
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(2));
+    expect(fetchMock).toHaveBeenNthCalledWith(
+      1,
+      "/api/v1/cart",
+      expect.objectContaining({ credentials: "include" }),
+    );
+    expect(fetchMock).toHaveBeenNthCalledWith(
+      2,
       "/api/v1/cart/items",
       expect.objectContaining({
         body: JSON.stringify({ variantId: "cream-m", quantity: 1 }),
       }),
+    );
+  });
+
+  it("waits for guest Cart hydration before the first mutation", async () => {
+    let resolveHydration: ((response: Response) => void) | undefined;
+    const hydration = new Promise<Response>((resolve) => {
+      resolveHydration = resolve;
+    });
+    const cart = {
+      id: "cart-id",
+      status: "ACTIVE",
+      currency: "VND",
+      version: 0,
+      itemCount: 0,
+      subtotal: 0,
+      total: 0,
+      expiresAt: new Date().toISOString(),
+      conflicts: [],
+      items: [],
+    };
+    const fetchMock = vi
+      .spyOn(globalThis, "fetch")
+      .mockImplementationOnce(() => hydration)
+      .mockResolvedValueOnce(
+        new Response(JSON.stringify({ ...cart, version: 1, itemCount: 1 }), {
+          status: 201,
+          headers: { "content-type": "application/json" },
+        }),
+      );
+
+    const { getByRole } = renderSelector(
+      <ControlledSelector variants={[variant("black-s", "Black", "S")]} />,
+    );
+    fireEvent.click(getByRole("button", { name: "Thêm vào giỏ" }));
+
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledOnce());
+    expect(fetchMock).toHaveBeenLastCalledWith(
+      "/api/v1/cart",
+      expect.objectContaining({ credentials: "include" }),
+    );
+
+    resolveHydration?.(
+      new Response(JSON.stringify(cart), {
+        status: 200,
+        headers: { "content-type": "application/json" },
+      }),
+    );
+
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(2));
+    expect(fetchMock).toHaveBeenLastCalledWith(
+      "/api/v1/cart/items",
+      expect.objectContaining({ method: "POST" }),
     );
   });
 

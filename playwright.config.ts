@@ -10,6 +10,50 @@ if (!["local", "staging"].includes(e2eTarget)) {
 }
 const isStagingTarget = e2eTarget === "staging";
 
+const supportedBrowsers = ["chromium", "firefox", "webkit"] as const;
+type SupportedBrowser = (typeof supportedBrowsers)[number];
+
+const requestedBrowsers = Array.from(
+  new Set(
+    (process.env.E2E_BROWSERS ?? "chromium")
+      .split(",")
+      .map((browser) => browser.trim())
+      .filter(Boolean),
+  ),
+);
+if (
+  requestedBrowsers.length === 0 ||
+  requestedBrowsers.some(
+    (browser) => !supportedBrowsers.includes(browser as SupportedBrowser),
+  )
+) {
+  throw new Error(
+    `E2E_BROWSERS must contain only: ${supportedBrowsers.join(", ")}.`,
+  );
+}
+
+function browserProject(browser: SupportedBrowser) {
+  switch (browser) {
+    case "chromium":
+      return {
+        name: browser,
+        use: { ...devices["Desktop Chrome"], browserName: browser },
+      } as const;
+    case "firefox":
+      return {
+        name: browser,
+        testIgnore: /visual\.spec\.ts/,
+        use: { ...devices["Desktop Firefox"], browserName: browser },
+      } as const;
+    case "webkit":
+      return {
+        name: browser,
+        testIgnore: /visual\.spec\.ts/,
+        use: { ...devices["Desktop Safari"], browserName: browser },
+      } as const;
+  }
+}
+
 function localEnvironmentValue(name: string): string | undefined {
   if (process.env[name]) return process.env[name];
   if (process.env.CI || isStagingTarget) return undefined;
@@ -100,12 +144,9 @@ export default defineConfig({
     timezoneId: "Asia/Ho_Chi_Minh",
     colorScheme: "light",
   },
-  projects: [
-    {
-      name: "chromium",
-      use: { ...devices["Desktop Chrome"], browserName: "chromium" },
-    },
-  ],
+  projects: requestedBrowsers.map((browser) =>
+    browserProject(browser as SupportedBrowser),
+  ),
   webServer: isStagingTarget
     ? undefined
     : [

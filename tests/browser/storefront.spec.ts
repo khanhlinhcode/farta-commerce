@@ -5,6 +5,7 @@ import {
   assertNoHorizontalOverflow,
   cancelBrowserOrderAsStaff,
   fillCheckout,
+  prepareBrowserOrderCancellation,
   registerCustomer,
   seed,
 } from "./support";
@@ -99,6 +100,7 @@ test("guest COD checkout supports safe lookup", async ({ page }) => {
 test("guest Cart merges on registration and customer order survives re-login", async ({
   page,
 }) => {
+  const cancelOrder = prepareBrowserOrderCancellation();
   await addSeedProductToCart(page);
   const credentials = await registerCustomer(page);
   await page.goto("/cart");
@@ -121,7 +123,7 @@ test("guest Cart merges on registration and customer order survives re-login", a
   await page.getByRole("link", { name: new RegExp(code) }).click();
   await expect(page).toHaveURL(new RegExp(`/account/orders/${code}$`));
   await expect(page.getByText(`Đơn hàng ${code}`)).toBeVisible();
-  await cancelBrowserOrderAsStaff(code);
+  await cancelOrder(code);
 });
 
 test("concurrent duplicate checkout creates one logical order", async ({
