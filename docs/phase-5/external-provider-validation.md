@@ -17,6 +17,7 @@ evidence produced by an external provider. It contains no credential value.
 | Google OAuth        | State/nonce/S256 PKCE transaction foundation and disabled-provider status exist                         | There is no concrete Google adapter or public start/callback route, and no development credentials are configured | BLOCKED      |
 | Apple OAuth         | Provider-neutral transaction foundation exists                                                          | There is no concrete Apple adapter/public callback and no Apple development credentials are configured            | BLOCKED      |
 | Transactional email | Transactional notification intents are persisted idempotently in the outbox                             | No delivery provider or retry/dead-letter worker is configured                                                    | BLOCKED      |
+| Domain forwarding   | Namecheap MX/SPF and active forwarding use are confirmed                                                | Alias inventory and tested replacement route are not yet available                                                | BLOCKED      |
 | Monitoring/alerts   | Structured redacted logs, request IDs and health endpoints exist                                        | No alert integration/delivery evidence is configured                                                              | BLOCKED      |
 | Gemini/Groq         | Deterministic Product Advisor provider-off path was previously validated                                | Live inference remains intentionally disabled                                                                     | OUT OF SCOPE |
 
@@ -81,6 +82,14 @@ Order and payment events create retry-safe notification intents without making
 commerce transactions depend on email delivery. No SMTP/API provider, delivery
 worker or dead-letter policy is configured. Existing events therefore remain
 `PENDING`; no email-delivery claim is made.
+
+This application notification boundary is separate from the domain's existing
+Namecheap Email Forwarding. The stakeholder confirmed that forwarding is in
+active use. That service depends on Namecheap DNS according to Namecheap's
+current documentation, so the Cloudflare nameserver cutover is blocked until
+the aliases are inventoried and migrated to a verified replacement such as
+Cloudflare Email Routing or another approved mail provider. Destination mailbox
+values must not be committed or included in reports.
 
 ## Monitoring
 

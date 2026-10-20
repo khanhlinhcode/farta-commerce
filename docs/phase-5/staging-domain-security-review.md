@@ -2,7 +2,7 @@
 
 Date: 2026-10-20
 
-Status: **BLOCKED pending explicit DNS migration approval**
+Status: **BLOCKED pending email-forwarding migration and DNS approval**
 
 No DNS record, nameserver, Cloudflare zone or application origin was mutated
 during this review.
@@ -48,12 +48,47 @@ requires Namecheap `namecheap.domains.dns.getHosts` or an exported DNS record
 list from the Namecheap dashboard. Zone creation, record replication and
 nameserver cutover therefore remain fail-closed.
 
-The authoritative zone advertises Namecheap email-forwarding MX/SPF records,
-but this does not prove whether an actual forwarding alias is in use. Namecheap
-documents that its Email Forwarding service does not operate with custom
-nameservers. Stakeholder confirmation of the current mail use is required
-before delegation; copying the MX records is not treated as proof that the
-service will continue.
+The stakeholder confirmed on 2026-10-20 that at least one Namecheap Email
+Forwarding alias is actively used. Namecheap documents that Free Email
+Forwarding is available only while the domain uses Namecheap BasicDNS,
+PremiumDNS or FreeDNS. Its redirect/host-record controls are unavailable when
+the domain uses third-party nameservers. Therefore changing authoritative
+nameservers to Cloudflare before migrating and validating the alias would risk
+mail interruption. Copying Namecheap's MX/SPF values into Cloudflare is not
+treated as proof that the Namecheap forwarding backend will continue.
+
+Official sources checked 2026-10-20:
+
+- <https://www.namecheap.com/support/knowledgebase/article.aspx/308/2214/how-to-set-up-free-email-forwarding/>
+- <https://www.namecheap.com/support/knowledgebase/article.aspx/323/2214/why-cant-i-modify-email-domain-redirect-and-host-records-in-my-namecheap-account/>
+- <https://developers.cloudflare.com/email-service/get-started/route-emails/>
+- <https://developers.cloudflare.com/api/resources/email_routing/subresources/dns/methods/create/>
+
+## Email migration gate
+
+No nameserver change is allowed until an approved mail path passes all of the
+following:
+
+1. Inventory every active alias and whether a catch-all is enabled. Destination
+   mailbox values must be handled directly in the provider dashboard or secret
+   channel, not committed to this repository.
+2. Select one of these policies:
+   - migrate aliases to Cloudflare Email Routing, verify every destination,
+     create equivalent routing rules, and use Cloudflare-managed mail DNS;
+   - migrate to another approved mail provider and validate its MX/SPF/DKIM/DMARC
+     requirements;
+   - retain Namecheap BasicDNS and Email Forwarding, and defer Cloudflare Worker
+     custom domains while continuing to use the `workers.dev` staging URLs.
+3. Before nameserver cutover, send an external test message to every alias and
+   catch-all path using the current Namecheap configuration and record receipt.
+4. Configure and verify the replacement destination/rules before moving
+   nameservers. Cloudflare requires destination addresses to be verified before
+   they can be used by Email Routing rules.
+5. After cutover, repeat external delivery tests. If any alias fails, restore
+   Namecheap BasicDNS immediately and verify delivery before retrying.
+
+The alias list, catch-all status and chosen migration policy are not yet
+available. Email migration and DNS cutover therefore remain **BLOCKED**.
 
 ## Required change for Cloudflare Worker custom domains
 
@@ -65,11 +100,12 @@ The exact proposed change is:
 
 1. Add `fartacommerce.me` as a Cloudflare zone in the same account that owns
    the two Workers.
-2. After resolving the Email Forwarding checkpoint, recreate and verify all
+2. After completing the Email Forwarding migration gate, recreate and verify all
    approved existing records before delegation:
    - four apex GitHub Pages A records;
    - `www` CNAME;
-   - apex SPF TXT and all five Namecheap email-forwarding MX records;
+   - the approved replacement mail provider's exact MX/SPF and authentication
+     records; do not copy obsolete Namecheap forwarding records after migration;
    - existing verification TXT;
    - `api-staging` Northflank CNAME;
    - `_acme-challenge.api-staging` Northflank CNAME.
