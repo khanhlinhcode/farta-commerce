@@ -26,18 +26,20 @@ test("Storefront release routes have no horizontal page overflow at required wid
 }) => {
   test.setTimeout(180_000);
   await addSeedProductToCart(page);
-  for (const viewport of viewports) {
-    await page.setViewportSize(viewport);
-    for (const path of [
-      "/",
-      "/shop",
-      `/product/${seed.productSlug}`,
-      "/cart",
-      "/checkout",
-      "/order-lookup",
-      "/login",
-    ]) {
-      await page.goto(path);
+  for (const path of [
+    "/",
+    "/shop",
+    `/product/${seed.productSlug}`,
+    "/cart",
+    "/checkout",
+    "/order-lookup",
+    "/login",
+  ]) {
+    await page.setViewportSize(viewports[0]);
+    await page.goto(path);
+    await expect(page.locator("main:not(.page-loading)")).toBeVisible();
+    for (const viewport of viewports) {
+      await page.setViewportSize(viewport);
       await expect(page.locator("main:not(.page-loading)")).toBeVisible();
       await assertNoHorizontalOverflow(page);
     }
