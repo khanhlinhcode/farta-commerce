@@ -1,8 +1,9 @@
 # Provider compatibility review
 
-Access date: 2026-10-21
+Access date: 2026-10-22
 
-Only official provider and Pydantic documentation was used. No live inference request was issued.
+Only official provider and Pydantic documentation was used for compatibility claims. Live inference
+evidence is reported separately from source compatibility below.
 
 ## Installed framework compatibility
 
@@ -11,10 +12,10 @@ uses supported constructors for `GoogleModel`, `GoogleProvider`, `GroqModel`, `G
 `Agent`, typed function tools and `UsageLimits`. Local construction with non-secret placeholder
 keys confirmed the profiles below without a network request.
 
-| Candidate             | Locked model profile                                                              | Result                                  |
-| --------------------- | --------------------------------------------------------------------------------- | --------------------------------------- |
-| `gemini-3.8-flash`    | tools, tool-return schema, JSON schema/object output and tool combination enabled | source-compatible                       |
-| `openai/gpt-oss-120b` | tools, JSON schema/object output and graded reasoning enabled                     | source-compatible with limitation below |
+| Candidate               | Locked model profile                                                                                | Result                                  |
+| ----------------------- | --------------------------------------------------------------------------------------------------- | --------------------------------------- |
+| `gemini-3.5-flash-lite` | tools, tool-return schema, JSON schema/object output, minimal thinking and tool combination enabled | source-compatible                       |
+| `openai/gpt-oss-120b`   | tools, JSON schema/object output and graded reasoning enabled                                       | source-compatible with limitation below |
 
 Pydantic AI uses an output tool for the bare Pydantic `AgentFinalResponse`, rather than requiring a
 provider `response_format` call. This matters for Groq because Groq documents function tools and
@@ -24,7 +25,7 @@ Structured Outputs independently.
 
 Official sources:
 
-- <https://ai.google.dev/gemini-api/docs/models/gemini-3.8-flash>
+- <https://ai.google.dev/gemini-api/docs/models/gemini-3.5-flash-lite>
 - <https://ai.google.dev/gemini-api/docs/generate-content/function-calling>
 - <https://ai.google.dev/gemini-api/docs/structured-output>
 - <https://ai.google.dev/gemini-api/docs/rate-limits>
@@ -34,8 +35,8 @@ Official sources:
 
 Verified documentation states:
 
-- model ID `gemini-3.8-flash` is stable and supports function calling and structured output;
-- its thinking levels are `low`, `medium`, `high`; `minimal` is unsupported;
+- model ID `gemini-3.5-flash-lite` is stable and supports function calling and structured output;
+- its documented thinking levels include `minimal`, which is selected for this bounded read-only flow;
 - rate limits are project/tier/model dependent and the actual account limits must be checked in
   Google AI Studio; quota exhaustion returns a rate-limit error;
 - a Free Tier exists, but account eligibility and actual quotas are account-specific;
@@ -43,9 +44,14 @@ Verified documentation states:
   reviewers may process inputs/outputs. Sensitive, confidential or personal information must not
   be sent under that policy.
 
-Decision: **BLOCKED for live requests**. Source compatibility is verified, but the stakeholder has
-not yet confirmed the actual project's Free Tier status, billing state, quota and acceptance of the
-Unpaid Services data policy. FARTA must not send customer PII to live validation.
+The stakeholder supplied Google AI Studio evidence for a Free Tier project and explicitly approved
+a bounded synthetic-data canary. No customer PII was used. The canary established that the key,
+model and typed tool path work, but did not satisfy the release gate: two public flows completed and
+the third ended with `AI_LIMIT_EXCEEDED` after three catalog tool calls.
+
+Decision: **BLOCKED for continued live use**. The provider was disabled immediately after the first
+functional failure. The source now reserves the final model iteration for structured output, but
+that remediation has not been live-validated under a newly approved request budget.
 
 ## Groq
 
@@ -76,10 +82,16 @@ and prefers Gemini after stakeholder approval. No Groq live call was made.
 
 Before any call, record and approve all of the following:
 
-1. exact request count;
-2. provider/model (`Google Gemini`, `gemini-3.8-flash` proposed);
+1. exact request count and request-level telemetry enabled before the first call;
+2. provider/model (`Google Gemini`, `gemini-3.5-flash-lite` approved candidate);
 3. actual Free Tier eligibility and current quota from the account dashboard;
 4. billing disabled or an explicit bounded spend control;
 5. development-only synthetic prompts with no customer PII.
 
 No model ID, retry policy or provider will be silently substituted.
+
+The Phase 6B attempt also exposed a control failure: the approved ceiling was eight Google HTTP
+requests, while the observable lower bound was nine. The exact total is between nine and eleven
+because model-request telemetry was not attached for the first two public flows. No further live
+request is permitted until a new ceiling is approved and enforced independently of assumptions
+about how many model requests one Agent run will consume.

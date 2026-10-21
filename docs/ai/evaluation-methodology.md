@@ -20,7 +20,7 @@ Each case includes:
 - expected route class;
 - allowed read-only tools and a mandatory `all_commerce_mutations` forbidden policy;
 - grounding rule, expected response status and required behavior;
-- whether live model inference is required.
+- expected execution mode and whether live model inference is required.
 
 ## Predeclared structural release gates
 
@@ -42,10 +42,11 @@ cd apps/ai-service
 uv run python -m app.evaluation.agent_eval
 ```
 
-The evaluator validates dataset schema/uniqueness, runs the deterministic router once per case and
-reports route accuracy, tool-selection accuracy and router p50/p95 latency. It performs zero model
-or network calls. Failure-injection and model-required cases describe the expected downstream
-behavior but cannot establish live Agent quality without a provider.
+The evaluator validates dataset schema/uniqueness, runs the deterministic scope router once per case
+and reports semantic route accuracy, Agent execution-mode accuracy, bounded tool-hint accuracy and
+router p50/p95 latency. Supported product requests must resolve to `agent`; only clarification and
+unsupported policy decisions may bypass the model. The evaluator performs zero model or network
+calls, so it cannot establish live Agent quality without a provider.
 
 ## Live-provider measurement (blocked)
 

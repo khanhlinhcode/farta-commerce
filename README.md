@@ -1,42 +1,160 @@
 # FARTA Commerce
 
-Greenfield production-oriented fashion-commerce monorepo. Phase 0 architecture is approved; Phase 1 provides the executable security foundation; Phase 2 provides catalog and inventory; Phase 3 provides the premium storefront; Phase 4A provides the server-authoritative Cart; Phase 4B provides atomic Checkout, Reservations, immutable Orders and COD; Phase 4C adds the SePay/VietQR payment boundary and verified bank webhooks; Phase 4D adds permissioned Admin order operations, inventory sale/cancellation workflows, reservation expiry and a notification outbox. Phase 4.1 adds local runtime stabilization, an idempotent development catalog seed, browser release coverage and feature-oriented Admin modules. Phase 5B deploys and validates the Chromium staging commerce path. Phase 5C adds custom staging domains. Phase 5D validates a targeted Cloudflare Worker-capacity remediation candidate. The repository is **not production-ready**: real SePay Test-mode delivery, OAuth adapters, notification delivery, alerting, physical-device evidence and a sustained capacity decision remain gated work.
+Production-oriented fashion commerce platform built as a TypeScript/Python monorepo. FARTA combines
+a premium Next.js storefront, an operational React admin, a security-focused NestJS commerce API,
+and a private Pydantic AI Product Advisor that can access only allowlisted public catalog tools.
 
-## Current status
+> **Release status:** staging candidate. Core commerce and automated release gates are implemented;
+> production payment-provider delivery, OAuth, transactional email, alerting and production-scale
+> capacity are not yet validated. The Product Advisor source is deployed, but its Gemini provider is
+> currently disabled after the Phase 6B canary failed the required third consecutive public flow.
 
-| Scope                                               | Status                                                                                        |
-| --------------------------------------------------- | --------------------------------------------------------------------------------------------- |
-| Local commerce implementation and automated gates   | Implemented                                                                                   |
-| Development Cloudinary-backed catalog seed          | Implemented; environment-specific manifest required                                           |
-| Chromium/WebKit Storefront/Admin browser coverage   | Candidate passed 31/31 Chromium and 27/27 WebKit; sustained Free-plan capacity remains a risk |
-| CI browser lane                                     | Deferred until approved non-production media bootstrap exists                                 |
-| Release remediation                                 | Phase 5D committed deployment validated; sustained Free-plan capacity remains a risk          |
-| Staging deployment and external-provider validation | Custom domains deployed; provider/capacity gates remain blocked                               |
-| Controlled AI shopping assistant                    | Deterministic provider-off path deployed and validated                                        |
+## Live staging
 
-## Stack baseline (verified 2026-10-20)
+- Storefront: <https://staging.fartacommerce.me>
+- Admin: <https://admin-staging.fartacommerce.me>
+- API health: <https://api-staging.fartacommerce.me/api/v1/health/live>
 
-- Node.js 22.23.2, pnpm 10.34.3, TypeScript 5.9.3
-- Next.js 16.4.2 / React 19.3.0
-- Vite 8.3.2 / React 19.3.0
-- NestJS 12.1.2, MongoDB/Mongoose, Redis/ioredis
-- Python 3.12–3.14, FastAPI 0.142.2
+Staging is intentionally `noindex`. Test credentials and secrets are never stored in this repository.
 
-Next.js 16 requires Node.js 20.9+; NestJS 12 CommonJS consumption requires Node 20.19+ or 22.12+ on the Node 22 line. The repository pins Node 22.23.2. TypeScript stays on 5.9.3 because the selected lint toolchain currently declares support below 6.1.
+## Engineering highlights
 
-## Start
+- Server-authoritative catalog, variants, integer-VND pricing, inventory ledger and semantic stock
+  availability.
+- Guest and customer carts with ownership isolation, bounded cart merge and CSRF-protected
+  mutations.
+- Atomic checkout with price/stock revalidation, inventory reservations, immutable order snapshots,
+  idempotency and COD state separation.
+- Provider-neutral payment records, authenticated SePay-shaped webhook boundary, replay protection,
+  amount verification and explicit reconciliation conflicts.
+- Permission-based Admin catalog/order operations with audit trails and valid state transitions.
+- Premium responsive Storefront with Cloudinary media, product variants, filters, search, account and
+  order journeys.
+- Private FastAPI/Pydantic AI Product Advisor with typed tool calls, structured output validation,
+  bounded execution and authoritative NestJS re-hydration.
+- Cloudflare-hosted frontends and custom domains; NestJS/FastAPI services run on Northflank with
+  managed MongoDB/Redis boundaries.
+
+## Architecture
+
+```mermaid
+flowchart LR
+  Browser[Customer browser] --> Storefront[Next.js Storefront]
+  Staff[Staff browser] --> Admin[React Admin]
+  Storefront --> API[NestJS API]
+  Admin --> API
+  API --> Mongo[(MongoDB replica set)]
+  API --> Redis[(Redis)]
+  API --> Cloudinary[Cloudinary]
+  API --> AI[Private FastAPI + Pydantic AI]
+  AI -. provider disabled .-> Gemini[Gemini provider]
+  AI -->|HMAC signed, read-only tools| API
+  API --> SePay[SePay boundary]
+```
+
+The LLM is never a commerce authority. It has no database credentials and cannot mutate Cart,
+Order, Payment, Inventory, Account or Admin state. Every Product Advisor tool call returns through
+the authenticated NestJS Tool Gateway, and NestJS re-hydrates all model-selected product slugs
+before sending data to the browser.
+
+## Applications and stack
+
+| Workspace                | Responsibility                                  | Main technology                         |
+| ------------------------ | ----------------------------------------------- | --------------------------------------- |
+| `apps/storefront`        | Customer shopping experience                    | Next.js 16, React 19, Tailwind CSS 4    |
+| `apps/admin`             | Catalog, inventory, banner and order operations | React 19, Vite 8, TanStack Query        |
+| `apps/api`               | Auth and authoritative commerce domains         | NestJS 12, Mongoose 9, Redis            |
+| `apps/ai-service`        | Read-only Product Advisor                       | FastAPI, Pydantic AI 2.57, Google GenAI |
+| `packages/ui`            | Shared accessible primitives                    | React, TypeScript                       |
+| `packages/design-tokens` | Semantic design tokens                          | CSS/TypeScript                          |
+| `packages/types`         | Shared public contracts                         | TypeScript                              |
+
+Runtime baseline: Node.js `22.23.2`, pnpm `10.34.3`, TypeScript `5.9.3`, Python
+`>=3.12,<3.15`. Exact dependency versions are pinned in the lockfiles.
+
+## Implemented domains
+
+### Identity and security
+
+- Customer/staff realm separation, JWT access sessions and refresh rotation.
+- HttpOnly cookies, exact-origin CORS, CSRF protection and deployed HTTPS policy.
+- Granular permissions, object ownership checks, rate limits and redacted structured logs.
+- Explicit DTO allowlists and rejection of unknown/mass-assignment fields.
+
+### Catalog and media
+
+- Category hierarchy, Products, ProductVariants, unique slugs/SKUs and publication invariants.
+- Cloudinary-backed images/video metadata with controlled upload/finalization and reference safety.
+- Banner scheduling, safe internal CTA validation, public filters/search/sort and bounded pagination.
+- Append-oriented inventory transactions and atomic/idempotent adjustments.
+
+### Transactional commerce
+
+- Guest/authenticated Cart and deterministic ownership-safe merge.
+- Checkout preview and submission with server-side repricing and stock revalidation.
+- Atomic Reservations, inventory ledger updates, Order snapshots and Payment records.
+- COD, deposit/full-payment states, guest order lookup and customer order history.
+- Admin fulfillment/cancellation, reconciliation, reservation expiry and notification outbox.
+
+### Product Advisor
+
+The supported execution path is:
+
+```text
+Deterministic scope router
+  -> Pydantic AI Agent
+  -> typed allowlisted catalog tool
+  -> authenticated NestJS Tool Gateway
+  -> validated structured response
+  -> NestJS product re-hydration
+```
+
+Agent limits are fail-closed: maximum 3 model iterations, a configured ceiling of 3 tool calls, 768
+output tokens, a 25-second model timeout and a 60-second Agent timeout. Catalog tools are hidden
+after the second tool-bearing iteration so the final bounded iteration remains available for the
+structured response. Automatic provider fallback and retries are disabled.
+The model cannot answer supported catalog requests from router templates; it must use live Agent
+execution and authoritative tool observations. See [AI API contract](docs/api/ai-agent.md) and
+[evaluation methodology](docs/ai/evaluation-methodology.md).
+
+The staging provider is currently **off**. Two public Gemini Agent flows succeeded during the
+bounded Phase 6B canary; the third exhausted the Agent request budget after repeated catalog tool
+selection. A source guard now reserves the final model iteration for structured output, but it has
+not received a new live-provider validation because the approved request ceiling was exceeded.
+Provider-off requests fail safely with `AI_PROVIDER_DISABLED` while ordinary catalog browsing
+continues to work.
+
+## Run locally
+
+### Prerequisites
+
+- Node.js version from `.nvmrc`
+- pnpm through Corepack
+- Python 3.12–3.14 and `uv`
+- Docker Desktop for the local MongoDB replica set and Redis
+
+### Commerce applications
 
 ```bash
+corepack enable
+pnpm install --frozen-lockfile
+
 cp .env.example apps/api/.env
 cp apps/storefront/.env.example apps/storefront/.env.local
 cp apps/admin/.env.example apps/admin/.env.local
-corepack enable
-pnpm install --frozen-lockfile
+
 pnpm infra:up
 pnpm dev
 ```
 
-Run the AI service separately:
+Default local endpoints:
+
+- Storefront: `http://localhost:3000`
+- API: `http://localhost:4000`
+- Admin: `http://localhost:5173`
+- AI service: `http://localhost:8000`
+
+### AI service
 
 ```bash
 cd apps/ai-service
@@ -44,41 +162,50 @@ uv sync --frozen
 uv run uvicorn app.main:app --reload --port 8000
 ```
 
-The Product Advisor is fail-closed by default. Keep `AI_ENABLED=false` until
-`AI_GATEWAY_SHARED_SECRET`, `AI_TOOLS_SHARED_SECRET` and
-`AI_CONVERSATION_SECRET` are generated independently and configured in both the
-appropriate API/AI-service environments. Gemini and Groq have separate enable and
-free-tier-verification flags; a public pricing page is not sufficient evidence to
-turn either provider on. See [`docs/api/ai-agent.md`](docs/api/ai-agent.md).
+The AI boundary is disabled by default. Generate independent gateway/tool/conversation secrets and
+configure them only in ignored local env files or a deployment secret manager. Never expose provider
+keys through `NEXT_PUBLIC_*` or `VITE_*`.
 
-The staging gateway currently enables only the deterministic provider-off
-Product Advisor. Phase 6 adds provider-independent Agent grounding, safe observability,
-an independent Vietnamese evaluation dataset and explicit failure UX in source; the
-current Phase 6 source revision has not been deployed to staging. Gemini and Groq remain disabled. Custom-domain cutover evidence
-is recorded in
-[`docs/phase-5/custom-domain-and-ai-staging-cutover.md`](docs/phase-5/custom-domain-and-ai-staging-cutover.md).
-The current Worker remediation evidence is in
-[`docs/phase-5/worker-capacity-remediation.md`](docs/phase-5/worker-capacity-remediation.md).
-The Phase 6 evidence boundary and current blockers are recorded under
-[`docs/phase-6/`](docs/phase-6/) and [`docs/ai/`](docs/ai/).
+### Development catalog
 
-Default local ports: storefront `3000`, API `4000`, admin `5173`, AI service `8000`, MongoDB `27017`, Redis `6379`.
+The seed is development-only and refuses staging/production. It requires finalized development
+media and an existing local OWNER identity; it never creates a default password.
+
+```bash
+pnpm --filter @farta/api seed:development
+```
+
+See [development seed report](docs/phase-4/development-seed-report.md) for the media manifest and
+idempotency rules.
 
 ## Quality gates
 
 ```bash
+pnpm install --frozen-lockfile
+pnpm format:check
 pnpm lint
 pnpm typecheck
 pnpm test
 pnpm test:e2e
 pnpm build
 pnpm audit:prod
-cd apps/ai-service && uv run ruff check . && uv run pytest
+
+cd apps/ai-service
+uv sync --frozen
+uv run ruff format --check .
+uv run ruff check .
+uv run pytest
+uv run python -m app.evaluation.agent_eval
 ```
 
-### Browser release coverage
+The versioned Vietnamese Product Advisor evaluation contains 62 cases across search, detail,
+availability, styling, ambiguity, adversarial input, provider/tool failure and multi-turn context.
+It checks routing/tool policy without spending provider quota; live-provider evidence is reported
+separately.
 
-Browser coverage is pinned to `@playwright/test` 1.64.0. Chromium remains the default; the runner also accepts `E2E_BROWSERS=firefox`, `webkit`, or a comma-separated combination. After the development Cloudinary media manifest and catalog seed are available, install the matching browser once and provide an existing local STAFF/OWNER account through the process environment:
+Browser coverage uses Playwright `1.64.0` and supports Chromium, Firefox and WebKit. Local execution
+requires the approved development media seed and test-only staff credentials supplied through the
+process environment.
 
 ```bash
 pnpm test:browser:install
@@ -87,66 +214,54 @@ E2E_STAFF_PASSWORD=<development-staff-password> \
 pnpm test:browser
 ```
 
-For local-only use, the same `E2E_STAFF_EMAIL` and `E2E_STAFF_PASSWORD` values may instead be stored in the ignored `apps/api/.env`. They are loaded only by the Playwright runner and are filtered out of the API, Storefront and Admin child-process environments. Use a development-only account; never place production credentials in this file or commit them.
+## Security and correctness invariants
 
-`test:browser` reruns the idempotent development seed before Playwright. It starts API, Storefront and Admin through the checked-in `webServer` configuration, uses one browser worker, and never embeds credentials in source or snapshots. Update reviewed Chromium visual baselines only with `pnpm test:browser:update`.
+- Money is integer VND and always recalculated by the server.
+- Public APIs expose semantic availability, not internal warehouse quantity.
+- Inventory mutation and its ledger entry share a short MongoDB transaction.
+- Checkout idempotency binds owner, operation, request hash and logical result.
+- Payment redirects are informational; authenticated webhook/provider verification is authoritative.
+- Duplicate checkout/webhook/worker delivery must have one effective result.
+- Product, banner and Agent content is rendered as plain data, never unsanitized HTML.
+- Secrets are excluded from Git, public client bundles, logs, reports and test artifacts.
 
-Current deployed staging evidence and current remediation limits are recorded under
-[`docs/phase-5/`](docs/phase-5/), especially
-[`worker-capacity-remediation.md`](docs/phase-5/worker-capacity-remediation.md).
+Architecture decisions live under [`docs/adr`](docs/adr/), API contracts under
+[`docs/api`](docs/api/) and phase evidence under [`docs/phase-1`](docs/phase-1/) through
+[`docs/phase-6`](docs/phase-6/).
 
-The CI browser lane is intentionally not enabled yet: a fresh CI MongoDB cannot reproduce the real Cloudinary-backed seed from the ignored environment-specific media manifest alone. A dedicated non-production Cloudinary account and an approved MediaAsset bootstrap/finalization mechanism are required first; CI must not substitute fake media or production provider credentials.
+## Deployment boundary
 
-## Architecture and security
+- Storefront/Admin: Cloudflare Workers with custom staging domains.
+- API/private AI service: Northflank.
+- Data: managed MongoDB replica set and Redis.
+- Media: Cloudinary.
 
-Start with [`docs/phase-0/README.md`](docs/phase-0/README.md). Important decisions are under `docs/adr/`; the current design threat model is `docs/security/threat-model.md`.
+Source presence, local tests and successful builds do not prove production readiness. Current
+reports deliberately separate local evidence, CI, deployed runtime, external-provider tests and
+unverified operational controls. Start with the
+[Phase 6B live Agent closure](docs/phase-6/live-agent-release-closure.md) for the latest status.
 
-Authentication routes and exact cookie/CSRF behavior are documented in [`docs/api/authentication.md`](docs/api/authentication.md). To create a development OWNER, set the three blank `BOOTSTRAP_OWNER_*` variables locally and run `pnpm --filter @farta/api bootstrap:owner`; the command refuses staging/production and never has a default password.
+## CV-ready summary
 
-For an idempotent local catalog, first finalize the approved development images through the authenticated Admin Cloudinary flow and place their non-secret `MediaAsset` mapping in the ignored `apps/api/.development-seed-media.json` manifest. Set `DEVELOPMENT_SEED_ACTOR_EMAIL` to an existing active development OWNER, then run:
+> Built a production-oriented fashion commerce monorepo with Next.js, React, NestJS, MongoDB,
+> Redis and FastAPI/Pydantic AI. Implemented server-authoritative catalog/inventory, idempotent
+> checkout and reservations, immutable orders, payment/webhook reconciliation, RBAC Admin
+> operations, responsive storefront release tests, and a security-bounded read-only Product
+> Advisor that grounds model output through authenticated commerce tools.
 
-```bash
-pnpm --filter @farta/api seed:development
-```
+## Known limitations
 
-The command accepts only `APP_ENV=development`; it never seeds staging/production, never creates credentials, never deletes local business data and initializes stock only when a seed-owned variant is still empty. See [`docs/phase-4/development-seed-report.md`](docs/phase-4/development-seed-report.md).
+- Staging approval does not imply production readiness or validated production capacity.
+- Real SePay Test-mode delivery, OAuth, transactional email and monitoring alerts remain external
+  provider work until evidence is recorded.
+- AI service horizontal scaling remains limited to one replica while inbound replay claims are
+  process-local.
+- Live Product Advisor release remains blocked until a newly approved, exactly metered canary proves
+  three consecutive grounded public flows with the iteration guard.
+- No RAG, LangGraph, AI commerce mutations, autonomous refunds, Wishlist, Reviews, Coupons or
+  Loyalty are included in the current scope.
 
-Catalog endpoints, publication invariants, money representation and Cloudinary finalization are documented in [`docs/api/catalog.md`](docs/api/catalog.md), [`docs/architecture/catalog-inventory.md`](docs/architecture/catalog-inventory.md) and [`docs/architecture/cloudinary-phase-2.md`](docs/architecture/cloudinary-phase-2.md).
+## License
 
-The Phase 3 storefront architecture, reviews and completion evidence are under [`docs/phase-3/`](docs/phase-3/). Public catalog reads use a 60-second revalidation window. Set `NEXT_PUBLIC_SITE_URL` to the canonical HTTPS storefront URL and explicitly set `NEXT_PUBLIC_INDEXABLE=true` only for production environments that should be indexed. Staging and development remain `noindex` by default.
-
-Cart endpoints and configuration are documented in [`docs/api/cart.md`](docs/api/cart.md) and [`docs/architecture/cart.md`](docs/architecture/cart.md). Checkout and order contracts are documented in [`docs/api/checkout-orders.md`](docs/api/checkout-orders.md) and [`docs/architecture/checkout-orders.md`](docs/architecture/checkout-orders.md). Supply every independent secret, retention, shipping and rate-limit value shown in `.env.example`; production has no implicit values for these business/security settings.
-
-Phase 4B supports real guest/customer checkout, order confirmation, account order history/detail and verified guest lookup. COD remains `UNPAID` until an authorized collection command records it after delivery. When explicitly configured, Phase 4C supports full/deposit SePay bank transfers, server-generated VietQR instructions, authenticated raw-body webhooks and explicit payment conflicts. Local tests use signed provider-shaped payloads only; they are not evidence of a real SePay account or money movement.
-
-Phase 4D implements Admin order list/detail, permissioned fulfillment transitions, controlled cancellation, manual refund reconciliation records, delivered-order COD collection, audit history, transactional notification intent and the idempotent reservation worker. Start that separately with:
-
-```bash
-pnpm --filter @farta/api worker:reservations
-```
-
-For a watch-mode development worker that uses the same compiled CommonJS path as the API:
-
-```bash
-pnpm --filter @farta/api worker:reservations:dev
-```
-
-No notification provider is configured; outbox events remain `PENDING`. Manual refund reconciliation records an external refund reference and never pretends that a provider refund occurred. Wishlist, password recovery and OAuth success remain unavailable rather than simulated.
-
-Customer profile editing and first-login onboarding completion are now real session/CSRF-protected API workflows. Password recovery remains a release blocker until the recovery/outbox schema evolution and transactional email boundary are approved; see [`docs/remediation/account-recovery-security-review.md`](docs/remediation/account-recovery-security-review.md). The current remediation evidence and browser-host limitation are under [`docs/remediation/`](docs/remediation/).
-
-The Admin entrypoint is intentionally thin. Feature pages, schemas and tests live under `apps/admin/src/features/`; shared authenticated API transport remains under `apps/admin/src/lib/`. This organization does not change backend permissions or commerce state machines.
-
-Secrets belong in local ignored files or the deployment secret store. Never expose provider/database credentials through `NEXT_PUBLIC_*` or `VITE_*` variables. Production configuration must fail closed and must not use `.env.example` placeholders.
-
-`staging` and `production` are both deployed environments: they require HTTPS origins, Secure protected cookies, reviewed HTTP security headers, operational log verbosity and HTTPS AI-to-API routing. Development and test retain local HTTP behavior. These defaults are locally tested; proxy hops, TLS termination and cookie delivery still require validation against the selected staging topology.
-
-## Troubleshooting
-
-- Node engine error: use the version in `.nvmrc`.
-- API configuration error: confirm `apps/api/.env` exists and contains no production placeholders outside development.
-- Mongo readiness failure: ensure Docker is running and `pnpm infra:up` reports healthy services.
-- Replica-set transaction failure: inspect the one-shot `mongo-init` service; Compose initializes it automatically.
-- Local MongoDB uses `127.0.0.1` plus `directConnection=true`; this keeps single-node replica-set transactions available without following Docker's internal-only `mongodb` hostname. Do not copy this development behavior into a managed production replica-set URI.
-- Port collision: change local-only ports consistently in `.env` and proxy configuration.
-- Browser seed failure: confirm `APP_ENV=development`, `DEVELOPMENT_SEED_ACTOR_EMAIL`, the ignored finalized-media manifest and its matching local `MediaAsset` records exist before running Playwright.
+No open-source license is currently included. All rights remain with the repository owner unless a
+license is added explicitly.
