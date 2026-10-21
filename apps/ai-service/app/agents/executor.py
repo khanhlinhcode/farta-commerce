@@ -3,10 +3,11 @@ import re
 import time
 from collections.abc import Sequence
 
-from pydantic_ai import Agent
+from pydantic_ai import Agent, RunContext, Tool
 from pydantic_ai.exceptions import AgentRunError, ModelHTTPError
 from pydantic_ai.models import Model
 from pydantic_ai.settings import ModelSettings
+from pydantic_ai.tools import ToolDefinition
 from pydantic_ai.usage import UsageLimitExceeded, UsageLimits
 
 from app.agents.policy import AgentPolicy
@@ -116,6 +117,22 @@ class AgentExecutor:
             )
         return await self._execute_agent(request, decision, conversation_digest)
 
+    def _prepare_catalog_tool(
+        self,
+        context: RunContext[AgentDependencies],
+        tool_definition: ToolDefinition,
+    ) -> ToolDefinition | None:
+        # A tool call consumes a model request. Keep the final bounded request
+        # available for AgentFinalResponse instead of exposing a catalog tool
+        # that cannot be followed by validated structured output.
+        tool_request_budget = min(
+            self._policy.max_tool_executions,
+            max(1, self._policy.max_iterations - 1),
+        )
+        if len(context.deps.state.tool_history) >= tool_request_budget:
+            return None
+        return tool_definition
+
     async def _execute_agent(
         self,
         request: InternalChatRequest,
@@ -145,7 +162,7 @@ class AgentExecutor:
                 output_type=AgentFinalResponse,
                 deps_type=AgentDependencies,
                 instructions=self._instructions(),
-                tools=APPROVED_TOOLS,
+                tools=[Tool(tool, prepare=self._prepare_catalog_tool) for tool in APPROVED_TOOLS],
                 retries=0,
                 tool_timeout=self._settings.tool_timeout_seconds,
                 max_concurrency=1,

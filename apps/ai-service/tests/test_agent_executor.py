@@ -2,14 +2,17 @@ import asyncio
 import json
 
 import pytest
+from pydantic_ai import RunContext
 from pydantic_ai.exceptions import ModelHTTPError
 from pydantic_ai.messages import ModelResponse, TextPart, ToolCallPart
 from pydantic_ai.models.function import FunctionModel
 from pydantic_ai.models.test import TestModel
+from pydantic_ai.tools import ToolDefinition
+from pydantic_ai.usage import RunUsage
 from pydantic_core import ValidationError
 
 from app.agents.executor import AgentExecutor
-from app.agents.state import AgentState
+from app.agents.state import AgentState, ToolCallRecord
 from app.config import Settings
 from app.observability import AiMetrics, AiObservability
 from app.schemas.chat import InternalChatRequest, ProductReference, ProductVariant, ToolResponse
@@ -192,6 +195,35 @@ async def test_model_request_limit_stops_tool_continuation() -> None:
     )
     assert result.status == "unavailable"
     assert result.error and result.error.code == "AI_LIMIT_EXCEEDED"
+
+
+def test_catalog_tools_leave_the_final_model_iteration_for_structured_output() -> None:
+    executor = AgentExecutor(Settings(), FakeCommerce(), models=[])
+    dependencies = AgentDependencies(
+        commerce=FakeCommerce(),
+        state=AgentState(
+            request_id="request-12345678",
+            conversation_id="00000000-0000-4000-8000-000000000001",
+            current_request="Tư vấn một sản phẩm",
+            resolved_intent="COMPLEX_SHOPPING_ADVICE",
+            selected_product_slugs=[],
+        ),
+        observability=AiObservability(metrics=AiMetrics()),
+        conversation_digest="deadbeefdeadbeef",
+        provider="test",
+        model="test",
+    )
+    context = RunContext(deps=dependencies, model=TestModel(), usage=RunUsage())
+    definition = ToolDefinition(name="search_products")
+
+    assert executor._prepare_catalog_tool(context, definition) is definition
+    dependencies.state.tool_history.extend(
+        [
+            ToolCallRecord(tool="search_products", succeeded=True),
+            ToolCallRecord(tool="get_product_details", succeeded=True),
+        ]
+    )
+    assert executor._prepare_catalog_tool(context, definition) is None
 
 
 async def test_provider_timeout_fails_closed() -> None:
