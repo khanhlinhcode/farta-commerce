@@ -37,3 +37,5 @@ def test_metrics_snapshot_has_bounded_latency_percentiles() -> None:
 
 def test_default_runtime_logger_emits_safe_info_events() -> None:
     assert DEFAULT_LOGGER.isEnabledFor(logging.INFO)
+    assert any(handler.name == "farta-ai-json" for handler in DEFAULT_LOGGER.handlers)
+    assert DEFAULT_LOGGER.propagate is False

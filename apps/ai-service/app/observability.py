@@ -116,4 +116,10 @@ def _percentile(values: deque[float], percentile: float) -> float:
 
 DEFAULT_LOGGER = logging.getLogger("farta.ai")
 DEFAULT_LOGGER.setLevel(logging.INFO)
+if not DEFAULT_LOGGER.handlers:
+    default_handler = logging.StreamHandler()
+    default_handler.set_name("farta-ai-json")
+    default_handler.setFormatter(logging.Formatter("%(message)s"))
+    DEFAULT_LOGGER.addHandler(default_handler)
+DEFAULT_LOGGER.propagate = False
 DEFAULT_OBSERVABILITY = AiObservability(DEFAULT_LOGGER)
