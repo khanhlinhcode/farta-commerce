@@ -2,7 +2,7 @@
 
 Date: 2026-10-21
 
-Verdict: **candidate validated; remain staging until the committed artifact is deployed**.
+Verdict: **PASS for the Phase 5D remediation scope; remain staging**.
 
 This report records a targeted remediation for the intermittent Storefront
 Cloudflare Error 1102/HTTP 503 finding. It does not claim production readiness,
@@ -118,10 +118,22 @@ the signed private AI boundary.
 
 ## Reproducibility and rollback
 
-This candidate was built before its final Git commit. The final deployment
-record, committed SHA and exact Worker version are appended after the required
-commit/rebuild/redeploy step; until then it must not be called a reproducible
-release.
+The verified remediation was committed as:
+
+- Git SHA: `0160bd3f0e39e325328641c11564346a97537235`;
+- commit: `fix: stabilize storefront worker runtime`.
+
+The Storefront was rebuilt from the clean committed worktree and deployed as
+Cloudflare version `f851b777-6f89-4edc-9ff8-ada2a8a665fb`. The command did not
+change Admin, API or AI; their versions/revisions remain those in the initial
+state table. Cloudflare's version metadata does not itself carry a Git SHA, so
+the source-to-artifact association is the recorded clean-tree CLI deployment,
+not an independently attested provider provenance feature.
+
+Post-deploy smoke sent seven representative sequential Storefront requests and
+four bounded concurrent requests. All returned HTTP 200. A version-filtered
+Worker tail recorded only `outcome=ok`, HTTP 200 and zero exceptions for the
+observed requests. Storefront, Admin and API readiness also returned HTTP 200.
 
 Rollback target for the Storefront is the initial known-good version
 `9f7a652d-70d6-4e2c-bc3d-c8cb26715742`. The Admin/API/AI source is unchanged

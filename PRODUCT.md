@@ -77,7 +77,7 @@ FARTA combines an editorial, product-photography-led Vietnamese fashion experien
 | Staging deployment                    | Candidate validated      | Custom domains are live; Phase 5D Chromium/WebKit gates are green, but Free-plan capacity is not a production guarantee |
 | SePay/OAuth/email provider validation | Not validated externally | Test-mode accounts, public HTTPS callbacks and provider delivery required                                               |
 | AI shopping assistant                 | Deployed provider-off    | Deterministic catalog path is live; Gemini/Groq and RAG remain disabled                                                 |
-| Release remediation                   | Candidate validated      | Cache/prefetch/sitemap fixes plus full Chromium and WebKit runs; committed redeploy evidence remains required           |
+| Release remediation                   | Phase 5D validated       | Cache/prefetch/sitemap fixes, full Chromium/WebKit runs and an exact committed Storefront deployment                    |
 
 ## Accessibility & Inclusion
 
