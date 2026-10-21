@@ -1,7 +1,7 @@
 import json
 import logging
 
-from app.observability import AiMetrics, AiObservability
+from app.observability import DEFAULT_LOGGER, AiMetrics, AiObservability
 
 
 def test_observability_emits_only_allowlisted_safe_fields(caplog) -> None:
@@ -33,3 +33,7 @@ def test_metrics_snapshot_has_bounded_latency_percentiles() -> None:
     assert snapshot["counts"]["ai.provider.completed"] == 3
     assert snapshot["durations"]["ai.provider.completed"]["samples"] == 2
     assert snapshot["durations"]["ai.provider.completed"]["p95_ms"] == 30.0
+
+
+def test_default_runtime_logger_emits_safe_info_events() -> None:
+    assert DEFAULT_LOGGER.isEnabledFor(logging.INFO)

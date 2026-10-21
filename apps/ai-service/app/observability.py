@@ -114,4 +114,6 @@ def _percentile(values: deque[float], percentile: float) -> float:
     return round(ordered[index], 3)
 
 
-DEFAULT_OBSERVABILITY = AiObservability()
+DEFAULT_LOGGER = logging.getLogger("farta.ai")
+DEFAULT_LOGGER.setLevel(logging.INFO)
+DEFAULT_OBSERVABILITY = AiObservability(DEFAULT_LOGGER)
