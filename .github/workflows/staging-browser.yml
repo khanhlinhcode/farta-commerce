@@ -1,0 +1,51 @@
+name: Staging browser validation
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: staging-browser-validation
+  cancel-in-progress: false
+
+jobs:
+  firefox-staging:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      CI: "true"
+      E2E_TARGET: staging
+      E2E_BROWSERS: firefox
+      E2E_STOREFRONT_URL: https://staging.fartacommerce.me
+      E2E_ADMIN_URL: https://admin-staging.fartacommerce.me
+      E2E_API_URL: https://api-staging.fartacommerce.me
+      E2E_STAFF_EMAIL: ${{ secrets.E2E_STAFF_EMAIL }}
+      E2E_STAFF_PASSWORD: ${{ secrets.E2E_STAFF_PASSWORD }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
+        with:
+          persist-credentials: false
+      - name: Install pnpm
+        uses: pnpm/action-setup@fc06bc1257f339d1d5d8b3a19a8cae5388b55320 # v5.0.0
+        with:
+          version: 10.34.3
+          run_install: false
+      - name: Set up Node
+        uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6.5.0
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+      - name: Install frozen dependencies
+        run: pnpm install --frozen-lockfile
+      - name: Verify staging credentials are available
+        shell: bash
+        run: |
+          test -n "$E2E_STAFF_EMAIL"
+          test -n "$E2E_STAFF_PASSWORD"
+      - name: Install Firefox runtime
+        run: pnpm exec playwright install --with-deps firefox
+      - name: Run Firefox staging suite
+        run: pnpm exec playwright test --project=firefox
