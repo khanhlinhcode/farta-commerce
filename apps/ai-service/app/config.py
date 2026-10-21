@@ -65,8 +65,8 @@ class Settings(BaseSettings):
             self.groq_api_key,
             "Groq",
         )
-        if self.fallback_enabled and not (self.gemini_enabled and self.groq_enabled):
-            raise ValueError("Fallback requires both approved providers to be enabled.")
+        if self.fallback_enabled:
+            raise ValueError("Automatic provider fallback is disabled for the Phase 6 validation.")
         return self
 
     @staticmethod

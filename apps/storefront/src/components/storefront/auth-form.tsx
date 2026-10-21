@@ -3,7 +3,7 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 
@@ -21,12 +21,15 @@ type LoginInput = z.infer<typeof loginSchema>;
 
 export function AuthForm({ mode }: { mode: "login" | "register" }) {
   const router = useRouter();
+  const [hydrated, setHydrated] = useState(false);
   const [serverError, setServerError] = useState<string | null>(null);
   const schema = mode === "login" ? loginSchema : registerSchema;
   const form = useForm<LoginInput & { displayName?: string }>({
     resolver: zodResolver(schema),
     defaultValues: { email: "", password: "", displayName: "" },
   });
+
+  useEffect(() => setHydrated(true), []);
 
   async function submit(values: LoginInput & { displayName?: string }) {
     setServerError(null);
@@ -83,13 +86,19 @@ export function AuthForm({ mode }: { mode: "login" | "register" }) {
   }
 
   return (
-    <form className="auth-form" onSubmit={form.handleSubmit(submit)} noValidate>
+    <form
+      aria-busy={!hydrated || form.formState.isSubmitting}
+      className="auth-form"
+      onSubmit={form.handleSubmit(submit)}
+      noValidate
+    >
       {mode === "register" && (
         <label>
           Họ tên
           <input
             id="auth-display-name"
             autoComplete="name"
+            disabled={!hydrated || form.formState.isSubmitting}
             {...form.register("displayName")}
             aria-invalid={Boolean(form.formState.errors.displayName)}
             aria-describedby={
@@ -110,6 +119,7 @@ export function AuthForm({ mode }: { mode: "login" | "register" }) {
         <input
           id="auth-email"
           autoComplete="email"
+          disabled={!hydrated || form.formState.isSubmitting}
           type="email"
           {...form.register("email")}
           aria-invalid={Boolean(form.formState.errors.email)}
@@ -128,6 +138,7 @@ export function AuthForm({ mode }: { mode: "login" | "register" }) {
         <input
           id="auth-password"
           autoComplete={mode === "login" ? "current-password" : "new-password"}
+          disabled={!hydrated || form.formState.isSubmitting}
           type="password"
           {...form.register("password")}
           aria-invalid={Boolean(form.formState.errors.password)}
@@ -148,7 +159,7 @@ export function AuthForm({ mode }: { mode: "login" | "register" }) {
       )}
       <button
         className="button button--primary button--wide"
-        disabled={form.formState.isSubmitting}
+        disabled={!hydrated || form.formState.isSubmitting}
         type="submit"
       >
         {form.formState.isSubmitting

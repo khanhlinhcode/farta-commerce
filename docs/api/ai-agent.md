@@ -58,6 +58,28 @@ are omitted. React renders assistant text as plain text; raw HTML is not support
   commerce fallback or mutation.
 - Cart, Checkout, Payment, Orders and Admin operations are not Agent tools.
 
+## Operational runbook
+
+Provider-off is the safe default. When `AI_ENABLED=true` but no approved provider is enabled,
+deterministic catalog routes remain available and Agent advice fails closed. Automatic provider
+fallback is rejected.
+
+Safe structured events are restricted to the `ai.request.*`, `ai.route.selected`,
+`ai.provider.*`, `ai.tool.*` and `ai.response.*` allowlist. Do not add raw prompt, conversation,
+cookie, authorization, HMAC secret, email, phone, address, unrestricted provider output or tool
+payload fields.
+
+Incident sequence:
+
+1. disable the affected provider flag in the deployment secret manager;
+2. keep `AI_FALLBACK_ENABLED=false` and verify deterministic catalog responses;
+3. inspect safe error codes and request IDs, not raw customer prompts;
+4. verify API/AI readiness and signed Tool Gateway behavior;
+5. re-enable only after quota, data policy and provider health are independently confirmed.
+
+Horizontal AI scaling is blocked while inbound FastAPI nonce replay claims are process-local.
+Operate one AI replica or implement an approved shared replay claim before increasing replicas.
+
 ## Configuration
 
 All variable names and bounded defaults are documented in `.env.example`. Secrets stay

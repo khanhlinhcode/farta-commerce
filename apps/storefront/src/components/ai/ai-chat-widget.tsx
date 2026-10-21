@@ -2,20 +2,23 @@
 
 import { MessageCircle, Sparkles } from "lucide-react";
 import { usePathname } from "next/navigation";
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import { sendAiMessage } from "@/lib/ai-client";
 import { AiChatPanel } from "./ai-chat-panel";
 import type { AiUiMessage } from "./ai-message-list";
 
 const hiddenRoutes = ["/cart", "/checkout", "/order-confirmation"];
+const requestTimeoutMs = 30_000;
 
 export function AiChatWidget() {
   const pathname = usePathname();
   const triggerRef = useRef<HTMLButtonElement>(null);
+  const requestControllerRef = useRef<AbortController | null>(null);
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const [conversationId, setConversationId] = useState<string | null>(null);
+  const [retryMessage, setRetryMessage] = useState<string | null>(null);
   const [messages, setMessages] = useState<AiUiMessage[]>([
     {
       id: "welcome",
@@ -24,6 +27,13 @@ export function AiChatWidget() {
     },
   ]);
 
+  useEffect(
+    () => () => {
+      requestControllerRef.current?.abort();
+    },
+    [],
+  );
+
   if (hiddenRoutes.some((route) => pathname.startsWith(route))) return null;
 
   function close() {
@@ -31,16 +41,27 @@ export function AiChatWidget() {
     requestAnimationFrame(() => triggerRef.current?.focus());
   }
 
-  async function submit(message: string) {
+  async function submit(message: string, isRetry = false) {
     if (loading) return;
+    setRetryMessage(null);
     setMessages((current) => [
       ...current,
       { id: crypto.randomUUID(), role: "user", text: message },
     ]);
     setLoading(true);
+    const controller = new AbortController();
+    requestControllerRef.current = controller;
+    const timeout = window.setTimeout(
+      () => controller.abort(),
+      requestTimeoutMs,
+    );
     try {
-      const result = await sendAiMessage({ message, conversationId });
+      const result = await sendAiMessage(
+        { message, conversationId },
+        controller.signal,
+      );
       setConversationId(result.conversationId);
+      const unavailable = result.status === "unavailable";
       setMessages((current) => [
         ...current,
         {
@@ -48,20 +69,33 @@ export function AiChatWidget() {
           role: "assistant",
           text: result.message,
           products: result.products,
-          error: result.status === "unavailable",
+          error: unavailable,
+          ...(result.status === "completed"
+            ? { source: result.route === "agent" ? "advisor" : "catalog" }
+            : {}),
         },
       ]);
-    } catch {
+      if (unavailable && !isRetry) setRetryMessage(message);
+    } catch (error) {
+      const timedOut =
+        error instanceof DOMException && error.name === "AbortError";
       setMessages((current) => [
         ...current,
         {
           id: crypto.randomUUID(),
           role: "assistant",
-          text: "Trợ lý đang tạm thời không khả dụng. Bạn có thể tiếp tục khám phá tại trang Shop.",
+          text: timedOut
+            ? "Yêu cầu đã hết thời gian chờ. Bạn có thể thử lại một lần hoặc tiếp tục khám phá tại trang Shop."
+            : "Trợ lý đang tạm thời không khả dụng. Bạn có thể thử lại một lần hoặc tiếp tục khám phá tại trang Shop.",
           error: true,
         },
       ]);
+      if (!isRetry) setRetryMessage(message);
     } finally {
+      window.clearTimeout(timeout);
+      if (requestControllerRef.current === controller) {
+        requestControllerRef.current = null;
+      }
       setLoading(false);
     }
   }
@@ -85,6 +119,7 @@ export function AiChatWidget() {
         loading={loading}
         messages={messages}
         onClose={close}
+        onRetry={retryMessage ? () => submit(retryMessage, true) : null}
         onSubmit={submit}
       />
     </>

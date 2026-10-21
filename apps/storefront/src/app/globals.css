@@ -2755,6 +2755,17 @@ img {
   margin: 0;
   font-size: 0.82rem;
   line-height: 1.65;
+  overflow-wrap: anywhere;
+}
+
+.ai-message__source {
+  display: block;
+  margin-bottom: 0.35rem;
+  color: var(--farta-color-text-muted);
+  font-size: 0.62rem;
+  font-weight: 500;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
 }
 
 .ai-product-results {
@@ -2842,6 +2853,23 @@ img {
   animation: ai-spin 900ms linear infinite;
 }
 
+.ai-chat-retry {
+  padding: 0 1.15rem 0.65rem;
+}
+
+.ai-chat-retry button {
+  min-height: 2.75rem;
+  padding-inline: 0.9rem;
+  border: 1px solid var(--farta-color-border);
+  border-radius: 999px;
+  color: var(--farta-color-accent);
+  background: transparent;
+  font: inherit;
+  font-size: 0.75rem;
+  font-weight: 500;
+  cursor: pointer;
+}
+
 .ai-message-input {
   display: grid;
   grid-template-columns: minmax(0, 1fr) 2.75rem;
@@ -2859,7 +2887,7 @@ img {
   border-radius: 999px;
   color: var(--farta-color-text);
   background: var(--farta-color-canvas);
-  font-size: 0.78rem;
+  font-size: max(1rem, 16px);
 }
 
 .ai-message-input button {

@@ -26,3 +26,19 @@ def test_availability_requires_an_authoritative_product_reference() -> None:
 def test_rejects_private_commerce_topics() -> None:
     decision = IntentRouter().route("Kiểm tra đơn hàng của tôi", [])
     assert decision.mode == "unsupported"
+
+
+def test_routes_vietnamese_without_accents_and_selected_product_context() -> None:
+    search = IntentRouter().route("Tim ao thun den size M duoi 600k", [])
+    assert search.tool == "search_products"
+    assert isinstance(search.arguments, SearchProductsArgs)
+    assert search.arguments.keyword == "áo thun"
+    assert search.arguments.color == "Đen"
+    assert search.arguments.max_price == 600_000
+
+    accented = IntentRouter().route("Tìm áo màu đen size M", [])
+    assert isinstance(accented.arguments, SearchProductsArgs)
+    assert accented.arguments.keyword == "áo"
+
+    details = IntentRouter().route("Cho toi chi tiet mau nay", ["farta-essential-tee"])
+    assert details.tool == "get_product_details"

@@ -36,7 +36,7 @@ FARTA combines an editorial, product-photography-led Vietnamese fashion experien
 - The current repository includes server-authoritative Cart, Checkout, Reservations, Orders, COD and a provider-neutral SePay payment boundary from Phase 4.
 - Development-only catalog seeding and Chromium release coverage exercise the real API, MongoDB/Redis transactions and finalized Cloudinary media; this is local evidence, not staging evidence.
 - Admin code is organized by commerce feature (`auth`, `dashboard`, `categories`, `products`, `variants`, `inventory`, `media`, `banners`, `orders`) while shared transport and session handling remain in `lib/`.
-- Google/Apple provider adapters, final payment credentials and final brand assets are open external dependencies and must not be faked.
+- Google/Apple provider adapters, live LLM/payment credentials and final brand assets are open external dependencies and must not be faked.
 
 ## Brand Commitments
 
@@ -55,6 +55,7 @@ FARTA combines an editorial, product-photography-led Vietnamese fashion experien
 - Phase 3 premium Storefront connected to real public catalog data.
 - Phase 4 authoritative Cart, Checkout, Reservations, Orders, COD, SePay boundary, Admin order operations and reservation worker.
 - Phase 4.1 local runtime stabilization, idempotent development seed and Chromium browser release coverage.
+- Phase 6 provider-independent Product Advisor hardening: a 62-case Vietnamese evaluation dataset, safe observability hooks, grounded-output rejection and explicit failure/retry UX. No live provider request has been made.
 - Release-remediation code for truthful catalog pricing, category-correct related products, profile/onboarding, type-safe media, bounded catalog/sitemap queries and expanded Admin operations. Final browser/recovery/provider gates remain open.
 - Shared semantic tokens in `packages/design-tokens` and primitives in `packages/ui`.
 - No stakeholder-owned fashion photography, final logo, testimonials, reviews, ratings, sales analytics or production OAuth/payment credentials are currently present; these must not be fabricated.
@@ -69,15 +70,16 @@ FARTA combines an editorial, product-photography-led Vietnamese fashion experien
 
 ## Current Release Status
 
-| Area                                  | Status                   | Evidence boundary                                                                                                       |
-| ------------------------------------- | ------------------------ | ----------------------------------------------------------------------------------------------------------------------- |
-| Phase 0–4 commerce foundation         | Implemented locally      | Unit, integration, security, concurrency and build gates                                                                |
-| Development catalog and media         | Implemented locally      | Idempotent seed with finalized development Cloudinary assets                                                            |
-| Browser release coverage              | Implemented for Chromium | Local seeded Storefront/Admin journeys and reviewed snapshots                                                           |
-| Staging deployment                    | Candidate validated      | Custom domains are live; Phase 5D Chromium/WebKit gates are green, but Free-plan capacity is not a production guarantee |
-| SePay/OAuth/email provider validation | Not validated externally | Test-mode accounts, public HTTPS callbacks and provider delivery required                                               |
-| AI shopping assistant                 | Deployed provider-off    | Deterministic catalog path is live; Gemini/Groq and RAG remain disabled                                                 |
-| Release remediation                   | Phase 5D validated       | Cache/prefetch/sitemap fixes, full Chromium/WebKit runs and an exact committed Storefront deployment                    |
+| Area                                  | Status                   | Evidence boundary                                                                                                                   |
+| ------------------------------------- | ------------------------ | ----------------------------------------------------------------------------------------------------------------------------------- |
+| Phase 0–4 commerce foundation         | Implemented locally      | Unit, integration, security, concurrency and build gates                                                                            |
+| Development catalog and media         | Implemented locally      | Idempotent seed with finalized development Cloudinary assets                                                                        |
+| Browser release coverage              | Local cross-browser pass | Phase 6 worktree: 73 passed / 12 expected skipped across Chromium, Firefox and WebKit; not exact-commit CI or staging evidence      |
+| Staging deployment                    | Candidate validated      | Custom domains are live; Phase 5D Chromium/WebKit gates are green, but Free-plan capacity is not a production guarantee             |
+| SePay/OAuth/email provider validation | Not validated externally | Test-mode accounts, public HTTPS callbacks and provider delivery required                                                           |
+| AI shopping assistant                 | Provider-off hardened    | Deterministic path is deployed; local Agent security/evaluation additions are not yet deployed; Gemini/Groq and RAG remain disabled |
+| Release remediation                   | Phase 5D validated       | Cache/prefetch/sitemap fixes, full Chromium/WebKit runs and an exact committed Storefront deployment                                |
+| Phase 6 external/operational gates    | Blocked                  | Live LLM, alert receipt, email, OAuth, SePay Test mode, backup/restore, Redis recovery and rollback need external evidence          |
 
 ## Accessibility & Inclusion
 

@@ -52,11 +52,15 @@ free-tier-verification flags; a public pricing page is not sufficient evidence t
 turn either provider on. See [`docs/api/ai-agent.md`](docs/api/ai-agent.md).
 
 The staging gateway currently enables only the deterministic provider-off
-Product Advisor. Gemini and Groq remain disabled. Custom-domain cutover evidence
+Product Advisor. Phase 6 adds provider-independent Agent grounding, safe observability,
+an independent Vietnamese evaluation dataset and explicit failure UX in source; the
+current Phase 6 source revision has not been deployed to staging. Gemini and Groq remain disabled. Custom-domain cutover evidence
 is recorded in
 [`docs/phase-5/custom-domain-and-ai-staging-cutover.md`](docs/phase-5/custom-domain-and-ai-staging-cutover.md).
 The current Worker remediation evidence is in
 [`docs/phase-5/worker-capacity-remediation.md`](docs/phase-5/worker-capacity-remediation.md).
+The Phase 6 evidence boundary and current blockers are recorded under
+[`docs/phase-6/`](docs/phase-6/) and [`docs/ai/`](docs/ai/).
 
 Default local ports: storefront `3000`, API `4000`, admin `5173`, AI service `8000`, MongoDB `27017`, Redis `6379`.
 

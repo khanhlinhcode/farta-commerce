@@ -25,29 +25,71 @@ class RouteDecision:
 
 class IntentRouter:
     _product_url = re.compile(r"/product/([a-z0-9]+(?:-[a-z0-9]+)*)")
-    _size = re.compile(r"\b(?:size|cỡ)\s*([a-z0-9]{1,4})\b", re.IGNORECASE)
-    _price = re.compile(r"(?:dưới|tối đa|không quá)\s*([0-9]+(?:[.,][0-9]+)?)\s*(k|tr|triệu)?")
-    _colors = ("đen", "kem", "trắng", "nâu", "xanh", "đỏ", "hồng", "be")
+    _size = re.compile(r"\b(?:size|co)\s*([a-z0-9]{1,4})\b", re.IGNORECASE)
+    _price = re.compile(r"(?:duoi|toi da|khong qua)\s*([0-9]+(?:[.,][0-9]+)?)\s*(k|tr|trieu)?")
+    _colors = {
+        "den": "Đen",
+        "kem": "Kem",
+        "trang": "Trắng",
+        "nau": "Nâu",
+        "xanh": "Xanh",
+        "do": "Đỏ",
+        "hong": "Hồng",
+        "be": "Be",
+    }
     _unsafe_topics = (
-        "đơn hàng",
-        "hoàn tiền",
-        "thanh toán",
-        "hủy đơn",
-        "địa chỉ",
-        "số điện thoại",
+        "don hang",
+        "hoan tien",
+        "refund",
+        "thanh toan",
+        "huy don",
+        "dia chi",
+        "so dien thoai",
         "email",
+        "dieu chinh ton kho",
+        "tang ton kho",
+        "giam ton kho",
+        "doi gia",
+        "thay gia",
+        "doi quyen",
+        "phan quyen",
+        "vai tro admin",
+        "system prompt",
+        "ignore previous",
+        "bo qua chi dan",
+        "bo qua ket qua tool",
+        "tao san pham gia",
+        "bia san pham",
+        "gia mao san pham",
+        "api key",
+        "mat khau",
+        "so luong chinh xac trong kho",
+    )
+    _advice_terms = (
+        "tu van",
+        "phoi do",
+        "phoi mau",
+        "phoi voi",
+        "so sanh",
+        "chon giua",
+        "mac di",
+        "trang phuc cho",
+        "hop voi",
     )
 
     def route(self, message: str, selected_slugs: list[str]) -> RouteDecision:
         normalized = self._normalize(message)
-        if any(topic in normalized for topic in self._unsafe_topics):
+        matchable = self._fold(normalized)
+        if any(topic in matchable for topic in self._unsafe_topics):
             return RouteDecision("UNSUPPORTED", "unsupported")
 
-        slug_match = self._product_url.search(normalized)
+        slug_match = self._product_url.search(matchable)
         slug = (
             slug_match.group(1) if slug_match else (selected_slugs[-1] if selected_slugs else None)
         )
-        if any(term in normalized for term in ("còn hàng", "còn size", "hết hàng")):
+        if any(
+            term in matchable for term in ("con hang", "con size", "con co", "con szie", "het hang")
+        ):
             if not slug:
                 return RouteDecision("CLARIFICATION_REQUIRED", "clarification")
             return RouteDecision(
@@ -56,27 +98,29 @@ class IntentRouter:
                 "get_product_availability",
                 ProductAvailabilityArgs(
                     slug=slug,
-                    color=self._color(normalized),
-                    size=self._size_value(normalized),
+                    color=self._color(matchable),
+                    size=self._size_value(matchable),
                 ),
             )
-        if slug_match and any(term in normalized for term in ("chi tiết", "sản phẩm", "mẫu này")):
+        if any(term in matchable for term in self._advice_terms):
+            return RouteDecision("COMPLEX_SHOPPING_ADVICE", "agent")
+        if slug and any(term in matchable for term in ("chi tiet", "san pham", "mau nay")):
             return RouteDecision(
                 "PUBLIC_PRODUCT_DETAILS",
                 "deterministic",
                 "get_product_details",
-                ProductDetailsArgs(slug=slug_match.group(1)),
+                ProductDetailsArgs(slug=slug),
             )
-        if any(term in normalized for term in ("tìm", "cho xem", "mẫu", "sản phẩm", "váy", "áo")):
+        if "cho xem" in matchable or re.search(r"\b(?:tim|mau|san pham|vay|ao)\b", matchable):
             return RouteDecision(
                 "PUBLIC_PRODUCT_SEARCH",
                 "deterministic",
                 "search_products",
                 SearchProductsArgs(
-                    keyword=self._keyword(normalized),
-                    color=self._color(normalized),
-                    size=self._size_value(normalized),
-                    max_price=self._max_price(normalized),
+                    keyword=self._keyword(matchable),
+                    color=self._color(matchable),
+                    size=self._size_value(matchable),
+                    max_price=self._max_price(matchable),
                     limit=6,
                 ),
             )
@@ -88,8 +132,16 @@ class IntentRouter:
     def _normalize(value: str) -> str:
         return unicodedata.normalize("NFKC", value).strip().lower()
 
+    @staticmethod
+    def _fold(value: str) -> str:
+        decomposed = unicodedata.normalize("NFKD", value)
+        without_marks = "".join(
+            character for character in decomposed if not unicodedata.combining(character)
+        )
+        return without_marks.replace("đ", "d")
+
     def _color(self, value: str) -> str | None:
-        return next((color.capitalize() for color in self._colors if color in value), None)
+        return next((label for color, label in self._colors.items() if color in value), None)
 
     def _size_value(self, value: str) -> str | None:
         match = self._size.search(value)
@@ -101,21 +153,23 @@ class IntentRouter:
             return None
         amount = float(match.group(1).replace(",", "."))
         suffix = match.group(2)
-        multiplier = 1_000_000 if suffix in {"tr", "triệu"} else 1_000 if suffix == "k" else 1
+        multiplier = 1_000_000 if suffix in {"tr", "trieu"} else 1_000 if suffix == "k" else 1
         return int(amount * multiplier)
 
     def _keyword(self, value: str) -> str | None:
         cleaned = self._price.sub("", value)
         cleaned = self._size.sub("", cleaned)
-        cleaned = cleaned.replace("váy", "đầm")
+        cleaned = re.sub(r"\bao thun\b", "áo thun", cleaned)
+        cleaned = re.sub(r"\bao\b", "áo", cleaned)
+        cleaned = re.sub(r"\bvay\b", "đầm", cleaned)
+        cleaned = re.sub(r"\bquan\b", "quần", cleaned)
         for token in (
-            *self._colors,
-            "tìm",
+            *self._colors.keys(),
+            "tim",
             "cho xem",
-            "giúp tôi",
-            "sản phẩm",
-            "mẫu",
-            "màu",
+            "giup toi",
+            "san pham",
+            "mau",
         ):
             cleaned = cleaned.replace(token, " ")
         cleaned = " ".join(cleaned.split()).strip(" ,.?")

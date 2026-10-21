@@ -8,6 +8,7 @@ export type AiUiMessage = {
   text: string;
   products?: readonly AiProductReference[];
   error?: boolean;
+  source?: "catalog" | "advisor";
 };
 
 export function AiMessageList({
@@ -28,6 +29,13 @@ export function AiMessageList({
           className={`ai-message ai-message--${message.role}${message.error ? " is-error" : ""}`}
           key={message.id}
         >
+          {message.source && (
+            <span className="ai-message__source">
+              {message.source === "catalog"
+                ? "Catalog FARTA đã xác minh"
+                : "Tư vấn AI · sản phẩm đã xác minh"}
+            </span>
+          )}
           <p>{message.text}</p>
           <AiProductResults
             products={message.products ?? []}

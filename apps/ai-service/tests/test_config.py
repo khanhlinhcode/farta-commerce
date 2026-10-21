@@ -36,3 +36,8 @@ def test_enabled_service_requires_distinct_internal_secrets() -> None:
 def test_provider_requires_explicit_free_tier_verification() -> None:
     with pytest.raises(ValidationError, match="free-tier verification"):
         Settings(gemini_enabled=True, gemini_api_key="g" * 32)
+
+
+def test_automatic_provider_fallback_is_rejected() -> None:
+    with pytest.raises(ValidationError, match="fallback is disabled"):
+        Settings(fallback_enabled=True)

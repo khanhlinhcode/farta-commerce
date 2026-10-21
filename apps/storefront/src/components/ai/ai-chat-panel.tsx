@@ -16,12 +16,14 @@ export function AiChatPanel({
   loading,
   messages,
   onClose,
+  onRetry,
   onSubmit,
 }: {
   open: boolean;
   loading: boolean;
   messages: readonly AiUiMessage[];
   onClose: () => void;
+  onRetry: (() => void) | null;
   onSubmit: (message: string) => void;
 }) {
   const dialogRef = useRef<HTMLDialogElement>(null);
@@ -86,6 +88,13 @@ export function AiChatPanel({
         </div>
       )}
       <AiChatStatus loading={loading} />
+      {onRetry && !loading && (
+        <div className="ai-chat-retry">
+          <button type="button" onClick={onRetry}>
+            Thử lại yêu cầu gần nhất
+          </button>
+        </div>
+      )}
       <AiMessageInput
         disabled={loading}
         inputRef={inputRef}

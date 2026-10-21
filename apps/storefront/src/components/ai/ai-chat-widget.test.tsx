@@ -69,9 +69,80 @@ describe("AiChatWidget", () => {
         screen.getByText("FARTA tìm thấy 1 sản phẩm phù hợp."),
       ).toBeVisible(),
     );
-    expect(mocks.sendAiMessage).toHaveBeenCalledWith({
-      message: "Tìm áo màu đen size M",
-      conversationId: null,
+    expect(mocks.sendAiMessage).toHaveBeenCalledWith(
+      {
+        message: "Tìm áo màu đen size M",
+        conversationId: null,
+      },
+      expect.any(AbortSignal),
+    );
+    expect(screen.getByText("Catalog FARTA đã xác minh")).toBeVisible();
+  });
+
+  it("labels generated advice separately from deterministic catalog results", async () => {
+    mocks.sendAiMessage.mockResolvedValue({
+      requestId: "request-123",
+      conversationId: "00000000-0000-4000-8000-000000000001",
+      status: "completed",
+      route: "agent",
+      message: "Một gợi ý phối đồ đã được xác minh theo catalog.",
+      products: [],
+      citations: [],
+      error: null,
     });
+    render(<AiChatWidget />);
+    fireEvent.click(
+      screen.getByRole("button", { name: "Mở FARTA Product Advisor" }),
+    );
+    fireEvent.click(
+      screen.getByRole("button", { name: "Tìm sản phẩm màu kem" }),
+    );
+    expect(
+      await screen.findByText("Tư vấn AI · sản phẩm đã xác minh"),
+    ).toBeVisible();
+  });
+
+  it("offers one explicit retry control after a network failure", async () => {
+    mocks.sendAiMessage
+      .mockRejectedValueOnce(new TypeError("network failed"))
+      .mockResolvedValueOnce({
+        requestId: "request-123",
+        conversationId: "00000000-0000-4000-8000-000000000001",
+        status: "clarification",
+        route: "clarification",
+        message: "Bạn muốn ưu tiên màu nào?",
+        products: [],
+        citations: [],
+        error: null,
+      });
+    render(<AiChatWidget />);
+    fireEvent.click(
+      screen.getByRole("button", { name: "Mở FARTA Product Advisor" }),
+    );
+    fireEvent.click(
+      screen.getByRole("button", { name: "Tìm áo màu đen size M" }),
+    );
+    const retry = await screen.findByRole("button", {
+      name: "Thử lại yêu cầu gần nhất",
+    });
+    fireEvent.click(retry);
+    expect(await screen.findByText("Bạn muốn ưu tiên màu nào?")).toBeVisible();
+    expect(mocks.sendAiMessage).toHaveBeenCalledTimes(2);
+    expect(
+      screen.queryByRole("button", { name: "Thử lại yêu cầu gần nhất" }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("restores focus to the trigger after keyboard dismissal", async () => {
+    render(<AiChatWidget />);
+    const trigger = screen.getByRole("button", {
+      name: "Mở FARTA Product Advisor",
+    });
+    fireEvent.click(trigger);
+    fireEvent(
+      screen.getByRole("dialog"),
+      new Event("cancel", { bubbles: true, cancelable: true }),
+    );
+    await waitFor(() => expect(trigger).toHaveFocus());
   });
 });

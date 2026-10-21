@@ -11,17 +11,26 @@ from app.config import Settings
 from app.security import NonceReplayCache, verify_gateway_request
 
 
-def request_for(body: bytes, nonce: str, secret: str, timestamp: str | None = None) -> Request:
+def request_for(
+    body: bytes,
+    nonce: str,
+    secret: str,
+    timestamp: str | None = None,
+    *,
+    audience: str = "farta-ai-service",
+    method: str = "POST",
+    path: str = "/v1/chat",
+    signed_method: str | None = None,
+    signed_path: str | None = None,
+) -> Request:
     issued_at = timestamp or str(int(time.time()))
-    path = "/v1/chat"
-    audience = "farta-ai-service"
     payload = b".".join(
         (
             issued_at.encode(),
             nonce.encode(),
             audience.encode(),
-            b"POST",
-            path.encode(),
+            (signed_method or method).encode(),
+            (signed_path or path).encode(),
             body,
         )
     )
@@ -46,7 +55,7 @@ def request_for(body: bytes, nonce: str, secret: str, timestamp: str | None = No
     return Request(
         {
             "type": "http",
-            "method": "POST",
+            "method": method,
             "path": path,
             "query_string": b"",
             "headers": headers,
@@ -89,3 +98,26 @@ async def test_gateway_rejects_invalid_signature() -> None:
             request_for(b"{}", "n" * 32, "x" * 32), settings, NonceReplayCache()
         )
     assert invalid.value.status_code == 401
+
+
+@pytest.mark.anyio
+@pytest.mark.parametrize(
+    "signed_request",
+    [
+        request_for(b"{}", "a" * 32, "g" * 32, audience="wrong-audience"),
+        request_for(b"{}", "b" * 32, "g" * 32, timestamp="1"),
+        request_for(b"{}", "c" * 32, "g" * 32, signed_method="GET"),
+        request_for(b"{}", "d" * 32, "g" * 32, signed_path="/wrong-path"),
+    ],
+)
+async def test_gateway_rejects_wrong_binding_and_expired_requests(
+    signed_request: Request,
+) -> None:
+    settings = Settings(
+        enabled=True,
+        gateway_shared_secret="g" * 32,
+        tools_shared_secret="t" * 32,
+    )
+    with pytest.raises(HTTPException) as rejected:
+        await verify_gateway_request(signed_request, settings, NonceReplayCache())
+    assert rejected.value.status_code == 401
