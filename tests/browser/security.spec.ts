@@ -6,6 +6,7 @@ import {
   fillCheckout,
   registerCustomer,
   seed,
+  urls,
 } from "./support";
 
 test("customer realm cannot access Admin and authenticated CSRF remains enforced", async ({
@@ -45,7 +46,7 @@ test("customer realm cannot access Admin and authenticated CSRF remains enforced
   expect(result.cartError).not.toMatch(/\b(stack|node_modules|MongoServer)\b/i);
 });
 
-test("customer B cannot read customer A order", async ({ page }) => {
+test("customer B cannot read customer A order", async ({ page, browser }) => {
   await addSeedProductToCart(page);
   await registerCustomer(page);
   await fillCheckout(page, "0945678901");
@@ -55,16 +56,21 @@ test("customer B cannot read customer A order", async ({ page }) => {
     new URL(page.url()).pathname.split("/").at(-1) ?? "",
   );
 
-  await page.goto("/account/security");
-  await page.getByRole("button", { name: "Đăng xuất thiết bị này" }).click();
-  await expect(page).toHaveURL(/\/login/);
-  await registerCustomer(page);
-  const response = await page.request.get(`/api/v1/orders/${code}`);
-  expect([403, 404]).toContain(response.status());
-  expect(await response.text()).not.toMatch(
-    /\b(stack|node_modules|MongoServer)\b/i,
-  );
-  await cancelBrowserOrderAsStaff(code);
+  const customerBContext = await browser.newContext({
+    baseURL: urls.storefront,
+  });
+  try {
+    const customerBPage = await customerBContext.newPage();
+    await registerCustomer(customerBPage);
+    const response = await customerBPage.request.get(`/api/v1/orders/${code}`);
+    expect([403, 404]).toContain(response.status());
+    expect(await response.text()).not.toMatch(
+      /\b(stack|node_modules|MongoServer)\b/i,
+    );
+  } finally {
+    await customerBContext.close();
+    await cancelBrowserOrderAsStaff(code);
+  }
 });
 
 test("checkout rejects client-supplied authoritative totals", async ({
