@@ -69,15 +69,15 @@ FARTA combines an editorial, product-photography-led Vietnamese fashion experien
 
 ## Current Release Status
 
-| Area                                  | Status                   | Evidence boundary                                                          |
-| ------------------------------------- | ------------------------ | -------------------------------------------------------------------------- |
-| Phase 0–4 commerce foundation         | Implemented locally      | Unit, integration, security, concurrency and build gates                   |
-| Development catalog and media         | Implemented locally      | Idempotent seed with finalized development Cloudinary assets               |
-| Browser release coverage              | Implemented for Chromium | Local seeded Storefront/Admin journeys and reviewed snapshots              |
-| Staging deployment                    | Readiness audited        | Deployment blocked on hosting, managed services and provider credentials   |
-| SePay/OAuth/email provider validation | Not validated externally | Test-mode accounts, public HTTPS callbacks and provider delivery required  |
-| AI shopping assistant                 | Implemented provider-off | Deterministic catalog path and bounded Agent tests; live providers pending |
-| Release remediation                   | Partial                  | Local code/API gates pass; recovery approval and browser rerun remain      |
+| Area                                  | Status                   | Evidence boundary                                                                                                       |
+| ------------------------------------- | ------------------------ | ----------------------------------------------------------------------------------------------------------------------- |
+| Phase 0–4 commerce foundation         | Implemented locally      | Unit, integration, security, concurrency and build gates                                                                |
+| Development catalog and media         | Implemented locally      | Idempotent seed with finalized development Cloudinary assets                                                            |
+| Browser release coverage              | Implemented for Chromium | Local seeded Storefront/Admin journeys and reviewed snapshots                                                           |
+| Staging deployment                    | Candidate validated      | Custom domains are live; Phase 5D Chromium/WebKit gates are green, but Free-plan capacity is not a production guarantee |
+| SePay/OAuth/email provider validation | Not validated externally | Test-mode accounts, public HTTPS callbacks and provider delivery required                                               |
+| AI shopping assistant                 | Deployed provider-off    | Deterministic catalog path is live; Gemini/Groq and RAG remain disabled                                                 |
+| Release remediation                   | Candidate validated      | Cache/prefetch/sitemap fixes plus full Chromium and WebKit runs; committed redeploy evidence remains required           |
 
 ## Accessibility & Inclusion
 

@@ -105,31 +105,60 @@ const apiBase = (
   process.env.API_INTERNAL_URL ?? "http://localhost:4000"
 ).replace(/\/$/, "");
 const bypassCatalogCache = process.env.CATALOG_CACHE_MODE === "no-store";
+type CatalogRequestMode = "runtime" | "build";
 
-async function publicRequest<T>(path: string): Promise<CatalogResult<T>> {
+async function publicRequest<T>(
+  path: string,
+  mode: CatalogRequestMode = "runtime",
+): Promise<CatalogResult<T>> {
   try {
     const response = await fetch(`${apiBase}/api/v1${path}`, {
       headers: { Accept: "application/json" },
-      ...(bypassCatalogCache
-        ? { cache: "no-store" as const }
-        : { next: { revalidate: 60 } }),
+      ...(mode === "build"
+        ? { cache: "force-cache" as const }
+        : bypassCatalogCache
+          ? { cache: "no-store" as const }
+          : { next: { revalidate: 60 } }),
       signal: AbortSignal.timeout(5_000),
     });
     if (response.status === 404) return { ok: false, error: "NOT_FOUND" };
-    if (!response.ok) return { ok: false, error: "UNAVAILABLE" };
+    if (!response.ok) {
+      if (process.env.SITEMAP_DATA_POLICY === "required") {
+        console.warn(
+          `[catalog] Authoritative request returned ${response.status}.`,
+        );
+      }
+      return { ok: false, error: "UNAVAILABLE" };
+    }
     return { ok: true, data: (await response.json()) as T };
-  } catch {
+  } catch (error) {
+    unstable_rethrow(error);
+    if (process.env.SITEMAP_DATA_POLICY === "required") {
+      const errorName = error instanceof Error ? error.name : "UnknownError";
+      const cause = error instanceof Error ? error.cause : undefined;
+      const causeCode =
+        typeof cause === "object" && cause !== null && "code" in cause
+          ? String(cause.code)
+          : "none";
+      console.warn(
+        `[catalog] Authoritative request failed (${errorName}; cause=${causeCode}).`,
+      );
+    }
     return { ok: false, error: "UNAVAILABLE" };
   }
 }
 
-export function getProducts(params: CatalogQuery = {}) {
+export function getProducts(
+  params: CatalogQuery = {},
+  mode: CatalogRequestMode = "runtime",
+) {
   const query = new URLSearchParams();
   for (const [key, value] of Object.entries(params)) {
     if (value !== undefined && value !== "") query.set(key, String(value));
   }
   return publicRequest<PaginatedProducts>(
     `/products${query.size ? `?${query}` : ""}`,
+    mode,
   );
 }
 
@@ -188,8 +217,8 @@ export function getProduct(slug: string) {
   return publicRequest<Product>(`/products/${encodeURIComponent(slug)}`);
 }
 
-export function getCategories() {
-  return publicRequest<{ items: Category[] }>("/categories");
+export function getCategories(mode: CatalogRequestMode = "runtime") {
+  return publicRequest<{ items: Category[] }>("/categories", mode);
 }
 
 export function getCategory(slug: string) {
@@ -243,3 +272,4 @@ export function canDeliverCloudinaryVideo(url: string): boolean {
     return false;
   }
 }
+import { unstable_rethrow } from "next/navigation";

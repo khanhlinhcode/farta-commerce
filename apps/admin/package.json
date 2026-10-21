@@ -6,8 +6,10 @@
   "scripts": {
     "dev": "vite --port 5173",
     "build": "tsc -b && vite build",
+    "build:cloudflare:staging": "VITE_STOREFRONT_URL=https://staging.fartacommerce.me pnpm run build",
     "preview:cloudflare": "pnpm run build && wrangler dev",
     "deploy:cloudflare": "pnpm run build && wrangler deploy",
+    "deploy:cloudflare:staging": "pnpm run build:cloudflare:staging && wrangler deploy",
     "typecheck": "tsc -b --pretty false",
     "test": "vitest run"
   },

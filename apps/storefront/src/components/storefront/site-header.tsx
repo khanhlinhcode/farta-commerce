@@ -146,7 +146,12 @@ export function SiteHeader() {
           >
             <Menu aria-hidden="true" size={20} />
           </button>
-          <Link className="wordmark" href="/" aria-label="FARTA — Trang chủ">
+          <Link
+            className="wordmark"
+            href="/"
+            prefetch={false}
+            aria-label="FARTA — Trang chủ"
+          >
             FARTA
           </Link>
           <nav className="desktop-nav" aria-label="Điều hướng chính">
@@ -155,6 +160,7 @@ export function SiteHeader() {
                 aria-current={pathname === href ? "page" : undefined}
                 href={href}
                 key={href}
+                prefetch={false}
               >
                 {label}
               </Link>
@@ -167,7 +173,11 @@ export function SiteHeader() {
                 </summary>
                 <div>
                   {categoryItems.map((category) => (
-                    <Link href={`/category/${category.slug}`} key={category.id}>
+                    <Link
+                      href={`/category/${category.slug}`}
+                      key={category.id}
+                      prefetch={false}
+                    >
                       {category.name}
                     </Link>
                   ))}
@@ -190,6 +200,7 @@ export function SiteHeader() {
             <Link
               className="icon-button"
               href="/account"
+              prefetch={false}
               aria-label="Tài khoản"
             >
               <UserRound aria-hidden="true" size={19} />
@@ -197,6 +208,7 @@ export function SiteHeader() {
             <Link
               className="icon-button cart-link"
               href="/cart"
+              prefetch={false}
               aria-label={`Giỏ hàng, ${cart.data?.itemCount ?? 0} sản phẩm`}
             >
               <ShoppingBag aria-hidden="true" size={19} />
@@ -236,7 +248,7 @@ export function SiteHeader() {
             </div>
             <nav className="mobile-nav" aria-label="Điều hướng di động">
               {links.map(([href, label]) => (
-                <Link href={href} key={href}>
+                <Link href={href} key={href} prefetch={false}>
                   {label}
                   <ArrowUpRight
                     aria-hidden="true"
@@ -246,7 +258,11 @@ export function SiteHeader() {
                 </Link>
               ))}
               {categoryItems.map((category) => (
-                <Link href={`/category/${category.slug}`} key={category.id}>
+                <Link
+                  href={`/category/${category.slug}`}
+                  key={category.id}
+                  prefetch={false}
+                >
                   {category.name}
                   <ArrowUpRight
                     aria-hidden="true"
@@ -255,7 +271,7 @@ export function SiteHeader() {
                   />
                 </Link>
               ))}
-              <Link href="/login">
+              <Link href="/login" prefetch={false}>
                 Đăng nhập
                 <ArrowUpRight aria-hidden="true" size={18} strokeWidth={1.5} />
               </Link>

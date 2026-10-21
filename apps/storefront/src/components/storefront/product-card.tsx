@@ -57,6 +57,7 @@ export function ProductCard({
     <article className="product-card">
       <Link
         href={`/product/${product.slug}`}
+        prefetch={false}
         className="product-card__image"
         aria-label={`Xem ${product.name}`}
       >
@@ -83,7 +84,9 @@ export function ProductCard({
       <div className="product-card__info">
         <div>
           <h3>
-            <Link href={`/product/${product.slug}`}>{product.name}</Link>
+            <Link href={`/product/${product.slug}`} prefetch={false}>
+              {product.name}
+            </Link>
           </h3>
           <p>{pricing.label}</p>
         </div>

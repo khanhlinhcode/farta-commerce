@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 
 import type { PaginatedProducts, Product } from "@/lib/catalog";
-import { collectSitemapProducts } from "./sitemap";
+import { collectSitemapProducts, sitemapDataPolicy } from "./sitemap";
 
 function product(index: number): Product {
   return {
@@ -56,5 +56,43 @@ describe("sitemap product pagination", () => {
     expect(result.map((item) => item.slug)).toEqual(["product-1"]);
     expect(warn).toHaveBeenCalled();
     warn.mockRestore();
+  });
+
+  it("fails closed when deployment sitemap data is required", async () => {
+    const fetchPage = vi.fn(async () => ({
+      ok: false as const,
+      error: "UNAVAILABLE" as const,
+    }));
+    await expect(collectSitemapProducts(fetchPage, "required")).rejects.toThrow(
+      "SITEMAP_PRODUCTS_UNAVAILABLE_PAGE_1",
+    );
+    expect(fetchPage).toHaveBeenCalledTimes(2);
+  });
+
+  it("recovers one transient build-time catalog failure in required mode", async () => {
+    const fetchPage = vi
+      .fn()
+      .mockResolvedValueOnce({ ok: false, error: "UNAVAILABLE" })
+      .mockResolvedValueOnce({
+        ok: true,
+        data: { items: [product(1)], page: 1, limit: 100, total: 1 },
+      });
+
+    await expect(
+      collectSitemapProducts(fetchPage, "required"),
+    ).resolves.toEqual([product(1)]);
+    expect(fetchPage).toHaveBeenCalledTimes(2);
+  });
+
+  it("requires authoritative data for indexable deployments", () => {
+    expect(sitemapDataPolicy({ NEXT_PUBLIC_INDEXABLE: "true" })).toBe(
+      "required",
+    );
+    expect(sitemapDataPolicy({ NEXT_PUBLIC_INDEXABLE: "false" })).toBe(
+      "optional",
+    );
+    expect(() => sitemapDataPolicy({ SITEMAP_DATA_POLICY: "unknown" })).toThrow(
+      "INVALID_SITEMAP_DATA_POLICY",
+    );
   });
 });

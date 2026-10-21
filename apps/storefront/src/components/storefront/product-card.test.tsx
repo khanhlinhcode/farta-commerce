@@ -5,8 +5,16 @@ import type { Product } from "@/lib/catalog";
 import { ProductCard, productCardPrice } from "./product-card";
 
 vi.mock("next/link", () => ({
-  default: ({ children, href, ...props }: React.ComponentProps<"a">) => (
-    <a href={String(href)} {...props}>
+  default: ({
+    children,
+    href,
+    prefetch,
+    ...props
+  }: React.ComponentProps<"a"> & {
+    href: string;
+    prefetch?: boolean;
+  }) => (
+    <a href={String(href)} data-prefetch={String(prefetch ?? true)} {...props}>
       {children}
     </a>
   ),
@@ -98,6 +106,11 @@ describe("ProductCard", () => {
     expect(screen.getByText(/Màu có sẵn: Đen, Kem/)).toBeInTheDocument();
     expect(screen.getAllByRole("img")).toHaveLength(1);
     expect(document.querySelector('img[alt=""]')).toBeInTheDocument();
+    expect(
+      screen
+        .getAllByRole("link", { name: /FARTA Tee/ })
+        .every((link) => link.dataset.prefetch === "false"),
+    ).toBe(true);
   });
 
   it("shows compare price only when every visible offer is unambiguous", () => {

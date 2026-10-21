@@ -1,18 +1,18 @@
 # FARTA Commerce
 
-Greenfield production-oriented fashion-commerce monorepo. Phase 0 architecture is approved; Phase 1 provides the executable security foundation; Phase 2 provides catalog and inventory; Phase 3 provides the premium storefront; Phase 4A provides the server-authoritative Cart; Phase 4B provides atomic Checkout, Reservations, immutable Orders and COD; Phase 4C adds the SePay/VietQR payment boundary and verified bank webhooks; Phase 4D adds permissioned Admin order operations, inventory sale/cancellation workflows, reservation expiry and a notification outbox. Phase 4.1 adds local runtime stabilization, an idempotent development catalog seed, browser release coverage and feature-oriented Admin modules. Phase 5B deploys and validates the Chromium staging commerce path. Phase 5C external-provider and custom-domain validation is in progress. The repository is **not production-ready**: real SePay Test-mode delivery, OAuth adapters, notification delivery, alerting, final custom-domain validation and rollback evidence remain gated work.
+Greenfield production-oriented fashion-commerce monorepo. Phase 0 architecture is approved; Phase 1 provides the executable security foundation; Phase 2 provides catalog and inventory; Phase 3 provides the premium storefront; Phase 4A provides the server-authoritative Cart; Phase 4B provides atomic Checkout, Reservations, immutable Orders and COD; Phase 4C adds the SePay/VietQR payment boundary and verified bank webhooks; Phase 4D adds permissioned Admin order operations, inventory sale/cancellation workflows, reservation expiry and a notification outbox. Phase 4.1 adds local runtime stabilization, an idempotent development catalog seed, browser release coverage and feature-oriented Admin modules. Phase 5B deploys and validates the Chromium staging commerce path. Phase 5C adds custom staging domains. Phase 5D validates a targeted Cloudflare Worker-capacity remediation candidate. The repository is **not production-ready**: real SePay Test-mode delivery, OAuth adapters, notification delivery, alerting, physical-device evidence and a sustained capacity decision remain gated work.
 
 ## Current status
 
-| Scope                                               | Status                                                          |
-| --------------------------------------------------- | --------------------------------------------------------------- |
-| Local commerce implementation and automated gates   | Implemented                                                     |
-| Development Cloudinary-backed catalog seed          | Implemented; environment-specific manifest required             |
-| Chromium Storefront/Admin browser release coverage  | 31/31 passed against deployed staging                           |
-| CI browser lane                                     | Deferred until approved non-production media bootstrap exists   |
-| Release remediation                                 | Partial; correctness/Admin work landed locally, blockers remain |
-| Staging deployment and external-provider validation | Runtime deployed; Phase 5C provider/domain gates remain blocked |
-| Controlled AI shopping assistant                    | Phase 1 provider-off vertical slice implemented locally         |
+| Scope                                               | Status                                                                                        |
+| --------------------------------------------------- | --------------------------------------------------------------------------------------------- |
+| Local commerce implementation and automated gates   | Implemented                                                                                   |
+| Development Cloudinary-backed catalog seed          | Implemented; environment-specific manifest required                                           |
+| Chromium/WebKit Storefront/Admin browser coverage   | Candidate passed 31/31 Chromium and 27/27 WebKit; sustained Free-plan capacity remains a risk |
+| CI browser lane                                     | Deferred until approved non-production media bootstrap exists                                 |
+| Release remediation                                 | Phase 5D candidate validated; commit/redeploy evidence pending                                |
+| Staging deployment and external-provider validation | Custom domains deployed; provider/capacity gates remain blocked                               |
+| Controlled AI shopping assistant                    | Deterministic provider-off path deployed and validated                                        |
 
 ## Stack baseline (verified 2026-10-20)
 
@@ -51,6 +51,13 @@ appropriate API/AI-service environments. Gemini and Groq have separate enable an
 free-tier-verification flags; a public pricing page is not sufficient evidence to
 turn either provider on. See [`docs/api/ai-agent.md`](docs/api/ai-agent.md).
 
+The staging gateway currently enables only the deterministic provider-off
+Product Advisor. Gemini and Groq remain disabled. Custom-domain cutover evidence
+is recorded in
+[`docs/phase-5/custom-domain-and-ai-staging-cutover.md`](docs/phase-5/custom-domain-and-ai-staging-cutover.md).
+The current Worker remediation evidence is in
+[`docs/phase-5/worker-capacity-remediation.md`](docs/phase-5/worker-capacity-remediation.md).
+
 Default local ports: storefront `3000`, API `4000`, admin `5173`, AI service `8000`, MongoDB `27017`, Redis `6379`.
 
 ## Quality gates
@@ -80,9 +87,9 @@ For local-only use, the same `E2E_STAFF_EMAIL` and `E2E_STAFF_PASSWORD` values m
 
 `test:browser` reruns the idempotent development seed before Playwright. It starts API, Storefront and Admin through the checked-in `webServer` configuration, uses one browser worker, and never embeds credentials in source or snapshots. Update reviewed Chromium visual baselines only with `pnpm test:browser:update`.
 
-Current deployed staging evidence and Phase 5C blockers are recorded under
+Current deployed staging evidence and current remediation limits are recorded under
 [`docs/phase-5/`](docs/phase-5/), especially
-[`phase-5c-completion-report.md`](docs/phase-5/phase-5c-completion-report.md).
+[`worker-capacity-remediation.md`](docs/phase-5/worker-capacity-remediation.md).
 
 The CI browser lane is intentionally not enabled yet: a fresh CI MongoDB cannot reproduce the real Cloudinary-backed seed from the ignored environment-specific media manifest alone. A dedicated non-production Cloudinary account and an approved MediaAsset bootstrap/finalization mechanism are required first; CI must not substitute fake media or production provider credentials.
 

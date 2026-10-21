@@ -6,6 +6,12 @@
   "compatibility_flags": ["nodejs_compat", "global_fetch_strictly_public"],
   "workers_dev": true,
   "preview_urls": true,
+  "routes": [
+    {
+      "pattern": "staging.fartacommerce.me",
+      "custom_domain": true,
+    },
+  ],
   "assets": {
     "directory": ".open-next/assets",
     "binding": "ASSETS",
@@ -13,8 +19,9 @@
   "vars": {
     "API_INTERNAL_URL": "https://api-staging.fartacommerce.me",
     "CATALOG_CACHE_MODE": "no-store",
+    "SITEMAP_DATA_POLICY": "required",
     "NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME": "ddkizvngm",
-    "NEXT_PUBLIC_SITE_URL": "https://farta-storefront-staging.linhto01012000cm.workers.dev",
+    "NEXT_PUBLIC_SITE_URL": "https://staging.fartacommerce.me",
     "NEXT_PUBLIC_INDEXABLE": "false",
   },
 }

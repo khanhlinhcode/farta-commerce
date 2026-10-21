@@ -7,7 +7,7 @@
     "dev": "next dev --port 3000",
     "build": "next build",
     "build:cloudflare": "CLOUDFLARE_WORKERS=1 CATALOG_CACHE_MODE=no-store opennextjs-cloudflare build",
-    "build:cloudflare:staging": "API_INTERNAL_URL=https://api-staging.fartacommerce.me NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME=ddkizvngm NEXT_PUBLIC_SITE_URL=https://farta-storefront-staging.linhto01012000cm.workers.dev NEXT_PUBLIC_INDEXABLE=false pnpm run build:cloudflare",
+    "build:cloudflare:staging": "API_INTERNAL_URL=https://api-staging.fartacommerce.me SITEMAP_DATA_POLICY=required NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME=ddkizvngm NEXT_PUBLIC_SITE_URL=https://staging.fartacommerce.me NEXT_PUBLIC_INDEXABLE=false pnpm run build:cloudflare",
     "preview:cloudflare": "pnpm run build:cloudflare && opennextjs-cloudflare preview",
     "deploy:cloudflare": "pnpm run build:cloudflare && opennextjs-cloudflare deploy",
     "deploy:cloudflare:staging": "pnpm run build:cloudflare:staging && opennextjs-cloudflare deploy",

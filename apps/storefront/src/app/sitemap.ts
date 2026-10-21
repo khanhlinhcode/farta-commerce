@@ -10,6 +10,36 @@ import {
 
 const SITEMAP_PAGE_SIZE = 100;
 const SITEMAP_MAX_PAGES = 100;
+const SITEMAP_REQUIRED_ATTEMPTS = 2;
+export type SitemapDataPolicy = "optional" | "required";
+
+export function sitemapDataPolicy(
+  environment: Record<string, string | undefined> = process.env,
+): SitemapDataPolicy {
+  const configured = environment.SITEMAP_DATA_POLICY;
+  if (configured === "optional" || configured === "required") {
+    return configured;
+  }
+  if (configured !== undefined) {
+    throw new Error("INVALID_SITEMAP_DATA_POLICY");
+  }
+  return environment.NEXT_PUBLIC_INDEXABLE === "true" ? "required" : "optional";
+}
+
+export async function loadSitemapData<T>(
+  fetchData: () => Promise<CatalogResult<T>>,
+  policy: SitemapDataPolicy,
+): Promise<CatalogResult<T>> {
+  const attempts = policy === "required" ? SITEMAP_REQUIRED_ATTEMPTS : 1;
+  let result: CatalogResult<T> = { ok: false, error: "UNAVAILABLE" };
+
+  for (let attempt = 0; attempt < attempts; attempt += 1) {
+    result = await fetchData();
+    if (result.ok) return result;
+  }
+
+  return result;
+}
 
 export async function collectSitemapProducts(
   fetchPage: (input: {
@@ -17,15 +47,23 @@ export async function collectSitemapProducts(
     limit: number;
     sort: "newest";
   }) => Promise<CatalogResult<PaginatedProducts>> = getProducts,
+  policy: SitemapDataPolicy = "optional",
 ): Promise<Product[]> {
   const products = new Map<string, Product>();
   for (let page = 1; page <= SITEMAP_MAX_PAGES; page += 1) {
-    const result = await fetchPage({
-      page,
-      limit: SITEMAP_PAGE_SIZE,
-      sort: "newest",
-    });
+    const result = await loadSitemapData(
+      () =>
+        fetchPage({
+          page,
+          limit: SITEMAP_PAGE_SIZE,
+          sort: "newest",
+        }),
+      policy,
+    );
     if (!result.ok) {
+      if (policy === "required") {
+        throw new Error(`SITEMAP_PRODUCTS_UNAVAILABLE_PAGE_${page}`);
+      }
       console.warn(`[sitemap] Product page ${page} was unavailable.`);
       break;
     }
@@ -39,10 +77,14 @@ export async function collectSitemapProducts(
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const base = process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000";
+  const policy = sitemapDataPolicy();
   const [categories, products] = await Promise.all([
-    getCategories(),
-    collectSitemapProducts(),
+    loadSitemapData(() => getCategories("build"), policy),
+    collectSitemapProducts((input) => getProducts(input, "build"), policy),
   ]);
+  if (!categories.ok && policy === "required") {
+    throw new Error("SITEMAP_CATEGORIES_UNAVAILABLE");
+  }
   const staticRoutes = ["", "/shop", "/new-arrivals", "/collections"].map(
     (path) => ({ url: `${base}${path}`, changeFrequency: "daily" as const }),
   );
