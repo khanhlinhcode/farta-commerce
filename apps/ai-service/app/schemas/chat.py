@@ -59,7 +59,7 @@ class InternalChatResponse(ApiModel):
     request_id: str
     conversation_id: str
     status: Literal["completed", "clarification", "unavailable"]
-    route: Literal["deterministic", "agent", "clarification", "unsupported"]
+    route: Literal["agent", "clarification", "unsupported"]
     message: str
     products: list[ProductReference] = Field(default_factory=list, max_length=12)
     citations: list[None] = Field(default_factory=list, max_length=0)

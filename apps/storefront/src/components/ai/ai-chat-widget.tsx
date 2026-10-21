@@ -9,7 +9,14 @@ import { AiChatPanel } from "./ai-chat-panel";
 import type { AiUiMessage } from "./ai-message-list";
 
 const hiddenRoutes = ["/cart", "/checkout", "/order-confirmation"];
-const requestTimeoutMs = 30_000;
+const requestTimeoutMs = 65_000;
+
+const retryableErrorCodes = new Set([
+  "AI_PROVIDER_FAILED",
+  "AI_PROVIDER_RATE_LIMIT",
+  "AI_PROVIDER_TIMEOUT",
+  "AI_COMMERCE_TOOL_UNAVAILABLE",
+]);
 
 export function AiChatWidget() {
   const pathname = usePathname();
@@ -75,7 +82,14 @@ export function AiChatWidget() {
             : {}),
         },
       ]);
-      if (unavailable && !isRetry) setRetryMessage(message);
+      if (
+        unavailable &&
+        !isRetry &&
+        result.error &&
+        retryableErrorCodes.has(result.error.code)
+      ) {
+        setRetryMessage(message);
+      }
     } catch (error) {
       const timedOut =
         error instanceof DOMException && error.name === "AbortError";

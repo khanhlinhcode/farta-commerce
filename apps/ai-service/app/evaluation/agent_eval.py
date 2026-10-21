@@ -66,6 +66,7 @@ class EvaluationCase(BaseModel):
     ]
     expected_response_status: Literal["completed", "clarification", "unavailable"]
     required_behavior: Literal["answer", "clarify", "refuse", "fail_closed"]
+    expected_execution_mode: Literal["agent", "clarification", "unsupported"]
     requires_model_inference: bool
 
     @model_validator(mode="after")
@@ -80,6 +81,17 @@ class EvaluationCase(BaseModel):
         }[self.required_behavior]
         if self.expected_response_status != expected_status:
             raise ValueError("Evaluation response status contradicts the required behavior.")
+        expected_mode = (
+            "clarification"
+            if self.expected_route_class == "CLARIFICATION_REQUIRED"
+            else "unsupported"
+            if self.expected_route_class == "UNSUPPORTED"
+            else "agent"
+        )
+        if self.expected_execution_mode != expected_mode:
+            raise ValueError("Evaluation execution mode contradicts the required behavior.")
+        if self.requires_model_inference != (self.expected_execution_mode == "agent"):
+            raise ValueError("Model inference flag contradicts the expected execution mode.")
         return self
 
     @property
@@ -108,6 +120,7 @@ def evaluate(path: Path = DATASET_PATH) -> dict[str, object]:
     cases = load_cases(path)
     router = IntentRouter()
     route_correct = 0
+    execution_mode_correct = 0
     route_latencies: list[float] = []
     tool_checks = 0
     tool_correct = 0
@@ -119,20 +132,28 @@ def evaluate(path: Path = DATASET_PATH) -> dict[str, object]:
         route_latencies.append((time.perf_counter() - started) * 1_000)
         route_matches = decision.intent == case.expected_route_class
         route_correct += int(route_matches)
+        execution_mode_matches = decision.mode == case.expected_execution_mode
+        execution_mode_correct += int(execution_mode_matches)
 
         tool_matches = True
-        if not case.requires_model_inference:
+        if len(case.allowed_tools) == 1:
             tool_checks += 1
             tool_matches = (
-                decision.tool in case.allowed_tools if case.allowed_tools else decision.tool is None
-            ) and decision.tool not in case.forbidden_tools
+                decision.tool in case.allowed_tools and decision.tool not in case.forbidden_tools
+            )
             tool_correct += int(tool_matches)
-        if not route_matches or not tool_matches:
+        elif decision.mode in {"clarification", "unsupported"}:
+            tool_checks += 1
+            tool_matches = decision.tool is None
+            tool_correct += int(tool_matches)
+        if not route_matches or not execution_mode_matches or not tool_matches:
             failures.append(
                 {
                     "case_id": case.case_id,
                     "expected_route": case.expected_route_class,
                     "actual_route": decision.intent,
+                    "expected_execution_mode": case.expected_execution_mode,
+                    "actual_execution_mode": decision.mode,
                     "actual_tool": decision.tool,
                 }
             )
@@ -145,6 +166,7 @@ def evaluate(path: Path = DATASET_PATH) -> dict[str, object]:
         "categories": dict(sorted(Counter(case.category for case in cases).items())),
         "provider_calls": 0,
         "route_accuracy": round(route_correct / len(cases), 6),
+        "agent_execution_accuracy": round(execution_mode_correct / len(cases), 6),
         "tool_selection_accuracy": round(tool_correct / tool_checks, 6),
         "tool_selection_cases": tool_checks,
         "router_latency_p50_ms": round(statistics.median(ordered), 6),
@@ -158,6 +180,11 @@ def evaluate(path: Path = DATASET_PATH) -> dict[str, object]:
                 FORBIDDEN_MUTATION_TOOLS.issubset(case.forbidden_tools) for case in cases
             ),
             "no_provider_requests": True,
+            "all_supported_requests_require_agent": all(
+                case.expected_execution_mode == "agent"
+                for case in cases
+                if case.required_behavior in {"answer", "fail_closed"}
+            ),
         },
         "not_measured_without_live_provider": [
             "schema_valid_response_rate",

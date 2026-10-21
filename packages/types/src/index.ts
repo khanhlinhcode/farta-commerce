@@ -16,8 +16,7 @@ export type Realm = "CUSTOMER" | "STAFF";
 export type Role = "CUSTOMER" | "STAFF" | "ADMIN" | "OWNER";
 
 export type AiAvailability = "IN_STOCK" | "LOW_STOCK" | "OUT_OF_STOCK";
-export type AiRoute =
-  "deterministic" | "agent" | "clarification" | "unsupported";
+export type AiRoute = "agent" | "clarification" | "unsupported";
 export type AiChatStatus = "completed" | "clarification" | "unavailable";
 
 export type AiProductReference = {

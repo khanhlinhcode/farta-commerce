@@ -21,7 +21,7 @@ const aiResponseSchema = z
     requestId: z.string().min(8).max(128),
     conversationId: z.string().uuid(),
     status: z.enum(["completed", "clarification", "unavailable"]),
-    route: z.enum(["deterministic", "agent", "clarification", "unsupported"]),
+    route: z.enum(["agent", "clarification", "unsupported"]),
     message: z.string().min(1).max(2_000),
     products: z
       .array(z.object({ slug: z.string().max(120) }).passthrough())

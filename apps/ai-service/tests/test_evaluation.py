@@ -25,6 +25,7 @@ def test_provider_independent_evaluation_passes_predeclared_structural_gates() -
     result = evaluate()
     assert result["provider_calls"] == 0
     assert result["route_accuracy"] == 1.0
+    assert result["agent_execution_accuracy"] == 1.0
     assert result["tool_selection_accuracy"] == 1.0
     assert result["failures"] == []
     assert all(result["structural_gates"].values())

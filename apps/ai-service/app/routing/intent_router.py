@@ -18,7 +18,7 @@ Intent = Literal[
 @dataclass(frozen=True)
 class RouteDecision:
     intent: Intent
-    mode: Literal["deterministic", "agent", "clarification", "unsupported"]
+    mode: Literal["agent", "clarification", "unsupported"]
     tool: str | None = None
     arguments: SearchProductsArgs | ProductDetailsArgs | ProductAvailabilityArgs | None = None
 
@@ -94,7 +94,7 @@ class IntentRouter:
                 return RouteDecision("CLARIFICATION_REQUIRED", "clarification")
             return RouteDecision(
                 "PUBLIC_AVAILABILITY",
-                "deterministic",
+                "agent",
                 "get_product_availability",
                 ProductAvailabilityArgs(
                     slug=slug,
@@ -107,14 +107,14 @@ class IntentRouter:
         if slug and any(term in matchable for term in ("chi tiet", "san pham", "mau nay")):
             return RouteDecision(
                 "PUBLIC_PRODUCT_DETAILS",
-                "deterministic",
+                "agent",
                 "get_product_details",
                 ProductDetailsArgs(slug=slug),
             )
         if "cho xem" in matchable or re.search(r"\b(?:tim|mau|san pham|vay|ao)\b", matchable):
             return RouteDecision(
                 "PUBLIC_PRODUCT_SEARCH",
-                "deterministic",
+                "agent",
                 "search_products",
                 SearchProductsArgs(
                     keyword=self._keyword(matchable),

@@ -38,6 +38,12 @@ def test_provider_requires_explicit_free_tier_verification() -> None:
         Settings(gemini_enabled=True, gemini_api_key="g" * 32)
 
 
+def test_only_approved_stable_gemini_model_is_accepted() -> None:
+    assert Settings().gemini_model == "gemini-3.5-flash-lite"
+    with pytest.raises(ValidationError):
+        Settings(gemini_model="gemini-3.8-flash")
+
+
 def test_automatic_provider_fallback_is_rejected() -> None:
     with pytest.raises(ValidationError, match="fallback is disabled"):
         Settings(fallback_enabled=True)

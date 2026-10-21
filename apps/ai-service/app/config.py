@@ -18,7 +18,7 @@ class Settings(BaseSettings):
     gemini_enabled: bool = False
     gemini_free_tier_verified: bool = False
     gemini_api_key: SecretStr = SecretStr("")
-    gemini_model: Literal["gemini-3.8-flash"] = "gemini-3.8-flash"
+    gemini_model: Literal["gemini-3.5-flash-lite"] = "gemini-3.5-flash-lite"
     groq_enabled: bool = False
     groq_free_tier_verified: bool = False
     groq_api_key: SecretStr = SecretStr("")

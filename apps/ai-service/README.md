@@ -1,14 +1,16 @@
 # FARTA AI service
 
-Private FastAPI/Pydantic AI service for the read-only FARTA Product Advisor. It supports a
-deterministic intent router, bounded typed Agent execution and three allowlisted catalog tools. Every
-tool call returns through the authenticated NestJS Tool Gateway; this service has no direct MongoDB,
+Private FastAPI/Pydantic AI service for the read-only FARTA Product Advisor. A deterministic router
+rejects unsupported/private intents and requests clarification, but every supported product request
+is executed by Pydantic AI with typed output and one of three allowlisted catalog tools. Every tool
+call returns through the authenticated NestJS Tool Gateway; this service has no direct MongoDB,
 Redis, Cloudinary, Cart, Order, Payment or role-mutation access.
 
-Provider-off mode is the default and validated path. Gemini and Groq require explicit enablement,
+Provider-off mode fails closed for all supported requests. The approved Gemini model is
+`gemini-3.5-flash-lite`; Groq remains disabled. Both providers require explicit enablement,
 free-tier verification and secrets supplied through the deployment secret manager. Automatic
-provider fallback is rejected. LangGraph, LlamaIndex, RAG and commerce mutations remain out of
-scope.
+provider fallback and retries are rejected. LangGraph, LlamaIndex, RAG and commerce mutations
+remain out of scope.
 
 ```bash
 uv sync --frozen

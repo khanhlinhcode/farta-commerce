@@ -2,7 +2,7 @@ import { expect, test } from "@playwright/test";
 
 import { assertNoHorizontalOverflow, seed, urls } from "./support";
 
-test("guest uses the deterministic Product Advisor and opens an authoritative product", async ({
+test("guest uses the live Product Advisor and opens an authoritative product", async ({
   page,
 }) => {
   await page.goto("/shop");

@@ -60,12 +60,24 @@ def request(message: str) -> InternalChatRequest:
     )
 
 
-async def test_deterministic_route_works_without_provider() -> None:
+@pytest.mark.parametrize(
+    "message, selected_slugs",
+    [
+        ("Tìm áo màu đen size M", []),
+        ("Xem chi tiết sản phẩm này", [PRODUCT.slug]),
+        ("Mẫu này còn size M không?", [PRODUCT.slug]),
+        ("Tư vấn một bộ trang phục cho buổi triển lãm", []),
+    ],
+)
+async def test_supported_requests_require_live_agent_provider(
+    message: str, selected_slugs: list[str]
+) -> None:
     executor = AgentExecutor(Settings(), FakeCommerce(), models=[])
-    result = await executor.execute(request("Tìm áo màu đen size M"))
-    assert result.route == "deterministic"
-    assert result.status == "completed"
-    assert result.products[0].price_vnd == 399_000
+    live_request = request(message).model_copy(update={"selected_product_slugs": selected_slugs})
+    result = await executor.execute(live_request)
+    assert result.route == "agent"
+    assert result.status == "unavailable"
+    assert result.error and result.error.code == "AI_PROVIDER_DISABLED"
 
 
 async def test_complex_route_fails_closed_when_providers_are_disabled() -> None:
@@ -102,6 +114,23 @@ async def test_agent_hydrates_only_observed_product_references() -> None:
     )
     executor = AgentExecutor(Settings(), FakeCommerce(), models=[model])
     result = await executor.execute(request("Tư vấn một bộ trang phục cho triển lãm"))
+    assert result.status == "completed"
+    assert [product.slug for product in result.products] == [PRODUCT.slug]
+
+
+async def test_simple_product_search_uses_pydantic_agent_and_authoritative_tool() -> None:
+    model = TestModel(
+        call_tools=["search_products"],
+        custom_output_args={
+            "message": "Mình đã tìm được một mẫu phù hợp với tiêu chí của bạn.",
+            "product_slugs": [PRODUCT.slug],
+            "requires_clarification": False,
+        },
+    )
+    result = await AgentExecutor(Settings(), FakeCommerce(), models=[model]).execute(
+        request("Tìm áo màu đen size M")
+    )
+    assert result.route == "agent"
     assert result.status == "completed"
     assert [product.slug for product in result.products] == [PRODUCT.slug]
 
@@ -152,7 +181,7 @@ async def test_tool_call_limit_stops_multi_tool_run() -> None:
         request("Tư vấn một bộ trang phục cho triển lãm")
     )
     assert result.status == "unavailable"
-    assert result.error and result.error.code == "AI_PROVIDER_UNAVAILABLE"
+    assert result.error and result.error.code == "AI_LIMIT_EXCEEDED"
 
 
 async def test_model_request_limit_stops_tool_continuation() -> None:
@@ -162,7 +191,7 @@ async def test_model_request_limit_stops_tool_continuation() -> None:
         request("Tư vấn một bộ trang phục cho triển lãm")
     )
     assert result.status == "unavailable"
-    assert result.error and result.error.code == "AI_PROVIDER_UNAVAILABLE"
+    assert result.error and result.error.code == "AI_LIMIT_EXCEEDED"
 
 
 async def test_provider_timeout_fails_closed() -> None:
@@ -176,7 +205,7 @@ async def test_provider_timeout_fails_closed() -> None:
         models=[FunctionModel(delayed)],
     ).execute(request("Tư vấn một bộ trang phục cho triển lãm"))
     assert result.status == "unavailable"
-    assert result.error and result.error.code == "AI_PROVIDER_UNAVAILABLE"
+    assert result.error and result.error.code == "AI_PROVIDER_TIMEOUT"
 
 
 async def test_invalid_structured_output_fails_closed() -> None:
@@ -185,7 +214,7 @@ async def test_invalid_structured_output_fails_closed() -> None:
         request("Tư vấn một bộ trang phục cho triển lãm")
     )
     assert result.status == "unavailable"
-    assert result.error and result.error.code == "AI_PROVIDER_UNAVAILABLE"
+    assert result.error and result.error.code == "AI_PROVIDER_FAILED"
 
 
 async def test_forbidden_model_tool_request_fails_closed() -> None:
@@ -196,7 +225,7 @@ async def test_forbidden_model_tool_request_fails_closed() -> None:
         request("Tư vấn một bộ trang phục cho triển lãm")
     )
     assert result.status == "unavailable"
-    assert result.error and result.error.code == "AI_PROVIDER_UNAVAILABLE"
+    assert result.error and result.error.code == "AI_PROVIDER_FAILED"
 
 
 def test_product_content_prompt_injection_remains_labeled_untrusted_data() -> None:
@@ -243,13 +272,14 @@ async def test_automatic_provider_fallback_is_not_used() -> None:
         request("Tư vấn phong cách phù hợp với tôi")
     )
     assert result.status == "unavailable"
-    assert result.error and result.error.code == "AI_PROVIDER_UNAVAILABLE"
+    assert result.error and result.error.code == "AI_PROVIDER_RATE_LIMIT"
 
 
-def test_gemini_uses_documented_low_thinking_without_affecting_other_models() -> None:
+def test_gemini_uses_documented_minimal_thinking_without_affecting_other_models() -> None:
     executor = AgentExecutor(Settings(), FakeCommerce(), models=[])
-    assert executor._model_settings("google")["thinking"] == "low"
-    assert "thinking" not in executor._model_settings("test")
+    assert executor._model_settings("google", "gemini-3.5-flash-lite")["thinking"] == "minimal"
+    assert "thinking" not in executor._model_settings("google", "another-model")
+    assert "thinking" not in executor._model_settings("test", "test")
 
 
 def test_tool_registry_is_fixed_and_arguments_are_strict() -> None:
