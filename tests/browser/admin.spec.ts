@@ -86,8 +86,11 @@ test("Admin order detail enforces allowed and invalid transitions", async ({
     .fill("Đã xác nhận thông tin giao nhận");
   await page.getByLabel("Chuyển trạng thái").selectOption("CONFIRMED");
   await page.getByRole("button", { name: "Cập nhật trạng thái" }).click();
-  await expect(page.getByText("CONFIRMED").first()).toBeVisible();
+  const orderStatus = page
+    .locator(".status-cluster .status")
+    .filter({ hasText: /^CONFIRMED$/ });
+  await expect(orderStatus).toBeVisible();
   await page.reload();
-  await expect(page.getByText("CONFIRMED").first()).toBeVisible();
+  await expect(orderStatus).toBeVisible();
   await cancelBrowserOrder(page, order.code);
 });
