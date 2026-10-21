@@ -20,16 +20,17 @@ was added.
 
 ## Evidence boundary
 
-| Evidence class                           | Status                                        |
-| ---------------------------------------- | --------------------------------------------- |
-| Source implementation                    | IMPLEMENTED in current worktree               |
-| Provider-independent AI tests/evaluation | LOCAL VERIFIED; 43/43 tests and 62 cases      |
-| Repository regression gates              | LOCAL VERIFIED across configured browsers     |
-| CI on exact Phase 6 commit               | VERIFIED — run `39622315388` succeeded        |
-| Staging on exact Phase 6 revision        | VERIFIED — commit `fa02dac`                   |
-| Live LLM provider                        | IN PROGRESS — 8 requests; remediation pending |
-| Alert/email/OAuth/SePay provider proof   | BLOCKED or deferred                           |
-| Backup/Redis/rollback                    | BLOCKED                                       |
+| Evidence class                           | Status                                                        |
+| ---------------------------------------- | ------------------------------------------------------------- |
+| Source implementation                    | IMPLEMENTED in current worktree                               |
+| Provider-independent AI tests/evaluation | LOCAL VERIFIED; 43/43 tests and 62 cases                      |
+| Repository regression gates              | LOCAL VERIFIED across configured browsers                     |
+| CI on exact Phase 6 commit               | VERIFIED — run `39622315388` succeeded                        |
+| Latency-remediation CI                   | VERIFIED — run `39686740905` succeeded                        |
+| Staging remediation revision             | VERIFIED — API and AI at commit `3f11f5c`                     |
+| Live LLM provider                        | BLOCKED — 9 requests; deployed remediation failed bounded E2E |
+| Alert/email/OAuth/SePay provider proof   | BLOCKED or deferred                                           |
+| Backup/Redis/rollback                    | BLOCKED                                                       |
 
 ## Local test evidence
 
@@ -81,8 +82,9 @@ without `loading="eager"`. This is a Low follow-up and no Lighthouse score is cl
 - deterministic route accuracy: 1.0;
 - tool-selection cases: 45; accuracy: 1.0;
 - latest local in-process router sample: p50 `0.007437 ms`, p95 `0.021917 ms`;
-- live Gemini: key/model metadata HTTP 200; 6 generate calls; low-thinking control HTTP 200 in
-  19.515 seconds; deployed remediated Agent not yet tested.
+- live Gemini: key/model metadata HTTP 200; 7 generate calls; low-thinking control HTTP 200 in
+  19.515 seconds; deployed remediated Agent reached its 25-second deadline before a tool call and
+  failed closed.
 
 ## External configuration required
 
@@ -107,7 +109,10 @@ advice failed closed and deterministic catalog discovery remained functional.
 
 The 2026-10-22 follow-up verified private AI live/ready health, real staging catalog results and a
 bounded Gemini test. Default-thinking Agent calls failed closed on `504`/timeout; a low-thinking
-control succeeded. Runtime was returned to provider-off while the source remediation is validated.
+control succeeded. Revision `3f11f5c787be0b95a9b494a54b84840214c667be` then deployed low thinking
+and bounded 25/60/65-second model/Agent/upstream deadlines to both API and AI. The public end-to-end
+flow still reached the first provider-call deadline before any tool execution, so runtime was
+returned to provider-off. Post-rollback private AI and public API live/ready checks returned HTTP 200.
 
 ## Completion score
 

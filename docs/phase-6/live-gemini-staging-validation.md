@@ -2,8 +2,8 @@
 
 Date: 2026-10-22
 
-Status: **IN PROGRESS — credential/model validated; live Agent latency remediation awaiting deployed
-end-to-end proof**.
+Status: **BLOCKED — credential/model validated; deployed low-thinking Agent still exceeded the
+bounded provider timeout**.
 
 ## Completed preflight
 
@@ -56,7 +56,7 @@ The raw credential and full fingerprints are intentionally absent from this repo
 
 ## Live validation and failure evidence
 
-Eight Google API HTTP requests were issued, all with synthetic data: two metadata requests and six
+Nine Google API HTTP requests were issued, all with synthetic data: two metadata requests and seven
 `generateContent` calls. This remains below the approved ceiling of ten.
 
 - the first public Agent request failed closed after 11.898 seconds;
@@ -75,8 +75,18 @@ gateway.
 
 The source remediation sets low thinking only for Google and raises bounded ceilings to 25 seconds
 per LLM call, 60 seconds for the Agent run and 65 seconds for the NestJS upstream request. It does
-not enable retries, fallback, extra tools or additional iterations. Deployed end-to-end evidence is
-still required.
+not enable retries, fallback, extra tools or additional iterations.
+
+Revision `3f11f5c787be0b95a9b494a54b84840214c667be` was committed, pushed and deployed to both
+`farta-api` and `farta-ai`. The final public NestJS-to-AI test used one synthetic Vietnamese product
+advice prompt. It returned HTTP 201 with the safe Agent envelope after 27.666 seconds, but the Agent
+status was `unavailable` with `AI_PROVIDER_UNAVAILABLE`. API observability recorded 25.162 seconds.
+The private AI logs showed no Tool Gateway request for this run, so the first Gemini call itself
+reached the 25-second hard deadline. No grounded product or final model answer was returned.
+
+This means the source mitigation was deployed successfully but did not make the live provider
+reliable. Increasing the deadline again would only conceal the current Free Tier latency and is not
+accepted as a correctness fix.
 
 ## Runtime safety state
 
@@ -114,13 +124,16 @@ evidence for the later live-provider comparison.
 
 ## Remaining blocking evidence
 
-1. Deploy the low-thinking and bounded-timeout remediation.
-2. Use the remaining two-request budget for one public end-to-end Agent flow.
-3. Confirm grounded products and final response through NestJS, then return to provider-off unless
-   the stakeholder explicitly approves continued staging exposure.
+1. Select a lower-latency model only after its exact model ID, Pydantic AI compatibility, tool
+   calling and Free Tier availability are verified and the stakeholder approves the configuration
+   change; alternatively provide approved capacity for the current model.
+2. Repeat one bounded public end-to-end Agent flow. One request remains from the ten-request
+   authorization and was intentionally not consumed without a new technical change.
+3. Confirm grounded products and a validated final response through NestJS, then return to
+   provider-off unless the stakeholder explicitly approves continued staging exposure.
 4. Record billing/data-governance acceptance separately before any production recommendation.
 
 ## Recommendation
 
-Remain on provider-off staging until the remediated revision passes the final bounded test. Do not
-start RAG, LangGraph, commerce mutations or production deployment.
+Remain on provider-off staging. The deployed remediation is insufficient for the current provider
+behavior. Do not start RAG, LangGraph, commerce mutations or production deployment.

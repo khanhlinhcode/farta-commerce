@@ -14,18 +14,18 @@ Recommendation: **REMEDIATION REQUIRED — REMAIN ON STAGING**.
 
 ## Security classification
 
-| Severity | Item                                                | Status                                |
-| -------- | --------------------------------------------------- | ------------------------------------- |
-| Critical | none found in validated Phase 6 implementation      | —                                     |
-| High     | live Gemini Agent reliability not yet demonstrated  | remediation pending; provider off     |
-| High     | alert delivery and operational ownership absent     | BLOCKED for production                |
-| High     | staging backup/restore rehearsal absent             | BLOCKED for production                |
-| High     | online SePay launch lacks actual Test-mode delivery | BLOCKED; do not enable online payment |
-| Medium   | inbound AI replay cache is process-local            | single replica only                   |
-| Medium   | email delivery/retry has no external proof          | BLOCKED                               |
-| Medium   | Redis recovery and deployment rollback unmeasured   | BLOCKED                               |
-| Medium   | OAuth adapters absent                               | deferred; disabled UI only            |
-| Medium   | physical-device/screen-reader validation absent     | NOT TESTED                            |
+| Severity | Item                                                | Status                                   |
+| -------- | --------------------------------------------------- | ---------------------------------------- |
+| Critical | none found in validated Phase 6 implementation      | —                                        |
+| High     | live Gemini Agent exceeds bounded provider deadline | deployed mitigation failed; provider off |
+| High     | alert delivery and operational ownership absent     | BLOCKED for production                   |
+| High     | staging backup/restore rehearsal absent             | BLOCKED for production                   |
+| High     | online SePay launch lacks actual Test-mode delivery | BLOCKED; do not enable online payment    |
+| Medium   | inbound AI replay cache is process-local            | single replica only                      |
+| Medium   | email delivery/retry has no external proof          | BLOCKED                                  |
+| Medium   | Redis recovery and deployment rollback unmeasured   | BLOCKED                                  |
+| Medium   | OAuth adapters absent                               | deferred; disabled UI only               |
+| Medium   | physical-device/screen-reader validation absent     | NOT TESTED                               |
 
 Source, exact-commit CI and staging browser success cannot close these external findings. No
 production deployment is recommended until every required provider/recovery boundary has exact
