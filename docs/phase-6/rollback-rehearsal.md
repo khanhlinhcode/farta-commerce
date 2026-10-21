@@ -2,11 +2,22 @@
 
 Date: 2026-10-21
 
-Status: **BLOCKED — no staging deployment or rollback executed for the Phase 6 worktree**.
+Status: **PARTIAL PASS — live-provider flag rollback executed; revision rollback remains BLOCKED**.
 
-The validated baseline remains commit `3c88ba955c897c274445ae491b621c7b27dd1f38`. Phase 6 changes
-are local source until committed, pushed, built and deployed as exact revisions. Rolling back the
-live services without a new Phase 6 deployment would not exercise this change set.
+The validated provider-off baseline is commit
+`fa02dac877952c352c969cac59b552fb418449fd`. API build `positive-pull-6716`, AI build
+`noble-bee-885` and Cloudflare Storefront version `c03de7bd-cd28-447d-a105-8f647dd8395a` were healthy
+after deployment.
+
+On 2026-10-22 Gemini was temporarily enabled for bounded synthetic validation, then the priority-50
+validation group was changed back to `AI_GEMINI_ENABLED=false`,
+`AI_GEMINI_FREE_TIER_VERIFIED=false`, `AI_GROQ_ENABLED=false` and
+`AI_FALLBACK_ENABLED=false`. The `farta-ai` service restarted successfully, effective runtime flags
+matched the rollback target, and private `/health/live` plus `/health/ready` returned HTTP 200. The
+credential remained in its restricted secret group and was not printed.
+
+This proves provider-flag rollback only. It does not prove application-revision, database, Redis or
+Cloudflare rollback.
 
 An approved rehearsal must record the source and target revision, deployment IDs, schema
 compatibility and pre/post checks for API live/ready, Storefront, Admin, Cart continuity, owned

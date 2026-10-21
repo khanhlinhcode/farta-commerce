@@ -203,11 +203,7 @@ class AgentExecutor:
                     result = await agent.run(
                         self._prompt(request),
                         deps=dependencies,
-                        model_settings=ModelSettings(
-                            max_tokens=self._policy.output_token_limit,
-                            timeout=self._policy.llm_timeout_seconds,
-                            parallel_tool_calls=False,
-                        ),
+                        model_settings=self._model_settings(provider),
                         usage_limits=UsageLimits(
                             request_limit=self._policy.max_iterations,
                             tool_calls_limit=self._policy.max_tool_executions,
@@ -345,6 +341,18 @@ class AgentExecutor:
         }
         primary = self._settings.primary_provider
         return [factories[primary][1].create()] if factories[primary][0] else []
+
+    def _model_settings(self, provider: str) -> ModelSettings:
+        settings = ModelSettings(
+            max_tokens=self._policy.output_token_limit,
+            timeout=self._policy.llm_timeout_seconds,
+            parallel_tool_calls=False,
+        )
+        if provider == "google":
+            # Gemini 3.8 Flash defaults to medium thinking. Low is the documented
+            # latency-oriented level and keeps this read-only shopping flow bounded.
+            settings["thinking"] = "low"
+        return settings
 
     @staticmethod
     def _prompt(request: InternalChatRequest) -> str:

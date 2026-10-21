@@ -41,3 +41,13 @@ def test_provider_requires_explicit_free_tier_verification() -> None:
 def test_automatic_provider_fallback_is_rejected() -> None:
     with pytest.raises(ValidationError, match="fallback is disabled"):
         Settings(fallback_enabled=True)
+
+
+def test_live_agent_timeout_budget_is_bounded() -> None:
+    settings = Settings()
+    assert settings.llm_timeout_seconds == 25
+    assert settings.request_timeout_seconds == 60
+    with pytest.raises(ValidationError, match="LLM timeout"):
+        Settings(llm_timeout_seconds=26)
+    with pytest.raises(ValidationError, match="Request timeout"):
+        Settings(request_timeout_seconds=61)

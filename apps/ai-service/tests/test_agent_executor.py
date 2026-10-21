@@ -246,6 +246,12 @@ async def test_automatic_provider_fallback_is_not_used() -> None:
     assert result.error and result.error.code == "AI_PROVIDER_UNAVAILABLE"
 
 
+def test_gemini_uses_documented_low_thinking_without_affecting_other_models() -> None:
+    executor = AgentExecutor(Settings(), FakeCommerce(), models=[])
+    assert executor._model_settings("google")["thinking"] == "low"
+    assert "thinking" not in executor._model_settings("test")
+
+
 def test_tool_registry_is_fixed_and_arguments_are_strict() -> None:
     assert {tool.__name__ for tool in APPROVED_TOOLS} == {
         "search_products",

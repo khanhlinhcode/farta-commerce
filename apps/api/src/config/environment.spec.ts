@@ -53,6 +53,7 @@ describe("environment validation", () => {
       PAYMENT_STATUS_GLOBAL_LIMIT: 600,
       RESERVATION_WORKER_INTERVAL_MS: 15_000,
       RESERVATION_WORKER_BATCH_SIZE: 50,
+      AI_REQUEST_TIMEOUT_MS: 65_000,
       SEPAY_ENABLED: false,
       SEPAY_DEPOSIT_MODE: "DISABLED",
     }));

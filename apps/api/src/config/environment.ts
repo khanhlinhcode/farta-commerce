@@ -167,8 +167,8 @@ const environmentSchema = z
       .number()
       .int()
       .min(1_000)
-      .max(25_000)
-      .default(25_000),
+      .max(65_000)
+      .default(65_000),
     AI_CHAT_LIMIT: z.coerce.number().int().min(1).max(300).default(30),
     AI_CHAT_WINDOW_SECONDS: z.coerce
       .number()

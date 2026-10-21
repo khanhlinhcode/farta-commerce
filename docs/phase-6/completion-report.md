@@ -1,9 +1,9 @@
 # Phase 6 completion report
 
-Date: 2026-10-21
+Date: 2026-10-22
 
-Verdict: **provider-independent implementation complete; external and deployment validation
-BLOCKED. Remain on staging.**
+Verdict: **provider-independent implementation and exact-revision staging validation complete;
+live provider and production controls remain BLOCKED. Remain on staging.**
 
 ## Source implemented
 
@@ -20,16 +20,16 @@ was added.
 
 ## Evidence boundary
 
-| Evidence class                           | Status                                    |
-| ---------------------------------------- | ----------------------------------------- |
-| Source implementation                    | IMPLEMENTED in current worktree           |
-| Provider-independent AI tests/evaluation | LOCAL VERIFIED; 43/43 tests and 62 cases  |
-| Repository regression gates              | LOCAL VERIFIED across configured browsers |
-| CI on exact Phase 6 commit               | NOT TESTED — no commit/push requested yet |
-| Staging on exact Phase 6 revision        | NOT TESTED — not deployed                 |
-| Live LLM provider                        | BLOCKED — 0 requests                      |
-| Alert/email/OAuth/SePay provider proof   | BLOCKED or deferred                       |
-| Backup/Redis/rollback                    | BLOCKED                                   |
+| Evidence class                           | Status                                        |
+| ---------------------------------------- | --------------------------------------------- |
+| Source implementation                    | IMPLEMENTED in current worktree               |
+| Provider-independent AI tests/evaluation | LOCAL VERIFIED; 43/43 tests and 62 cases      |
+| Repository regression gates              | LOCAL VERIFIED across configured browsers     |
+| CI on exact Phase 6 commit               | VERIFIED — run `39622315388` succeeded        |
+| Staging on exact Phase 6 revision        | VERIFIED — commit `fa02dac`                   |
+| Live LLM provider                        | IN PROGRESS — 8 requests; remediation pending |
+| Alert/email/OAuth/SePay provider proof   | BLOCKED or deferred                           |
+| Backup/Redis/rollback                    | BLOCKED                                       |
 
 ## Local test evidence
 
@@ -77,11 +77,12 @@ without `loading="eager"`. This is a Low follow-up and no Lighthouse score is cl
 
 ## Evaluation evidence
 
-- cases: 62; categories: 14; provider calls: 0;
+- cases: 62; categories: 14; evaluation provider calls: 0;
 - deterministic route accuracy: 1.0;
 - tool-selection cases: 45; accuracy: 1.0;
 - latest local in-process router sample: p50 `0.007437 ms`, p95 `0.021917 ms`;
-- provider/end-to-end/tool network latency and token usage: NOT TESTED.
+- live Gemini: key/model metadata HTTP 200; 6 generate calls; low-thinking control HTTP 200 in
+  19.515 seconds; deployed remediated Agent not yet tested.
 
 ## External configuration required
 
@@ -94,18 +95,26 @@ without `loading="eager"`. This is a Low follow-up and no Lighthouse score is cl
 
 ## Staging/runtime evidence
 
-Read-only smoke on 2026-10-21 returned HTTPS 200 for baseline Storefront, Admin, API live/ready and
-public categories. `robots.txt` remained `Disallow: /`; trusted Storefront CORS was echoed with
-credentials and an untrusted Origin received no allow-origin header. These services still run the
-previous deployed baseline, not the Phase 6 worktree. Private AI readiness and Phase 6 Agent changes
-were not remotely exercised.
+Commit `fa02dac877952c352c969cac59b552fb418449fd` was pushed and passed GitHub CI run
+`39622315388`. Northflank built the same SHA for API build `positive-pull-6716` and AI build
+`noble-bee-885`; both deployments completed. Cloudflare deployed Storefront version
+`c03de7bd-cd28-447d-a105-8f647dd8395a` at 100% traffic.
+
+Read-only smoke on 2026-10-21 returned HTTPS 200 for Storefront, Admin and API live/ready.
+`robots.txt` remained `Disallow: /`. Targeted Chromium Product Advisor validation passed 4/4 and
+exact-commit GitHub staging run `39623763468` passed 27/27 Firefox tests. Provider-off advanced
+advice failed closed and deterministic catalog discovery remained functional.
+
+The 2026-10-22 follow-up verified private AI live/ready health, real staging catalog results and a
+bounded Gemini test. Default-thinking Agent calls failed closed on `504`/timeout; a low-thinking
+control succeeded. Runtime was returned to provider-off while the source remediation is validated.
 
 ## Completion score
 
 Weighted denominator: source/evaluation/security 30, local regression 20, exact-revision
 staging/browser 15, live LLM 10, alert/email/OAuth 10, SePay 5, backup/Redis/rollback 10. Score:
-**50/100** = 30 source + 20 local regression. Exact-revision staging/CI and all
-external/operational sections score zero rather than being treated as pass.
+**65/100** = 30 source + 20 local regression + 15 exact-revision staging/browser validation. Live
+LLM and all external/operational sections remain zero rather than being treated as pass.
 
 ## Recommendation
 

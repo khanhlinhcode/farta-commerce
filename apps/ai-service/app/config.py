@@ -30,8 +30,8 @@ class Settings(BaseSettings):
     max_tool_executions: int = 3
     max_history_turns: int = 6
     output_token_limit: int = 768
-    request_timeout_seconds: float = 25.0
-    llm_timeout_seconds: float = 12.0
+    request_timeout_seconds: float = 60.0
+    llm_timeout_seconds: float = 25.0
     tool_timeout_seconds: float = 6.0
 
     @model_validator(mode="after")
@@ -46,10 +46,10 @@ class Settings(BaseSettings):
             raise ValueError("Conversation history must contain at most 6 turns.")
         if not 128 <= self.output_token_limit <= 768:
             raise ValueError("Output token limit must be between 128 and 768.")
-        if not 1 <= self.llm_timeout_seconds <= 12:
-            raise ValueError("LLM timeout must be between 1 and 12 seconds.")
-        if not 1 <= self.request_timeout_seconds <= 25:
-            raise ValueError("Request timeout must be between 1 and 25 seconds.")
+        if not 1 <= self.llm_timeout_seconds <= 25:
+            raise ValueError("LLM timeout must be between 1 and 25 seconds.")
+        if not 1 <= self.request_timeout_seconds <= 60:
+            raise ValueError("Request timeout must be between 1 and 60 seconds.")
         if self.enabled:
             self._require_secret(self.gateway_shared_secret, "gateway shared secret")
             self._require_secret(self.tools_shared_secret, "tools shared secret")
