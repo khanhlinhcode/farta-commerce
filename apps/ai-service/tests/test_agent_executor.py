@@ -205,6 +205,14 @@ async def test_output_token_limit_is_applied_per_bounded_model_request() -> None
         nonlocal request_count
         request_count += 1
         assert info.output_tools[0].strict is True
+        if request_count == 1:
+            assert info.model_settings and set(info.model_settings["tool_choice"]) == {
+                "search_products",
+                "get_product_details",
+                "get_product_availability",
+            }
+        else:
+            assert info.model_settings and info.model_settings["tool_choice"] == []
         usage = RequestUsage(input_tokens=100, output_tokens=400)
         if request_count == 1:
             return ModelResponse(

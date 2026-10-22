@@ -167,6 +167,13 @@ class AgentExecutor:
                 ),
                 deps_type=AgentDependencies,
                 instructions=self._instructions(),
+                model_settings=lambda context, provider=provider, model_name=model_name: (
+                    self._model_settings_for_step(
+                        context,
+                        provider,
+                        model_name,
+                    )
+                ),
                 tools=[Tool(tool, prepare=self._prepare_catalog_tool) for tool in APPROVED_TOOLS],
                 retries=0,
                 tool_timeout=self._settings.tool_timeout_seconds,
@@ -185,7 +192,6 @@ class AgentExecutor:
                     result = await agent.run(
                         self._prompt(request, decision),
                         deps=dependencies,
-                        model_settings=self._model_settings(provider, model_name),
                         usage_limits=UsageLimits(
                             request_limit=self._policy.max_iterations,
                             tool_calls_limit=self._policy.max_tool_executions,
@@ -364,6 +370,25 @@ class AgentExecutor:
             # Gemini 3.5 Flash-Lite supports minimal thinking. This is the lowest
             # documented level and keeps the read-only advisor latency bounded.
             settings["thinking"] = "minimal"
+        return settings
+
+    def _model_settings_for_step(
+        self,
+        context: RunContext[AgentDependencies],
+        provider: str,
+        model_name: str,
+    ) -> ModelSettings:
+        settings = self._model_settings(provider, model_name)
+        if context.deps.state.tool_history:
+            # Pydantic AI interprets an empty function-tool choice as output-tools
+            # only. The second and final iteration therefore cannot repeat a
+            # catalog tool or emit unstructured text.
+            settings["tool_choice"] = []
+        else:
+            # Exclude the final output tool from the first iteration. A supported
+            # request must collect one authoritative catalog observation before
+            # it can construct AgentFinalResponse.
+            settings["tool_choice"] = list(context.deps.state.allowed_tools)
         return settings
 
     @staticmethod
