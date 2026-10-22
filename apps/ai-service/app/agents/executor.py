@@ -185,7 +185,13 @@ class AgentExecutor:
                         usage_limits=UsageLimits(
                             request_limit=self._policy.max_iterations,
                             tool_calls_limit=self._policy.max_tool_executions,
-                            output_tokens_limit=self._policy.output_token_limit,
+                            # `max_tokens` is enforced per provider request, while
+                            # Pydantic AI's usage limit is cumulative for the run.
+                            # Keep both boundaries without making two valid bounded
+                            # requests compete for one request's token allowance.
+                            output_tokens_limit=(
+                                self._policy.output_token_limit * self._policy.max_iterations
+                            ),
                         ),
                     )
                 usage = result.usage

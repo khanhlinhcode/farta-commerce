@@ -8,7 +8,7 @@ from pydantic_ai.messages import ModelResponse, TextPart, ToolCallPart
 from pydantic_ai.models.function import FunctionModel
 from pydantic_ai.models.test import TestModel
 from pydantic_ai.tools import ToolDefinition
-from pydantic_ai.usage import RunUsage
+from pydantic_ai.usage import RequestUsage, RunUsage
 from pydantic_core import ValidationError
 
 from app.agents.executor import AgentExecutor
@@ -194,6 +194,80 @@ async def test_model_request_limit_stops_tool_continuation() -> None:
     result = await AgentExecutor(settings, FakeCommerce(), models=[model]).execute(
         request("Tư vấn một bộ trang phục cho triển lãm")
     )
+    assert result.status == "unavailable"
+    assert result.error and result.error.code == "AI_LIMIT_EXCEEDED"
+
+
+async def test_output_token_limit_is_applied_per_bounded_model_request() -> None:
+    request_count = 0
+
+    async def two_bounded_responses(_messages, info):
+        nonlocal request_count
+        request_count += 1
+        usage = RequestUsage(input_tokens=100, output_tokens=400)
+        if request_count == 1:
+            return ModelResponse(
+                parts=[ToolCallPart("search_products", {"keyword": "áo"})],
+                usage=usage,
+            )
+        return ModelResponse(
+            parts=[
+                ToolCallPart(
+                    info.output_tools[0].name,
+                    {
+                        "message": "Đây là mẫu phù hợp.",
+                        "product_slugs": [PRODUCT.slug],
+                        "requires_clarification": False,
+                    },
+                )
+            ],
+            usage=usage,
+        )
+
+    result = await AgentExecutor(
+        Settings(max_agent_iterations=2, output_token_limit=768),
+        FakeCommerce(),
+        models=[FunctionModel(two_bounded_responses)],
+    ).execute(request("Tìm áo màu đen size M"))
+
+    assert request_count == 2
+    assert result.status == "completed"
+    assert [product.slug for product in result.products] == [PRODUCT.slug]
+
+
+async def test_cumulative_output_token_limit_still_stops_oversized_run() -> None:
+    request_count = 0
+
+    async def two_oversized_responses(_messages, info):
+        nonlocal request_count
+        request_count += 1
+        usage = RequestUsage(input_tokens=100, output_tokens=769)
+        if request_count == 1:
+            return ModelResponse(
+                parts=[ToolCallPart("search_products", {"keyword": "áo"})],
+                usage=usage,
+            )
+        return ModelResponse(
+            parts=[
+                ToolCallPart(
+                    info.output_tools[0].name,
+                    {
+                        "message": "Đây là mẫu phù hợp.",
+                        "product_slugs": [PRODUCT.slug],
+                        "requires_clarification": False,
+                    },
+                )
+            ],
+            usage=usage,
+        )
+
+    result = await AgentExecutor(
+        Settings(max_agent_iterations=2, output_token_limit=768),
+        FakeCommerce(),
+        models=[FunctionModel(two_oversized_responses)],
+    ).execute(request("Tìm áo màu đen size M"))
+
+    assert request_count == 2
     assert result.status == "unavailable"
     assert result.error and result.error.code == "AI_LIMIT_EXCEEDED"
 
