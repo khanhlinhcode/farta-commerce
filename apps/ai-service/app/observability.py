@@ -43,6 +43,7 @@ SAFE_FIELDS = frozenset(
         "output_tokens",
         "response_status",
         "error_code",
+        "limit_kind",
         "canary_digest",
         "budget_consumed",
         "budget_remaining",

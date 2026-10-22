@@ -67,9 +67,11 @@ class InternalChatResponse(ApiModel):
 
 
 class AgentFinalResponse(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
     message: str = Field(min_length=1, max_length=2_000)
-    product_slugs: list[str] = Field(default_factory=list, max_length=6)
-    requires_clarification: bool = False
+    product_slugs: list[str] = Field(max_length=6)
+    requires_clarification: bool
 
 
 class ToolResponse(ApiModel):

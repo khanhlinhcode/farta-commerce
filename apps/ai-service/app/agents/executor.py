@@ -3,7 +3,7 @@ import re
 import time
 from collections.abc import Sequence
 
-from pydantic_ai import Agent, RunContext, Tool
+from pydantic_ai import Agent, RunContext, Tool, ToolOutput
 from pydantic_ai.exceptions import AgentRunError, ModelHTTPError
 from pydantic_ai.models import Model
 from pydantic_ai.settings import ModelSettings
@@ -160,7 +160,11 @@ class AgentExecutor:
             )
             agent = Agent(
                 model,
-                output_type=AgentFinalResponse,
+                output_type=ToolOutput(
+                    AgentFinalResponse,
+                    strict=True,
+                    max_retries=0,
+                ),
                 deps_type=AgentDependencies,
                 instructions=self._instructions(),
                 tools=[Tool(tool, prepare=self._prepare_catalog_tool) for tool in APPROVED_TOOLS],
@@ -218,6 +222,7 @@ class AgentExecutor:
                     model=model_name,
                     duration_ms=round((time.perf_counter() - provider_started) * 1_000, 3),
                     error_code=self._provider_error_code(error),
+                    limit_kind=self._usage_limit_kind(error),
                 )
                 break
         error_code = (
@@ -353,6 +358,8 @@ class AgentExecutor:
             timeout=self._policy.llm_timeout_seconds,
             parallel_tool_calls=False,
         )
+        if provider == "groq":
+            settings["temperature"] = 0.0
         if provider == "google" and model_name == "gemini-3.5-flash-lite":
             # Gemini 3.5 Flash-Lite supports minimal thinking. This is the lowest
             # documented level and keeps the read-only advisor latency bounded.
@@ -432,6 +439,28 @@ class AgentExecutor:
         if isinstance(error, ModelHTTPError) and error.status_code == 429:
             return "AI_PROVIDER_RATE_LIMIT"
         return "AI_PROVIDER_FAILED"
+
+    @staticmethod
+    def _usage_limit_kind(error: BaseException) -> str | None:
+        current: BaseException | None = error
+        visited: set[int] = set()
+        while current is not None and id(current) not in visited:
+            if isinstance(current, UsageLimitExceeded):
+                message = str(current)
+                if "request_limit" in message:
+                    return "request_limit"
+                if "tool_calls_limit" in message:
+                    return "tool_calls_limit"
+                if "output_tokens_limit" in message:
+                    return "output_tokens_limit"
+                if "input_tokens_limit" in message:
+                    return "input_tokens_limit"
+                if "total_tokens_limit" in message:
+                    return "total_tokens_limit"
+                return "other_usage_limit"
+            visited.add(id(current))
+            current = current.__cause__ or current.__context__
+        return None
 
     @staticmethod
     def _caused_by(error: BaseException, expected: type[BaseException]) -> bool:

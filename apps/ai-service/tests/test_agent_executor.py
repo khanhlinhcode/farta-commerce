@@ -8,7 +8,7 @@ from pydantic_ai.messages import ModelResponse, TextPart, ToolCallPart
 from pydantic_ai.models.function import FunctionModel
 from pydantic_ai.models.test import TestModel
 from pydantic_ai.tools import ToolDefinition
-from pydantic_ai.usage import RequestUsage, RunUsage
+from pydantic_ai.usage import RequestUsage, RunUsage, UsageLimitExceeded
 from pydantic_core import ValidationError
 
 from app.agents.executor import AgentExecutor
@@ -204,6 +204,7 @@ async def test_output_token_limit_is_applied_per_bounded_model_request() -> None
     async def two_bounded_responses(_messages, info):
         nonlocal request_count
         request_count += 1
+        assert info.output_tools[0].strict is True
         usage = RequestUsage(input_tokens=100, output_tokens=400)
         if request_count == 1:
             return ModelResponse(
@@ -225,7 +226,11 @@ async def test_output_token_limit_is_applied_per_bounded_model_request() -> None
         )
 
     result = await AgentExecutor(
-        Settings(max_agent_iterations=2, output_token_limit=768),
+        Settings(
+            max_agent_iterations=2,
+            max_tool_executions=1,
+            output_token_limit=768,
+        ),
         FakeCommerce(),
         models=[FunctionModel(two_bounded_responses)],
     ).execute(request("Tìm áo màu đen size M"))
@@ -392,11 +397,28 @@ def test_provider_budget_exhaustion_maps_to_safe_public_error() -> None:
     assert AgentExecutor._provider_error_code(wrapped) == "AI_PROVIDER_BUDGET_EXCEEDED"
 
 
+def test_usage_limit_kind_is_safe_and_specific() -> None:
+    assert (
+        AgentExecutor._usage_limit_kind(
+            UsageLimitExceeded("The next request would exceed the request_limit of 2")
+        )
+        == "request_limit"
+    )
+    assert (
+        AgentExecutor._usage_limit_kind(
+            UsageLimitExceeded("Exceeded the output_tokens_limit of 1536")
+        )
+        == "output_tokens_limit"
+    )
+    assert AgentExecutor._usage_limit_kind(RuntimeError("provider failed")) is None
+
+
 def test_gemini_uses_documented_minimal_thinking_without_affecting_other_models() -> None:
     executor = AgentExecutor(Settings(), FakeCommerce(), models=[])
     assert executor._model_settings("google", "gemini-3.5-flash-lite")["thinking"] == "minimal"
     assert "thinking" not in executor._model_settings("google", "another-model")
     assert "thinking" not in executor._model_settings("test", "test")
+    assert executor._model_settings("groq", "openai/gpt-oss-120b")["temperature"] == 0.0
 
 
 def test_tool_registry_is_fixed_and_arguments_are_strict() -> None:
