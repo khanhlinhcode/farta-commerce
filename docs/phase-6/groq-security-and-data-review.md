@@ -48,7 +48,7 @@ The only provider request executed was model metadata/access lookup.
 - read-only catalog tools only;
 - NestJS remains responsible for authentication, tool authorization and product re-hydration.
 
-The single live metadata request returned `model_not_found`. Therefore account/model permission for
-this exact key remains unverified despite the dashboard limit row and public model documentation.
-Groq was disabled immediately. This review does not approve live staging exposure or production
-use.
+The single live metadata request returned `model_not_found` and echoed the SDK-encoded identifier
+`openai%2Fgpt-oss-120b`. Therefore account/model permission for this exact key remains unverified,
+but the result also cannot exclude an incompatibility in the per-model metadata lookup. Groq was
+disabled immediately. This review does not approve live staging exposure or production use.

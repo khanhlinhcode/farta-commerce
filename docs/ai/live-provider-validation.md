@@ -73,8 +73,9 @@ Northflank deployed the exact commit with one replica.
 
 The stakeholder supplied Free Plan/model-limit evidence for Groq. The canary started at `0/7` and
 sent exactly one model metadata/access request for `openai/gpt-oss-120b`. The counter advanced to
-`1/7`, then Groq returned HTTP 404 `model_not_found`. Execution stopped immediately: zero public
-Groq Agent flows, zero retries and zero fallback calls.
+`1/7`, then Groq returned HTTP 404 `model_not_found` while echoing the SDK-encoded namespaced model
+ID. The result is ambiguous between account permission and per-model metadata lookup behavior.
+Execution stopped immediately: zero public Groq Agent flows, zero retries and zero fallback calls.
 
 Groq, Gemini and fallback were disabled after the failure. AI live/ready remained healthy, all
 public application health checks returned HTTPS 200, provider-off returned

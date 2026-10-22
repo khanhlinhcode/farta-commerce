@@ -182,8 +182,10 @@ evaluation at 1.0 route/Agent/tool-selection accuracy with zero provider calls. 
 `39763507810` passed all four jobs and Northflank deployed the exact commit with one replica.
 
 The bounded Groq canary started at `0/7`. Its first and only provider request claimed one Redis
-unit, then returned HTTP 404 `model_not_found` for `openai/gpt-oss-120b`. Stop-on-first-failure was
-honored: no retry and none of the three public flows ran. Groq, Gemini and fallback were disabled;
-the final budget snapshot was `1/7`. Runtime health and provider-off behavior passed after rollback.
+unit, then returned HTTP 404 `model_not_found` while echoing the SDK-encoded namespaced model ID.
+That result is ambiguous between account permission and per-model metadata lookup behavior.
+Stop-on-first-failure was honored: no retry and none of the three public flows ran. Groq, Gemini and
+fallback were disabled; the final budget snapshot was `1/7`. Runtime health and provider-off
+behavior passed after rollback.
 
 Do not begin RAG, LangGraph, AI commerce mutations or production deployment from this result.

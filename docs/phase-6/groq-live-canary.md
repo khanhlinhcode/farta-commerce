@@ -55,9 +55,10 @@ northflank exec service \
 ```
 
 The budget claim succeeded first, producing `consumed=1`, `remaining=6`, `limit=7` and a 3600-second
-TTL. Groq then returned HTTP 404 with provider code `model_not_found` for the configured model.
-This establishes that a provider HTTP request was made, but it does not establish that the key's
-project can access `openai/gpt-oss-120b`.
+TTL. Groq then returned HTTP 404 with provider code `model_not_found`. The frozen Groq SDK builds
+the retrieve path with `openai%2Fgpt-oss-120b`; the provider error echoed that encoded identifier.
+The failure therefore does not distinguish account permission from a namespaced-model metadata
+lookup incompatibility. It establishes only that this probe did not validate model access.
 
 Execution stopped immediately. There was no retry, provider substitution, Gemini call or fallback.
 The three required public flows therefore have these outcomes:
@@ -90,6 +91,7 @@ request still returned data.
 
 ## Decision
 
-Phase 6C did not satisfy the acceptance gate. Remain provider-off. Before another canary, verify
-model permission for the exact API key/project in Groq, use a new canary ID/counter and obtain a
-new explicit request authorization. Do not reuse or reset `groq-canary-20261022-01`.
+Phase 6C did not satisfy the acceptance gate. Remain provider-off. Before another canary, replace
+the ambiguous per-model metadata lookup with one bounded model-list request and require an exact
+local ID match, then verify permission for the same API key/project. Use a new canary ID/counter and
+obtain a new explicit request authorization. Do not reuse or reset `groq-canary-20261022-01`.

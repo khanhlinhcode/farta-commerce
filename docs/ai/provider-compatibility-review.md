@@ -78,8 +78,10 @@ Verified documentation states:
 The stakeholder supplied dashboard evidence that the Groq project was on Free Plan, that the model
 appeared in the project's limit table, and that inference ZDR was disabled. A bounded Phase 6C
 metadata request was then made through the Redis pre-request counter. The counter advanced from
-zero to one, but Groq returned HTTP 404 `model_not_found` for the configured model. No public Agent
-flow was run and no retry or provider substitution occurred.
+zero to one, but Groq returned HTTP 404 `model_not_found`; the error echoed the SDK-encoded
+namespaced ID `openai%2Fgpt-oss-120b`. This is insufficient to distinguish missing account access
+from a per-model metadata lookup incompatibility. No public Agent flow was run and no retry or
+provider substitution occurred.
 
 Decision: **BLOCKED and disabled**. Public documentation and a dashboard limit row do not override
 the failed model-access response for the exact key/project.
