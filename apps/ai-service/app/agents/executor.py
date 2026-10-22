@@ -15,6 +15,7 @@ from app.agents.state import AgentState
 from app.config import Settings
 from app.llm.gemini_provider import GeminiProvider
 from app.llm.groq_provider import GroqModelProvider
+from app.llm.provider_budget import ProviderBudgetExceeded, ProviderBudgetUnavailable
 from app.observability import DEFAULT_OBSERVABILITY, AiObservability
 from app.routing.intent_router import IntentRouter, RouteDecision
 from app.schemas.chat import (
@@ -39,8 +40,8 @@ class AgentExecutor:
         self._commerce = commerce
         self._router = IntentRouter()
         self._policy = AgentPolicy.from_settings(settings)
-        self._models = list(models) if models is not None else self._configured_models()
         self._observability = observability or DEFAULT_OBSERVABILITY
+        self._models = list(models) if models is not None else self._configured_models()
 
     async def execute(self, request: InternalChatRequest) -> InternalChatResponse:
         started = time.perf_counter()
@@ -225,6 +226,9 @@ class AgentExecutor:
             "AI_PROVIDER_TIMEOUT": (
                 "Trợ lý chưa phản hồi kịp thời. Vui lòng thử lại hoặc tiếp tục duyệt Shop."
             ),
+            "AI_PROVIDER_BUDGET_EXCEEDED": (
+                "Phiên kiểm thử trợ lý đã đạt giới hạn an toàn và hiện tạm dừng."
+            ),
             "AI_COMMERCE_TOOL_UNAVAILABLE": (
                 "Dữ liệu sản phẩm đang tạm thời không khả dụng. Vui lòng thử lại sau."
             ),
@@ -329,7 +333,10 @@ class AgentExecutor:
     def _configured_models(self) -> list[Model]:
         factories = {
             "gemini": (self._settings.gemini_enabled, GeminiProvider(self._settings)),
-            "groq": (self._settings.groq_enabled, GroqModelProvider(self._settings)),
+            "groq": (
+                self._settings.groq_enabled,
+                GroqModelProvider(self._settings, self._observability),
+            ),
         }
         primary = self._settings.primary_provider
         return [factories[primary][1].create()] if factories[primary][0] else []
@@ -406,6 +413,10 @@ class AgentExecutor:
 
     @staticmethod
     def _provider_error_code(error: Exception) -> str:
+        if AgentExecutor._caused_by(error, ProviderBudgetExceeded):
+            return "AI_PROVIDER_BUDGET_EXCEEDED"
+        if AgentExecutor._caused_by(error, ProviderBudgetUnavailable):
+            return "AI_PROVIDER_FAILED"
         if isinstance(error, TimeoutError):
             return "AI_PROVIDER_TIMEOUT"
         if isinstance(error, UsageLimitExceeded):
@@ -415,6 +426,17 @@ class AgentExecutor:
         if isinstance(error, ModelHTTPError) and error.status_code == 429:
             return "AI_PROVIDER_RATE_LIMIT"
         return "AI_PROVIDER_FAILED"
+
+    @staticmethod
+    def _caused_by(error: BaseException, expected: type[BaseException]) -> bool:
+        current: BaseException | None = error
+        visited: set[int] = set()
+        while current is not None and id(current) not in visited:
+            if isinstance(current, expected):
+                return True
+            visited.add(id(current))
+            current = current.__cause__ or current.__context__
+        return False
 
     @staticmethod
     def _response(

@@ -14,6 +14,7 @@ from pydantic_core import ValidationError
 from app.agents.executor import AgentExecutor
 from app.agents.state import AgentState, ToolCallRecord
 from app.config import Settings
+from app.llm.provider_budget import ProviderBudgetExceeded
 from app.observability import AiMetrics, AiObservability
 from app.schemas.chat import InternalChatRequest, ProductReference, ProductVariant, ToolResponse
 from app.tools.registry import APPROVED_TOOLS, AgentDependencies
@@ -305,6 +306,16 @@ async def test_automatic_provider_fallback_is_not_used() -> None:
     )
     assert result.status == "unavailable"
     assert result.error and result.error.code == "AI_PROVIDER_RATE_LIMIT"
+
+
+def test_provider_budget_exhaustion_maps_to_safe_public_error() -> None:
+    assert (
+        AgentExecutor._provider_error_code(ProviderBudgetExceeded("exhausted"))
+        == "AI_PROVIDER_BUDGET_EXCEEDED"
+    )
+    wrapped = RuntimeError("provider request failed")
+    wrapped.__cause__ = ProviderBudgetExceeded("exhausted")
+    assert AgentExecutor._provider_error_code(wrapped) == "AI_PROVIDER_BUDGET_EXCEEDED"
 
 
 def test_gemini_uses_documented_minimal_thinking_without_affecting_other_models() -> None:

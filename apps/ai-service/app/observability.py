@@ -16,6 +16,9 @@ AI_EVENTS = frozenset(
         "ai.provider.started",
         "ai.provider.completed",
         "ai.provider.failed",
+        "ai.provider.budget.claimed",
+        "ai.provider.budget.exceeded",
+        "ai.provider.budget.failed",
         "ai.tool.started",
         "ai.tool.completed",
         "ai.tool.failed",
@@ -40,6 +43,11 @@ SAFE_FIELDS = frozenset(
         "output_tokens",
         "response_status",
         "error_code",
+        "canary_digest",
+        "budget_consumed",
+        "budget_remaining",
+        "budget_limit",
+        "budget_ttl_seconds",
     }
 )
 

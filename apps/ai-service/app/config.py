@@ -1,3 +1,4 @@
+import re
 from functools import lru_cache
 from typing import Literal
 
@@ -25,6 +26,12 @@ class Settings(BaseSettings):
     groq_model: Literal["openai/gpt-oss-120b"] = "openai/gpt-oss-120b"
     primary_provider: Literal["gemini", "groq"] = "gemini"
     fallback_enabled: bool = False
+
+    provider_budget_enabled: bool = False
+    provider_budget_redis_url: SecretStr = SecretStr("")
+    provider_budget_canary_id: str = ""
+    provider_budget_max_requests: int = 7
+    provider_budget_ttl_seconds: int = 86_400
 
     max_agent_iterations: int = 3
     max_tool_executions: int = 3
@@ -67,6 +74,29 @@ class Settings(BaseSettings):
         )
         if self.fallback_enabled:
             raise ValueError("Automatic provider fallback is disabled for the Phase 6 validation.")
+        if self.provider_budget_enabled:
+            redis_url = self.provider_budget_redis_url.get_secret_value()
+            if not redis_url.startswith(("redis://", "rediss://")):
+                raise ValueError("Provider budget Redis URL must use redis:// or rediss://.")
+            if not re.fullmatch(r"[a-zA-Z0-9][a-zA-Z0-9._-]{7,79}", self.provider_budget_canary_id):
+                raise ValueError("Provider budget canary ID is invalid.")
+            if not 1 <= self.provider_budget_max_requests <= 7:
+                raise ValueError("Provider request budget must be between 1 and 7.")
+            if not 300 <= self.provider_budget_ttl_seconds <= 86_400:
+                raise ValueError(
+                    "Provider request budget TTL must be between 300 and 86400 seconds."
+                )
+        if self.groq_enabled:
+            if self.primary_provider != "groq":
+                raise ValueError("Groq canary requires Groq as the primary provider.")
+            if self.gemini_enabled:
+                raise ValueError("Gemini must remain disabled during the Groq canary.")
+            if not self.provider_budget_enabled:
+                raise ValueError("Groq cannot be enabled without a provider request budget.")
+            if self.max_agent_iterations > 2 or self.max_tool_executions > 1:
+                raise ValueError(
+                    "Groq canary permits at most two model requests and one tool call."
+                )
         return self
 
     @staticmethod

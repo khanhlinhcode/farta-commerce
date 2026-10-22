@@ -49,6 +49,49 @@ def test_automatic_provider_fallback_is_rejected() -> None:
         Settings(fallback_enabled=True)
 
 
+def test_groq_requires_atomic_canary_budget_and_bounded_agent() -> None:
+    provider = {
+        "groq_enabled": True,
+        "groq_free_tier_verified": True,
+        "groq_api_key": "g" * 32,
+        "primary_provider": "groq",
+    }
+    with pytest.raises(ValidationError, match="provider request budget"):
+        Settings(**provider)
+
+    budget = {
+        "provider_budget_enabled": True,
+        "provider_budget_redis_url": "redis://localhost:6379/0",
+        "provider_budget_canary_id": "groq-canary-20261022",
+    }
+    with pytest.raises(ValidationError, match="two model requests and one tool call"):
+        Settings(**provider, **budget)
+
+    settings = Settings(
+        **provider,
+        **budget,
+        max_agent_iterations=2,
+        max_tool_executions=1,
+    )
+    assert settings.groq_model == "openai/gpt-oss-120b"
+    assert settings.gemini_enabled is False
+    assert settings.fallback_enabled is False
+
+
+def test_provider_budget_configuration_is_bounded() -> None:
+    common = {
+        "provider_budget_enabled": True,
+        "provider_budget_redis_url": "redis://localhost:6379/0",
+        "provider_budget_canary_id": "groq-canary-20261022",
+    }
+    with pytest.raises(ValidationError, match="between 1 and 7"):
+        Settings(**common, provider_budget_max_requests=8)
+    with pytest.raises(ValidationError, match="canary ID"):
+        Settings(**(common | {"provider_budget_canary_id": "unsafe id"}))
+    with pytest.raises(ValidationError, match="Redis URL"):
+        Settings(**(common | {"provider_budget_redis_url": "https://example.com"}))
+
+
 def test_live_agent_timeout_budget_is_bounded() -> None:
     settings = Settings()
     assert settings.llm_timeout_seconds == 25
