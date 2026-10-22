@@ -9,7 +9,8 @@ and a private Pydantic AI Product Advisor that can access only allowlisted publi
 > capacity are not yet validated. The Product Advisor source is deployed, but live providers remain
 > disabled: Gemini failed the third Phase 6B flow; Groq model access was later verified, but the
 > first public flow in both bounded Groq campaigns failed closed with `AI_LIMIT_EXCEEDED`. A strict
-> final-output remediation is deployed provider-off, but has not passed a live three-flow canary.
+> two-phase catalog-tool/final-output remediation is deployed provider-off, but has not passed a
+> live three-flow canary.
 
 ## Live staging
 
@@ -126,9 +127,10 @@ The staging providers are currently **off**. Two public Gemini Agent flows succe
 After correcting the namespaced metadata lookup, exact Groq model access passed. Campaign 02 found
 and corrected cumulative output-token accounting, but Campaign 03 still failed after one catalog
 tool and two model requests. The latest remediation uses a strict all-required final-output schema,
-zero Groq temperature and safe limit-subtype telemetry. It is tested and deployed provider-off but
-not live-validated. Provider-off requests fail safely with `AI_PROVIDER_DISABLED` while ordinary
-catalog browsing continues to work.
+zero Groq temperature, safe limit-subtype telemetry and deterministic per-step tool eligibility:
+the first iteration can use only a catalog tool and the final iteration can use only structured
+output. It is tested and deployed provider-off but not live-validated. Provider-off requests fail
+safely with `AI_PROVIDER_DISABLED` while ordinary catalog browsing continues to work.
 
 ## Run locally
 

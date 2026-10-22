@@ -50,3 +50,10 @@ flow. The safe response was `AI_LIMIT_EXCEEDED`, so execution stopped at `3/7`; 
 were not run. Commit `b3e59fb3e349e0f0eedec8f3ebfab327f429ef7d` adds strict final-output schema
 enforcement and safe limit-subtype telemetry. GitHub Actions `39771314522` passed and Northflank
 deployed that exact commit provider-off. The remediation has no live-pass evidence.
+
+Commit `f2267a69fdd6d025f566c1049e49ce9f01af7b4a` now separates the two bounded Agent phases at the
+model interface: only catalog tools are eligible before the observation, and only the strict output
+tool is eligible afterward. GitHub Actions `39874294385` passed all four jobs and Northflank
+deployed the exact commit provider-off with one replica. Health and public provider-off checks
+passed. This change made zero external provider requests and therefore does not change the Groq
+request totals or the **BLOCKED** external-provider status.

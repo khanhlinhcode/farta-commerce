@@ -96,6 +96,13 @@ revision is deployed provider-off. It has not been live-validated.
 Decision: **BLOCKED and disabled**. Model access is verified; three consecutive grounded public
 flows are not.
 
+Commit `f2267a69fdd6d025f566c1049e49ce9f01af7b4a` uses Pydantic AI `2.57.0`'s supported callable
+`model_settings` boundary to force a catalog function tool on the first iteration and restrict the
+post-observation iteration to the strict output tool. The provider-shaped regression confirms the
+two distinct `tool_choice` settings and a completed two-request run. Offline and CI evidence passed,
+and the exact revision is deployed provider-off. Compatibility evidence does not establish live
+Groq behavior; a new bounded canary is still required.
+
 ## Required live-request approval checkpoint
 
 Before any call, record and approve all of the following:

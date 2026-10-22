@@ -97,3 +97,12 @@ Commit `b3e59fb3e349e0f0eedec8f3ebfab327f429ef7d` tightened the final output too
 all-required schema, set Groq temperature to zero and added redacted `limit_kind` observability.
 Local gates and GitHub Actions run `39771314522` passed, and Northflank deployed the exact commit
 provider-off. This is not live success; a future request requires a new explicit canary approval.
+
+Commit `f2267a69fdd6d025f566c1049e49ce9f01af7b4a` then enforced deterministic Agent phases through
+Pydantic AI per-step model settings: iteration one exposes only catalog function tools, while the
+post-observation iteration exposes only the strict final output tool. Local gates passed with Node
+157/157, API E2E 65/65, Python 67/67 and the 62-case zero-provider evaluation. GitHub Actions run
+`39874294385` passed all four jobs. Northflank deployed the exact commit provider-off with one
+replica; AI/API health, Storefront and Admin returned 200, and the public Agent returned
+`AI_PROVIDER_DISABLED`. No new Groq request was made, so this remediation remains unverified by a
+live three-flow campaign.

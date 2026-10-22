@@ -234,3 +234,30 @@ Northflank deployed exact commit `b3e59fb3e349e0f0eedec8f3ebfab327f429ef7d` prov
 one replica. Private AI live/ready, API live/ready, catalog, Storefront and Admin returned 200. The
 public Agent returned `AI_PROVIDER_DISABLED`. Phase 6C remains blocked and Campaign 03 must not be
 reused or reset.
+
+## 13. Deterministic catalog/output phase remediation
+
+Commit `f2267a69fdd6d025f566c1049e49ce9f01af7b4a` replaced implicit model tool selection with a
+bounded Pydantic AI per-step policy. The first iteration can select only one of the three approved
+catalog tools. Once an authoritative observation exists, the next iteration cannot repeat a
+catalog tool or emit plain text; it can only construct the strict final output tool. The existing
+single Agent loop, NestJS authorization, one-tool/two-request limits, zero retries and disabled
+fallback remain unchanged.
+
+Evidence:
+
+- local Node tests: 157/157;
+- local API E2E/security/concurrency tests: 65/65;
+- local Python tests: 67/67;
+- 62-case evaluation: pass with zero provider calls;
+- build and production dependency audit: pass;
+- GitHub Actions run `39874294385`: all four required jobs passed;
+- Northflank: exact commit deployed, build `SUCCESS`, deployment `COMPLETED`, one replica;
+- private AI live/ready and API live/ready: HTTP 200;
+- Storefront and Admin: HTTP 200;
+- public supported Agent request: HTTP 201, `route=agent`, `status=unavailable`,
+  `AI_PROVIDER_DISABLED`, zero products.
+
+Groq, Gemini and automatic fallback remained disabled throughout. No provider request was made and
+Campaign 01, 02 and 03 counters were not reused or reset. Phase 6C remains **BLOCKED** because the
+remediation has not produced three consecutive grounded live public flows.

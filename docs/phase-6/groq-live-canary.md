@@ -143,3 +143,23 @@ flows. The latest source remediation is deployed provider-off, but it has not be
 A new canary ID and explicit request authorization are required before any further Groq call. Do
 not reuse or reset Campaign 01, 02 or 03, and do not begin RAG, LangGraph, AI mutations or
 production deployment.
+
+## Post-Campaign 03 deterministic phase remediation
+
+On 2026-10-23, commit `f2267a69fdd6d025f566c1049e49ce9f01af7b4a` made the two-request
+Agent contract explicit through Pydantic AI's supported per-step `model_settings` callback:
+
+- the first model request can choose only from the three allowlisted catalog function tools;
+- after the authoritative tool observation, catalog tools are hidden and the second request can
+  produce only the strict `AgentFinalResponse` output tool;
+- retries and fallback remain disabled, and the one-tool/two-request limits are unchanged.
+
+Local evidence passed with Node 157/157, API E2E 65/65, Python 67/67, the 62-case evaluation with
+zero provider calls, build and production dependency audit. GitHub Actions run `39874294385`
+passed `node-quality`, `api-e2e`, `python-quality` and `secret-scan`.
+
+Northflank deployed the exact commit with build `SUCCESS`, deployment `COMPLETED` and one replica.
+Private AI and public API live/ready, Storefront and Admin returned HTTP 200. All provider flags
+remained false and a public supported request returned `AI_PROVIDER_DISABLED`. No Groq request was
+made during this remediation. This is deployed provider-off evidence, not a passing live canary;
+Phase 6C remains **BLOCKED** pending a newly approved campaign ID and request budget.
