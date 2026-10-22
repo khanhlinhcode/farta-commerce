@@ -87,3 +87,13 @@ run at 1536. Local gates and GitHub Actions run `39768778333` passed; Northflank
 revision provider-off. AI/API health, Storefront, Admin and catalog returned 200, while the public
 Agent returned `AI_PROVIDER_DISABLED`. Phase 6C remains **BLOCKED** until a new authorized canary
 passes all three grounded flows.
+
+Campaign 03 received a separate seven-request authorization and started at `0/7`. Exact model-list
+access consumed one request. The first product-search flow consumed two model requests, executed
+one authoritative `search_products` tool and again returned `AI_LIMIT_EXCEEDED`; it stopped at
+`3/7` with no retry or remaining flows. Rollback restored all provider flags to false.
+
+Commit `b3e59fb3e349e0f0eedec8f3ebfab327f429ef7d` tightened the final output tool to a strict,
+all-required schema, set Groq temperature to zero and added redacted `limit_kind` observability.
+Local gates and GitHub Actions run `39771314522` passed, and Northflank deployed the exact commit
+provider-off. This is not live success; a future request requires a new explicit canary approval.

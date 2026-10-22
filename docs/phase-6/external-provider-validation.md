@@ -5,16 +5,16 @@ Date: 2026-10-22
 Phase 6A and Phase 6B exercised Google Gemini only with synthetic staging data. The campaigns are
 reported separately because they had different approved request ceilings.
 
-| Provider boundary              | Status           | Requests/events                            | Exact blocker                                                                                                                                             |
-| ------------------------------ | ---------------- | ------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Gemini `gemini-3.8-flash`      | BLOCKED          | 9 Google requests                          | Phase 6A key/model/shared-secret validation passed, but the deployed Agent hit its provider deadline                                                      |
-| Gemini `gemini-3.5-flash-lite` | BLOCKED          | 9–11 Google requests                       | Phase 6B had two successful public flows; the third failed with `AI_LIMIT_EXCEEDED`; the eight-request authorization was exceeded by at least one request |
-| Groq `openai/gpt-oss-120b`     | BLOCKED          | 1 request in Campaign 01; 3 in Campaign 02 | Exact model-list access passed in Campaign 02; first public flow used two model requests then failed with `AI_LIMIT_EXCEEDED`                             |
-| SePay Test mode                | BLOCKED          | 0 external events                          | no approved Test-mode account/credential or official delivered webhook evidence                                                                           |
-| Transactional email            | BLOCKED          | 0 deliveries                               | no approved provider, sender domain or staging mailbox                                                                                                    |
-| Google OAuth                   | DEFERRED/BLOCKED | 0 flows                                    | not in first-launch scope; adapter and development credentials absent                                                                                     |
-| Apple OAuth                    | DEFERRED/BLOCKED | 0 flows                                    | not in first-launch scope; Services ID/team/key/adapter absent                                                                                            |
-| Monitoring alerts              | BLOCKED          | 0 received alerts                          | no approved alert sink/recipient                                                                                                                          |
+| Provider boundary              | Status           | Requests/events                                | Exact blocker                                                                                                                                             |
+| ------------------------------ | ---------------- | ---------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Gemini `gemini-3.8-flash`      | BLOCKED          | 9 Google requests                              | Phase 6A key/model/shared-secret validation passed, but the deployed Agent hit its provider deadline                                                      |
+| Gemini `gemini-3.5-flash-lite` | BLOCKED          | 9–11 Google requests                           | Phase 6B had two successful public flows; the third failed with `AI_LIMIT_EXCEEDED`; the eight-request authorization was exceeded by at least one request |
+| Groq `openai/gpt-oss-120b`     | BLOCKED          | Campaign 01: 1; Campaign 02: 3; Campaign 03: 3 | Exact model access passed; Campaign 03 again stopped after the first public flow returned `AI_LIMIT_EXCEEDED`                                             |
+| SePay Test mode                | BLOCKED          | 0 external events                              | no approved Test-mode account/credential or official delivered webhook evidence                                                                           |
+| Transactional email            | BLOCKED          | 0 deliveries                                   | no approved provider, sender domain or staging mailbox                                                                                                    |
+| Google OAuth                   | DEFERRED/BLOCKED | 0 flows                                        | not in first-launch scope; adapter and development credentials absent                                                                                     |
+| Apple OAuth                    | DEFERRED/BLOCKED | 0 flows                                        | not in first-launch scope; Services ID/team/key/adapter absent                                                                                            |
+| Monitoring alerts              | BLOCKED          | 0 received alerts                              | no approved alert sink/recipient                                                                                                                          |
 
 Local provider-shaped mocks and signed webhook tests are not external evidence. Browser return alone
 does not establish payment success. Required Gemini approval conditions and official sources are in
@@ -43,3 +43,10 @@ Commit `458d772f007e7ce086320255770905b93593d91a` corrected the reproduced token
 GitHub Actions run `39768778333` passed all four jobs and Northflank deployed the exact commit with
 all providers disabled. The fix is not live-validated and a new campaign requires new explicit
 authorization.
+
+Campaign 03 used a fresh counter and explicit maximum-seven-request authorization. It verified the
+exact model with one request, then used two model requests and one catalog tool in the first public
+flow. The safe response was `AI_LIMIT_EXCEEDED`, so execution stopped at `3/7`; flows two and three
+were not run. Commit `b3e59fb3e349e0f0eedec8f3ebfab327f429ef7d` adds strict final-output schema
+enforcement and safe limit-subtype telemetry. GitHub Actions `39771314522` passed and Northflank
+deployed that exact commit provider-off. The remediation has no live-pass evidence.

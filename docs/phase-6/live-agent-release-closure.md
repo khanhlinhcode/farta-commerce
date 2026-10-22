@@ -213,3 +213,24 @@ Northflank deployed exact commit `458d772f007e7ce086320255770905b93593d91a` prov
 replica. Private AI live/ready, API live/ready, catalog, Storefront and Admin returned 200. A public
 synthetic Product Advisor request returned `AI_PROVIDER_DISABLED`. The remediation is not a live
 pass; a new canary ID and explicit request authorization are still required.
+
+## 12. Phase 6C Campaign 03 and strict-output remediation
+
+Campaign `groq-canary-20261022-03` started at `0/7` under explicit authorization. One bounded model
+list request verified `openai/gpt-oss-120b`. The first public product-search flow then used two
+model requests and one `search_products` call but returned HTTP 201 with `route=agent`,
+`status=unavailable`, `AI_LIMIT_EXCEEDED` and zero products after 8.198 seconds. Stop-on-first-
+failure was honored at `3/7`; flows two and three were not executed and there was no retry,
+Gemini request or fallback.
+
+The old runtime did not expose the safe subtype of `UsageLimitExceeded`, so the live event does not
+prove one exact internal cause. Commit `b3e59fb3e349e0f0eedec8f3ebfab327f429ef7d` makes the final
+Pydantic output tool strict with an all-required, extra-forbidden schema, sets Groq temperature to
+zero and records an allowlisted `limit_kind` without raw errors. Local evidence is Node 157/157,
+API E2E 65/65, Python 67/67, a 62-case zero-provider evaluation, successful build and production
+audit. GitHub Actions run `39771314522` passed all four jobs.
+
+Northflank deployed exact commit `b3e59fb3e349e0f0eedec8f3ebfab327f429ef7d` provider-off with
+one replica. Private AI live/ready, API live/ready, catalog, Storefront and Admin returned 200. The
+public Agent returned `AI_PROVIDER_DISABLED`. Phase 6C remains blocked and Campaign 03 must not be
+reused or reset.

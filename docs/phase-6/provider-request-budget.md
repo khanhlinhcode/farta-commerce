@@ -31,10 +31,11 @@ concurrent claims, identity binding, TTL, disabled SDK retry, safe exception map
 An additional Redis concurrency exercise issued 100 simultaneous claims and observed seven
 accepted, 93 rejected and a final consumed count of seven.
 
-Both Phase 6C campaigns confirmed transport placement. Campaign 01 stopped at `1/7` after the
+All three Phase 6C campaigns confirmed transport placement. Campaign 01 stopped at `1/7` after the
 ambiguous per-model metadata error. Campaign 02 started with a new ID, spent one request on exact
 model-list matching and two on the first public Agent flow, then stopped at `3/7` after
-`AI_LIMIT_EXCEEDED`. Neither counter was reset or reused.
+`AI_LIMIT_EXCEEDED`. Campaign 03 independently started at `0/7`, made the same bounded one-plus-two
+request sequence and stopped at `3/7` after the same safe error. No counter was reset or reused.
 
 ## Operational rules
 

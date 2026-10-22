@@ -2,24 +2,25 @@
 
 Date: 2026-10-22
 
-Status: **BLOCKED — model access is verified, but the first public Agent flow failed and the
-remediation has not received a new live-canary authorization**.
+Status: **BLOCKED — model access is verified, but Campaign 03 again failed on the first public
+Agent flow; zero campaigns have passed all three grounded flows**.
 
 ## Evidence boundary
 
-| Boundary                      | Result                                                                                                        |
-| ----------------------------- | ------------------------------------------------------------------------------------------------------------- |
-| Request-budget source         | commit `ef63a0ac9b65bd3024541cb82ebe341af8686c35`                                                             |
-| Namespaced model-list fix     | commit `cfb1e66fa764a9052f54b02ee388508312c2c1f7`; GitHub Actions `39767110389` passed                        |
-| Output-token accounting fix   | commit `458d772f007e7ce086320255770905b93593d91a`; GitHub Actions `39768778333` passed                        |
-| Current Northflank deployment | exact commit `458d772f007e7ce086320255770905b93593d91a`; build `SUCCESS`; deployment `COMPLETED`; one replica |
-| Groq account evidence         | stakeholder showed Free Plan and an account limit row for `openai/gpt-oss-120b`                               |
-| Live model-access evidence    | exact model ID found by one authenticated `models.list()` request                                             |
-| Public Agent evidence         | one product-search flow attempted; failed closed with `AI_LIMIT_EXCEEDED`                                     |
-| Final provider state          | Groq, Gemini and fallback disabled                                                                            |
+| Boundary                        | Result                                                                                                        |
+| ------------------------------- | ------------------------------------------------------------------------------------------------------------- |
+| Request-budget source           | commit `ef63a0ac9b65bd3024541cb82ebe341af8686c35`                                                             |
+| Namespaced model-list fix       | commit `cfb1e66fa764a9052f54b02ee388508312c2c1f7`; GitHub Actions `39767110389` passed                        |
+| Output-token accounting fix     | commit `458d772f007e7ce086320255770905b93593d91a`; GitHub Actions `39768778333` passed                        |
+| Strict final-output remediation | commit `b3e59fb3e349e0f0eedec8f3ebfab327f429ef7d`; GitHub Actions `39771314522` passed                        |
+| Current Northflank deployment   | exact commit `b3e59fb3e349e0f0eedec8f3ebfab327f429ef7d`; build `SUCCESS`; deployment `COMPLETED`; one replica |
+| Groq account evidence           | stakeholder showed Free Plan and an account limit row for `openai/gpt-oss-120b`                               |
+| Live model-access evidence      | exact model ID found by one authenticated `models.list()` request                                             |
+| Public Agent evidence           | Campaigns 02 and 03 each stopped after the first product-search flow returned `AI_LIMIT_EXCEEDED`             |
+| Final provider state            | Groq, Gemini and fallback disabled                                                                            |
 
-Local tests and CI prove the guards and the output-token remediation. They do not prove that the
-remediated Agent passes the live three-flow release gate.
+Local tests and CI prove the guards and both source remediations. They do not prove that the latest
+strict-output remediation passes the live three-flow release gate.
 
 ## Campaign 01 — metadata path incompatibility
 
@@ -84,11 +85,43 @@ Local evidence after the fix:
 - GitHub Actions run `39768778333` passed `node-quality`, `api-e2e`, `python-quality` and
   `secret-scan`.
 
-This remediation is deployed provider-off and is **not live-provider proof**.
+This remediation was live-tested by Campaign 03, but the campaign still failed before producing a
+validated final response.
+
+## Campaign 03 — bounded revalidation
+
+The stakeholder explicitly approved canary `groq-canary-20261022-03` for at most seven Groq HTTP
+requests, three synthetic public flows, stop-on-first-failure, no retry/fallback and mandatory
+rollback. The counter started at `0/7`. One authenticated `models.list()` request found the exact
+model ID and left `1/7`.
+
+The first public request, `Tìm áo màu đen size M`, returned in 8.198 seconds with HTTP 201,
+`route=agent`, `status=unavailable`, `AI_LIMIT_EXCEEDED`, zero products and no forbidden internal
+field. Safe runtime events show one `search_products` execution in 446.408 ms and two model request
+budget claims. The provider failed after 2935.103 ms. The final counter was exactly `3/7`.
+
+The second and third flows were not run. There was no retry, Gemini request or fallback. Campaign
+03 was rolled back immediately and its counter must not be reset or reused.
+
+The deployed runtime did not yet log the safe limit subtype, so Campaign 03 alone does not prove
+whether the failure was caused by request-limit continuation, structured-output validation or a
+token boundary. Source commit `b3e59fb3e349e0f0eedec8f3ebfab327f429ef7d` therefore makes the
+final `AgentFinalResponse` tool strict, requires every schema field, forbids extra fields, uses
+Groq temperature 0, disables output retries explicitly and records only an allowlisted
+`limit_kind` on future failures. This is a bounded remediation, not live-pass evidence.
+
+Offline evidence for that commit:
+
+- Admin 14/14, API 92/92 and Storefront 51/51 tests passed;
+- API E2E/security 65/65 passed;
+- build and production dependency audit passed;
+- Python 67/67 passed;
+- 62-case evaluation passed with zero provider calls;
+- GitHub Actions run `39771314522` passed all four required jobs.
 
 ## Rollback and current runtime
 
-After Campaign 02 failed, staging was restored to:
+After Campaign 03 failed, staging was restored to:
 
 ```text
 AI_PRIMARY_PROVIDER=gemini
@@ -99,14 +132,14 @@ AI_GEMINI_FREE_TIER_VERIFIED=false
 AI_FALLBACK_ENABLED=false
 ```
 
-On deployed commit `458d772f007e7ce086320255770905b93593d91a`, private AI live/ready returned 200. API live/ready, public catalog, Storefront and Admin returned HTTPS 200. A public synthetic
+On deployed commit `b3e59fb3e349e0f0eedec8f3ebfab327f429ef7d`, private AI live/ready returned 200. API live/ready, public catalog, Storefront and Admin returned HTTPS 200. A public synthetic
 Product Advisor request returned HTTP 201 with `route=agent`, `status=unavailable`,
 `AI_PROVIDER_DISABLED` and zero products.
 
 ## Decision
 
 Phase 6C remains blocked because zero campaigns have produced three consecutive grounded public
-flows. The source remediation is ready for a new bounded campaign, but a new canary ID and explicit
-maximum-seven-request authorization are required before any further Groq call. Do not reuse either
-existing counter, do not retry Campaign 02, and do not begin RAG, LangGraph, AI mutations or
+flows. The latest source remediation is deployed provider-off, but it has not been live-validated.
+A new canary ID and explicit request authorization are required before any further Groq call. Do
+not reuse or reset Campaign 01, 02 or 03, and do not begin RAG, LangGraph, AI mutations or
 production deployment.

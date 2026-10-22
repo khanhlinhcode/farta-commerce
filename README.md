@@ -8,8 +8,8 @@ and a private Pydantic AI Product Advisor that can access only allowlisted publi
 > production payment-provider delivery, OAuth, transactional email, alerting and production-scale
 > capacity are not yet validated. The Product Advisor source is deployed, but live providers remain
 > disabled: Gemini failed the third Phase 6B flow; Groq model access was later verified, but the
-> first Phase 6C public flow failed closed with `AI_LIMIT_EXCEEDED`. The diagnosed token-accounting
-> fix is deployed provider-off and has not yet received a new live-canary authorization.
+> first public flow in both bounded Groq campaigns failed closed with `AI_LIMIT_EXCEEDED`. A strict
+> final-output remediation is deployed provider-off, but has not passed a live three-flow canary.
 
 ## Live staging
 
@@ -123,11 +123,12 @@ execution and authoritative tool observations. See [AI API contract](docs/api/ai
 
 The staging providers are currently **off**. Two public Gemini Agent flows succeeded during Phase
 6B, but the third exhausted the Agent request budget. Phase 6C added an independent Redis ceiling.
-After correcting the namespaced metadata lookup, exact Groq model access passed, but the first
-public flow failed because the 768-token per-request allowance had also been applied cumulatively
-to the two-request run. That accounting defect is fixed, tested and deployed provider-off; it is
-not yet live-validated. Provider-off requests fail safely with `AI_PROVIDER_DISABLED` while
-ordinary catalog browsing continues to work.
+After correcting the namespaced metadata lookup, exact Groq model access passed. Campaign 02 found
+and corrected cumulative output-token accounting, but Campaign 03 still failed after one catalog
+tool and two model requests. The latest remediation uses a strict all-required final-output schema,
+zero Groq temperature and safe limit-subtype telemetry. It is tested and deployed provider-off but
+not live-validated. Provider-off requests fail safely with `AI_PROVIDER_DISABLED` while ordinary
+catalog browsing continues to work.
 
 ## Run locally
 

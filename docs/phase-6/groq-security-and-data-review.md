@@ -53,6 +53,9 @@ Campaign 02 replaced that ambiguous request with `models.list()` and found the e
 `openai/gpt-oss-120b` ID using the same bounded transport and secret. The first public Agent flow
 then used exactly two model requests and one read-only catalog tool, but failed closed with
 `AI_LIMIT_EXCEEDED`. Execution stopped, leaving the campaign counter at `3/7`, and Groq was
-disabled immediately. The diagnosed cumulative-token accounting defect is fixed and deployed
-provider-off, but it has no post-fix live evidence. This review does not approve continued staging
+disabled immediately. Campaign 03 reran the bounded flow after the cumulative-token fix and again
+stopped at `3/7` after `AI_LIMIT_EXCEEDED`; no customer PII or additional public flow was sent.
+Commit `b3e59fb3e349e0f0eedec8f3ebfab327f429ef7d` now enforces strict final-tool arguments with an
+all-required schema, zero Groq temperature and redacted limit-subtype telemetry. It is deployed
+provider-off but has not received live validation. This review does not approve continued staging
 exposure or production use.

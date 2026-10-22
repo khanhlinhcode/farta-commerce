@@ -85,8 +85,13 @@ The first public Agent flow then executed one `search_products` tool and two mod
 failed closed with `AI_LIMIT_EXCEEDED`. The same symptom was reproduced offline when two individually
 bounded outputs exceeded a mistakenly shared cumulative 768-token limit. Commit
 `458d772f007e7ce086320255770905b93593d91a` separates the 768-token per-request cap from the
-1536-token two-request run cap. It passed local and CI gates and is deployed provider-off, but has
-not been live-validated.
+1536-token two-request run cap. Campaign 03 live-tested that revision but still stopped after the
+first public flow returned `AI_LIMIT_EXCEEDED`. The old runtime did not expose which usage limit
+fired, so one exact cause cannot be claimed.
+
+Commit `b3e59fb3e349e0f0eedec8f3ebfab327f429ef7d` configures a strict all-required Pydantic output
+tool, Groq temperature 0 and redacted `limit_kind` telemetry. Local and CI gates pass and the exact
+revision is deployed provider-off. It has not been live-validated.
 
 Decision: **BLOCKED and disabled**. Model access is verified; three consecutive grounded public
 flows are not.
@@ -103,7 +108,8 @@ Before any call, record and approve all of the following:
 
 No model ID, retry policy or provider will be silently substituted. Phase 6C Campaign 01 used one
 of seven authorized requests. Campaign 02 used three of seven, then rolled back at the first failed
-public flow. Both counters remain non-zero and must not be reset or reused.
+public flow. Campaign 03 independently used three of seven and rolled back at the same boundary.
+All three counters remain non-zero and must not be reset or reused.
 
 The Phase 6B attempt also exposed a control failure: the approved ceiling was eight Google HTTP
 requests, while the observable lower bound was nine. The exact total is between nine and eleven
