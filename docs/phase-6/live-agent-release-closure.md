@@ -189,3 +189,27 @@ fallback were disabled; the final budget snapshot was `1/7`. Runtime health and 
 behavior passed after rollback.
 
 Do not begin RAG, LangGraph, AI commerce mutations or production deployment from this result.
+
+## 11. Phase 6C Campaign 02 and token-accounting remediation
+
+Commit `cfb1e66fa764a9052f54b02ee388508312c2c1f7` replaced the ambiguous Groq per-model metadata
+lookup with one bounded model-list request and exact local ID matching. GitHub Actions run
+`39767110389` passed all four jobs and Northflank deployed the exact commit with one replica.
+
+Campaign `groq-canary-20261022-02` started at `0/7`. The metadata request verified
+`openai/gpt-oss-120b`, then the first public product-search flow executed exactly one
+`search_products` call and two model requests. It returned the safe public envelope with
+`route=agent`, `status=unavailable`, `AI_LIMIT_EXCEEDED` and zero products. Stop-on-first-failure was
+honored; the remaining two flows were not run and the final counter was `3/7`.
+
+The live symptom was reproduced offline: `AI_OUTPUT_TOKEN_LIMIT=768` was used both as a
+per-request provider cap and as Pydantic AI's cumulative run cap, so two valid 400-token responses
+failed at a combined 800 tokens. Commit `458d772f007e7ce086320255770905b93593d91a` preserves the
+768-token per-request cap and sets the cumulative two-request cap to 1536. After the fix, local
+gates recorded Admin 14/14, API 92/92, Storefront 51/51, API E2E 65/65, Python 66/66 and a passing
+62-case zero-provider evaluation. GitHub Actions run `39768778333` passed all four jobs.
+
+Northflank deployed exact commit `458d772f007e7ce086320255770905b93593d91a` provider-off with one
+replica. Private AI live/ready, API live/ready, catalog, Storefront and Admin returned 200. A public
+synthetic Product Advisor request returned `AI_PROVIDER_DISABLED`. The remediation is not a live
+pass; a new canary ID and explicit request authorization are still required.

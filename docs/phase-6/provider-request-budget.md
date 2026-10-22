@@ -31,8 +31,10 @@ concurrent claims, identity binding, TTL, disabled SDK retry, safe exception map
 An additional Redis concurrency exercise issued 100 simultaneous claims and observed seven
 accepted, 93 rejected and a final consumed count of seven.
 
-The Phase 6C live metadata attempt confirmed transport placement: the budget event was emitted
-before Groq returned its model-access error, and the final snapshot remained `1/7`.
+Both Phase 6C campaigns confirmed transport placement. Campaign 01 stopped at `1/7` after the
+ambiguous per-model metadata error. Campaign 02 started with a new ID, spent one request on exact
+model-list matching and two on the first public Agent flow, then stopped at `3/7` after
+`AI_LIMIT_EXCEEDED`. Neither counter was reset or reused.
 
 ## Operational rules
 

@@ -76,15 +76,20 @@ Verified documentation states:
   user-configurable Data Controls.
 
 The stakeholder supplied dashboard evidence that the Groq project was on Free Plan, that the model
-appeared in the project's limit table, and that inference ZDR was disabled. A bounded Phase 6C
-metadata request was then made through the Redis pre-request counter. The counter advanced from
-zero to one, but Groq returned HTTP 404 `model_not_found`; the error echoed the SDK-encoded
-namespaced ID `openai%2Fgpt-oss-120b`. This is insufficient to distinguish missing account access
-from a per-model metadata lookup incompatibility. No public Agent flow was run and no retry or
-provider substitution occurred.
+appeared in the project's limit table, and that inference ZDR was disabled. Campaign 01's bounded
+per-model metadata lookup returned HTTP 404 because the SDK encoded the namespaced ID as one path
+segment. After replacing that lookup with one bounded `models.list()` call and an exact local ID
+match, Campaign 02 verified `openai/gpt-oss-120b` for the configured key/project.
 
-Decision: **BLOCKED and disabled**. Public documentation and a dashboard limit row do not override
-the failed model-access response for the exact key/project.
+The first public Agent flow then executed one `search_products` tool and two model requests, but
+failed closed with `AI_LIMIT_EXCEEDED`. The same symptom was reproduced offline when two individually
+bounded outputs exceeded a mistakenly shared cumulative 768-token limit. Commit
+`458d772f007e7ce086320255770905b93593d91a` separates the 768-token per-request cap from the
+1536-token two-request run cap. It passed local and CI gates and is deployed provider-off, but has
+not been live-validated.
+
+Decision: **BLOCKED and disabled**. Model access is verified; three consecutive grounded public
+flows are not.
 
 ## Required live-request approval checkpoint
 
@@ -96,8 +101,9 @@ Before any call, record and approve all of the following:
 4. billing disabled or an explicit bounded spend control;
 5. development-only synthetic prompts with no customer PII.
 
-No model ID, retry policy or provider will be silently substituted. Phase 6C used one of seven
-authorized Groq requests and then rolled back at the first failed checkpoint.
+No model ID, retry policy or provider will be silently substituted. Phase 6C Campaign 01 used one
+of seven authorized requests. Campaign 02 used three of seven, then rolled back at the first failed
+public flow. Both counters remain non-zero and must not be reset or reused.
 
 The Phase 6B attempt also exposed a control failure: the approved ceiling was eight Google HTTP
 requests, while the observable lower bound was nine. The exact total is between nine and eleven

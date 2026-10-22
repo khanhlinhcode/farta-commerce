@@ -2,7 +2,7 @@
 
 Access date: 2026-10-22
 
-Status: **provider disabled; live model access not validated**.
+Status: **provider disabled; live model access validated, live Agent release gate failed**.
 
 ## Official sources
 
@@ -36,7 +36,7 @@ The stakeholder supplied dashboard evidence for:
 Groq documents that inference data may be retained for system reliability/abuse monitoring for up
 to 30 days and that eligible customers can enable ZDR. Because inference ZDR was disabled, the
 campaign was restricted to synthetic prompts and no customer PII, order, payment or account data.
-The only provider request executed was model metadata/access lookup.
+Only synthetic catalog prompts were used; no customer PII was sent.
 
 ## Controls and result
 
@@ -48,7 +48,11 @@ The only provider request executed was model metadata/access lookup.
 - read-only catalog tools only;
 - NestJS remains responsible for authentication, tool authorization and product re-hydration.
 
-The single live metadata request returned `model_not_found` and echoed the SDK-encoded identifier
-`openai%2Fgpt-oss-120b`. Therefore account/model permission for this exact key remains unverified,
-but the result also cannot exclude an incompatibility in the per-model metadata lookup. Groq was
-disabled immediately. This review does not approve live staging exposure or production use.
+Campaign 01's per-model metadata request returned `model_not_found` with an SDK-encoded identifier.
+Campaign 02 replaced that ambiguous request with `models.list()` and found the exact
+`openai/gpt-oss-120b` ID using the same bounded transport and secret. The first public Agent flow
+then used exactly two model requests and one read-only catalog tool, but failed closed with
+`AI_LIMIT_EXCEEDED`. Execution stopped, leaving the campaign counter at `3/7`, and Groq was
+disabled immediately. The diagnosed cumulative-token accounting defect is fixed and deployed
+provider-off, but it has no post-fix live evidence. This review does not approve continued staging
+exposure or production use.

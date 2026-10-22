@@ -71,12 +71,19 @@ Commit `ef63a0ac9b65bd3024541cb82ebe341af8686c35` added a Redis-backed provider 
 budget. Local gates passed, GitHub Actions run `39763507810` passed all four required jobs, and
 Northflank deployed the exact commit with one replica.
 
-The stakeholder supplied Free Plan/model-limit evidence for Groq. The canary started at `0/7` and
-sent exactly one model metadata/access request for `openai/gpt-oss-120b`. The counter advanced to
-`1/7`, then Groq returned HTTP 404 `model_not_found` while echoing the SDK-encoded namespaced model
-ID. The result is ambiguous between account permission and per-model metadata lookup behavior.
-Execution stopped immediately: zero public Groq Agent flows, zero retries and zero fallback calls.
+Campaign 01 started at `0/7` and stopped at `1/7` after the SDK per-model endpoint encoded the
+namespaced model ID and Groq returned HTTP 404. Commit
+`cfb1e66fa764a9052f54b02ee388508312c2c1f7` changed the probe to `models.list()` with exact local
+matching; GitHub Actions run `39767110389` passed.
 
-Groq, Gemini and fallback were disabled after the failure. AI live/ready remained healthy, all
-public application health checks returned HTTPS 200, provider-off returned
-`AI_PROVIDER_DISABLED`, and ordinary catalog browsing remained available. Phase 6C is **BLOCKED**.
+Campaign 02 used a new counter. Its one model-list request verified `openai/gpt-oss-120b`; the first
+public product-search flow then used two model requests and one authoritative catalog tool but
+returned `AI_LIMIT_EXCEEDED`. Execution stopped at `3/7`; the other two public flows were not run,
+and there was no retry, Gemini call or fallback.
+
+The failure was reproduced offline as incorrect cumulative output-token accounting. Commit
+`458d772f007e7ce086320255770905b93593d91a` keeps 768 tokens per request and bounds the two-request
+run at 1536. Local gates and GitHub Actions run `39768778333` passed; Northflank deployed that exact
+revision provider-off. AI/API health, Storefront, Admin and catalog returned 200, while the public
+Agent returned `AI_PROVIDER_DISABLED`. Phase 6C remains **BLOCKED** until a new authorized canary
+passes all three grounded flows.

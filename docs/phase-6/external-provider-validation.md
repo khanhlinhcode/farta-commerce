@@ -5,16 +5,16 @@ Date: 2026-10-22
 Phase 6A and Phase 6B exercised Google Gemini only with synthetic staging data. The campaigns are
 reported separately because they had different approved request ceilings.
 
-| Provider boundary              | Status           | Requests/events      | Exact blocker                                                                                                                                             |
-| ------------------------------ | ---------------- | -------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Gemini `gemini-3.8-flash`      | BLOCKED          | 9 Google requests    | Phase 6A key/model/shared-secret validation passed, but the deployed Agent hit its provider deadline                                                      |
-| Gemini `gemini-3.5-flash-lite` | BLOCKED          | 9–11 Google requests | Phase 6B had two successful public flows; the third failed with `AI_LIMIT_EXCEEDED`; the eight-request authorization was exceeded by at least one request |
-| Groq `openai/gpt-oss-120b`     | BLOCKED          | exactly 1 request    | Phase 6C Redis budget claimed `1/7`; namespaced-ID metadata lookup returned HTTP 404 `model_not_found`; stopped before public flows                       |
-| SePay Test mode                | BLOCKED          | 0 external events    | no approved Test-mode account/credential or official delivered webhook evidence                                                                           |
-| Transactional email            | BLOCKED          | 0 deliveries         | no approved provider, sender domain or staging mailbox                                                                                                    |
-| Google OAuth                   | DEFERRED/BLOCKED | 0 flows              | not in first-launch scope; adapter and development credentials absent                                                                                     |
-| Apple OAuth                    | DEFERRED/BLOCKED | 0 flows              | not in first-launch scope; Services ID/team/key/adapter absent                                                                                            |
-| Monitoring alerts              | BLOCKED          | 0 received alerts    | no approved alert sink/recipient                                                                                                                          |
+| Provider boundary              | Status           | Requests/events                            | Exact blocker                                                                                                                                             |
+| ------------------------------ | ---------------- | ------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Gemini `gemini-3.8-flash`      | BLOCKED          | 9 Google requests                          | Phase 6A key/model/shared-secret validation passed, but the deployed Agent hit its provider deadline                                                      |
+| Gemini `gemini-3.5-flash-lite` | BLOCKED          | 9–11 Google requests                       | Phase 6B had two successful public flows; the third failed with `AI_LIMIT_EXCEEDED`; the eight-request authorization was exceeded by at least one request |
+| Groq `openai/gpt-oss-120b`     | BLOCKED          | 1 request in Campaign 01; 3 in Campaign 02 | Exact model-list access passed in Campaign 02; first public flow used two model requests then failed with `AI_LIMIT_EXCEEDED`                             |
+| SePay Test mode                | BLOCKED          | 0 external events                          | no approved Test-mode account/credential or official delivered webhook evidence                                                                           |
+| Transactional email            | BLOCKED          | 0 deliveries                               | no approved provider, sender domain or staging mailbox                                                                                                    |
+| Google OAuth                   | DEFERRED/BLOCKED | 0 flows                                    | not in first-launch scope; adapter and development credentials absent                                                                                     |
+| Apple OAuth                    | DEFERRED/BLOCKED | 0 flows                                    | not in first-launch scope; Services ID/team/key/adapter absent                                                                                            |
+| Monitoring alerts              | BLOCKED          | 0 received alerts                          | no approved alert sink/recipient                                                                                                                          |
 
 Local provider-shaped mocks and signed webhook tests are not external evidence. Browser return alone
 does not establish payment success. Required Gemini approval conditions and official sources are in
@@ -32,8 +32,14 @@ After the first functional failure, the runtime was rolled back to `AI_GEMINI_EN
 `AI_FALLBACK_ENABLED=false`. A public supported request now returns `AI_PROVIDER_DISABLED` through
 the Agent route. Secret values were never printed.
 
-Phase 6C added an independent Redis pre-request boundary and deployed exact commit
-`ef63a0ac9b65bd3024541cb82ebe341af8686c35`. GitHub Actions run `39763507810` passed. The new
-Groq campaign stopped at its first checkpoint after exactly one provider request; none of the three
-public Agent prompts was executed. The provider was rolled back to off and the counter remains
-`1/7` for that canary ID.
+Phase 6C added an independent Redis pre-request boundary in commit
+`ef63a0ac9b65bd3024541cb82ebe341af8686c35`. Campaign 01 stopped at `1/7` after an ambiguous
+namespaced per-model metadata lookup. Commit `cfb1e66fa764a9052f54b02ee388508312c2c1f7` switched
+to model listing; Campaign 02 then verified the exact model ID, but its first public flow failed
+closed after two model requests and one catalog tool. The separate Campaign 02 counter remains
+`3/7`.
+
+Commit `458d772f007e7ce086320255770905b93593d91a` corrected the reproduced token-accounting defect;
+GitHub Actions run `39768778333` passed all four jobs and Northflank deployed the exact commit with
+all providers disabled. The fix is not live-validated and a new campaign requires new explicit
+authorization.

@@ -7,8 +7,9 @@ and a private Pydantic AI Product Advisor that can access only allowlisted publi
 > **Release status:** staging candidate. Core commerce and automated release gates are implemented;
 > production payment-provider delivery, OAuth, transactional email, alerting and production-scale
 > capacity are not yet validated. The Product Advisor source is deployed, but live providers remain
-> disabled: Gemini failed the third Phase 6B flow and the Phase 6C Groq model-access checkpoint
-> returned `model_not_found` before public flows began.
+> disabled: Gemini failed the third Phase 6B flow; Groq model access was later verified, but the
+> first Phase 6C public flow failed closed with `AI_LIMIT_EXCEEDED`. The diagnosed token-accounting
+> fix is deployed provider-off and has not yet received a new live-canary authorization.
 
 ## Live staging
 
@@ -111,8 +112,9 @@ Deterministic scope router
 ```
 
 Agent limits are fail-closed and provider-campaign specific. The Groq canary configuration permits
-at most two model iterations, one tool execution, 768 output tokens, a 25-second model timeout and
-a 60-second Agent timeout. A Redis counter claims before each outbound Groq HTTP request and
+at most two model iterations, one tool execution, 768 output tokens per model request (1536
+cumulative across the two-request run), a 25-second model timeout and a 60-second Agent timeout. A
+Redis counter claims before each outbound Groq HTTP request and
 rejects requests beyond the explicit canary ceiling. Automatic provider fallback and retries are
 disabled.
 The model cannot answer supported catalog requests from router templates; it must use live Agent
@@ -120,10 +122,12 @@ execution and authoritative tool observations. See [AI API contract](docs/api/ai
 [evaluation methodology](docs/ai/evaluation-methodology.md).
 
 The staging providers are currently **off**. Two public Gemini Agent flows succeeded during Phase
-6B, but the third exhausted the Agent request budget. Phase 6C added the independent Redis ceiling;
-its single Groq metadata/access request was counted correctly but returned `model_not_found`, so no
-public Groq flow ran. Provider-off requests fail safely with `AI_PROVIDER_DISABLED` while ordinary
-catalog browsing continues to work.
+6B, but the third exhausted the Agent request budget. Phase 6C added an independent Redis ceiling.
+After correcting the namespaced metadata lookup, exact Groq model access passed, but the first
+public flow failed because the 768-token per-request allowance had also been applied cumulatively
+to the two-request run. That accounting defect is fixed, tested and deployed provider-off; it is
+not yet live-validated. Provider-off requests fail safely with `AI_PROVIDER_DISABLED` while
+ordinary catalog browsing continues to work.
 
 ## Run locally
 
