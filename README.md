@@ -6,8 +6,9 @@ and a private Pydantic AI Product Advisor that can access only allowlisted publi
 
 > **Release status:** staging candidate. Core commerce and automated release gates are implemented;
 > production payment-provider delivery, OAuth, transactional email, alerting and production-scale
-> capacity are not yet validated. The Product Advisor source is deployed, but its Gemini provider is
-> currently disabled after the Phase 6B canary failed the required third consecutive public flow.
+> capacity are not yet validated. The Product Advisor source is deployed, but live providers remain
+> disabled: Gemini failed the third Phase 6B flow and the Phase 6C Groq model-access checkpoint
+> returned `model_not_found` before public flows began.
 
 ## Live staging
 
@@ -47,7 +48,7 @@ flowchart LR
   API --> Redis[(Redis)]
   API --> Cloudinary[Cloudinary]
   API --> AI[Private FastAPI + Pydantic AI]
-  AI -. provider disabled .-> Gemini[Gemini provider]
+  AI -. providers disabled .-> Providers[Gemini / Groq]
   AI -->|HMAC signed, read-only tools| API
   API --> SePay[SePay boundary]
 ```
@@ -59,15 +60,15 @@ before sending data to the browser.
 
 ## Applications and stack
 
-| Workspace                | Responsibility                                  | Main technology                         |
-| ------------------------ | ----------------------------------------------- | --------------------------------------- |
-| `apps/storefront`        | Customer shopping experience                    | Next.js 16, React 19, Tailwind CSS 4    |
-| `apps/admin`             | Catalog, inventory, banner and order operations | React 19, Vite 8, TanStack Query        |
-| `apps/api`               | Auth and authoritative commerce domains         | NestJS 12, Mongoose 9, Redis            |
-| `apps/ai-service`        | Read-only Product Advisor                       | FastAPI, Pydantic AI 2.57, Google GenAI |
-| `packages/ui`            | Shared accessible primitives                    | React, TypeScript                       |
-| `packages/design-tokens` | Semantic design tokens                          | CSS/TypeScript                          |
-| `packages/types`         | Shared public contracts                         | TypeScript                              |
+| Workspace                | Responsibility                                  | Main technology                        |
+| ------------------------ | ----------------------------------------------- | -------------------------------------- |
+| `apps/storefront`        | Customer shopping experience                    | Next.js 16, React 19, Tailwind CSS 4   |
+| `apps/admin`             | Catalog, inventory, banner and order operations | React 19, Vite 8, TanStack Query       |
+| `apps/api`               | Auth and authoritative commerce domains         | NestJS 12, Mongoose 9, Redis           |
+| `apps/ai-service`        | Read-only Product Advisor                       | FastAPI, Pydantic AI 2.57, Gemini/Groq |
+| `packages/ui`            | Shared accessible primitives                    | React, TypeScript                      |
+| `packages/design-tokens` | Semantic design tokens                          | CSS/TypeScript                         |
+| `packages/types`         | Shared public contracts                         | TypeScript                             |
 
 Runtime baseline: Node.js `22.23.2`, pnpm `10.34.3`, TypeScript `5.9.3`, Python
 `>=3.12,<3.15`. Exact dependency versions are pinned in the lockfiles.
@@ -109,20 +110,20 @@ Deterministic scope router
   -> NestJS product re-hydration
 ```
 
-Agent limits are fail-closed: maximum 3 model iterations, a configured ceiling of 3 tool calls, 768
-output tokens, a 25-second model timeout and a 60-second Agent timeout. Catalog tools are hidden
-after the second tool-bearing iteration so the final bounded iteration remains available for the
-structured response. Automatic provider fallback and retries are disabled.
+Agent limits are fail-closed and provider-campaign specific. The Groq canary configuration permits
+at most two model iterations, one tool execution, 768 output tokens, a 25-second model timeout and
+a 60-second Agent timeout. A Redis counter claims before each outbound Groq HTTP request and
+rejects requests beyond the explicit canary ceiling. Automatic provider fallback and retries are
+disabled.
 The model cannot answer supported catalog requests from router templates; it must use live Agent
 execution and authoritative tool observations. See [AI API contract](docs/api/ai-agent.md) and
 [evaluation methodology](docs/ai/evaluation-methodology.md).
 
-The staging provider is currently **off**. Two public Gemini Agent flows succeeded during the
-bounded Phase 6B canary; the third exhausted the Agent request budget after repeated catalog tool
-selection. A source guard now reserves the final model iteration for structured output, but it has
-not received a new live-provider validation because the approved request ceiling was exceeded.
-Provider-off requests fail safely with `AI_PROVIDER_DISABLED` while ordinary catalog browsing
-continues to work.
+The staging providers are currently **off**. Two public Gemini Agent flows succeeded during Phase
+6B, but the third exhausted the Agent request budget. Phase 6C added the independent Redis ceiling;
+its single Groq metadata/access request was counted correctly but returned `model_not_found`, so no
+public Groq flow ran. Provider-off requests fail safely with `AI_PROVIDER_DISABLED` while ordinary
+catalog browsing continues to work.
 
 ## Run locally
 
@@ -239,7 +240,8 @@ Architecture decisions live under [`docs/adr`](docs/adr/), API contracts under
 Source presence, local tests and successful builds do not prove production readiness. Current
 reports deliberately separate local evidence, CI, deployed runtime, external-provider tests and
 unverified operational controls. Start with the
-[Phase 6B live Agent closure](docs/phase-6/live-agent-release-closure.md) for the latest status.
+[Phase 6 live Agent closure](docs/phase-6/live-agent-release-closure.md) and
+[Groq canary report](docs/phase-6/groq-live-canary.md) for the latest status.
 
 ## CV-ready summary
 

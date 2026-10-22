@@ -9,7 +9,7 @@ reported separately because they had different approved request ceilings.
 | ------------------------------ | ---------------- | -------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Gemini `gemini-3.8-flash`      | BLOCKED          | 9 Google requests    | Phase 6A key/model/shared-secret validation passed, but the deployed Agent hit its provider deadline                                                      |
 | Gemini `gemini-3.5-flash-lite` | BLOCKED          | 9–11 Google requests | Phase 6B had two successful public flows; the third failed with `AI_LIMIT_EXCEEDED`; the eight-request authorization was exceeded by at least one request |
-| Groq `openai/gpt-oss-120b`     | DISABLED         | 0                    | not the selected provider; automatic fallback prohibited                                                                                                  |
+| Groq `openai/gpt-oss-120b`     | BLOCKED          | exactly 1 request    | Phase 6C Redis budget claimed `1/7`; model metadata/access returned HTTP 404 `model_not_found`; stopped before public flows                               |
 | SePay Test mode                | BLOCKED          | 0 external events    | no approved Test-mode account/credential or official delivered webhook evidence                                                                           |
 | Transactional email            | BLOCKED          | 0 deliveries         | no approved provider, sender domain or staging mailbox                                                                                                    |
 | Google OAuth                   | DEFERRED/BLOCKED | 0 flows              | not in first-launch scope; adapter and development credentials absent                                                                                     |
@@ -31,3 +31,9 @@ After the first functional failure, the runtime was rolled back to `AI_GEMINI_EN
 `AI_GEMINI_FREE_TIER_VERIFIED=false`, `AI_GROQ_ENABLED=false` and
 `AI_FALLBACK_ENABLED=false`. A public supported request now returns `AI_PROVIDER_DISABLED` through
 the Agent route. Secret values were never printed.
+
+Phase 6C added an independent Redis pre-request boundary and deployed exact commit
+`ef63a0ac9b65bd3024541cb82ebe341af8686c35`. GitHub Actions run `39763507810` passed. The new
+Groq campaign stopped at its first checkpoint after exactly one provider request; none of the three
+public Agent prompts was executed. The provider was rolled back to off and the counter remains
+`1/7` for that canary ID.

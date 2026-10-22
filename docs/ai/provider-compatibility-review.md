@@ -75,8 +75,14 @@ Verified documentation states:
 - Groq says inference inputs/outputs are not retained by default, with documented exceptions and
   user-configurable Data Controls.
 
-Decision: keep **disabled**. Phase 6 policy selects one provider only, disallows automatic fallback,
-and prefers Gemini after stakeholder approval. No Groq live call was made.
+The stakeholder supplied dashboard evidence that the Groq project was on Free Plan, that the model
+appeared in the project's limit table, and that inference ZDR was disabled. A bounded Phase 6C
+metadata request was then made through the Redis pre-request counter. The counter advanced from
+zero to one, but Groq returned HTTP 404 `model_not_found` for the configured model. No public Agent
+flow was run and no retry or provider substitution occurred.
+
+Decision: **BLOCKED and disabled**. Public documentation and a dashboard limit row do not override
+the failed model-access response for the exact key/project.
 
 ## Required live-request approval checkpoint
 
@@ -88,7 +94,8 @@ Before any call, record and approve all of the following:
 4. billing disabled or an explicit bounded spend control;
 5. development-only synthetic prompts with no customer PII.
 
-No model ID, retry policy or provider will be silently substituted.
+No model ID, retry policy or provider will be silently substituted. Phase 6C used one of seven
+authorized Groq requests and then rolled back at the first failed checkpoint.
 
 The Phase 6B attempt also exposed a control failure: the approved ceiling was eight Google HTTP
 requests, while the observable lower bound was nine. The exact total is between nine and eleven

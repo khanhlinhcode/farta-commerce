@@ -1,11 +1,11 @@
-# Phase 6B live Agent release closure
+# Phase 6 live Agent release closure
 
 Date: 2026-10-22
 
-Status: **BLOCKED — source and deployment boundaries are implemented, but the live release gate did
-not pass**.
+Status: **BLOCKED — source and deployment boundaries are implemented, but neither Gemini nor Groq
+passed the live release gate**.
 
-The Gemini provider is disabled in staging. This report does not claim production readiness or a
+Gemini and Groq are disabled in staging. This report does not claim production readiness or a
 completed live Product Advisor release.
 
 ## 1. Implemented source architecture
@@ -172,5 +172,18 @@ provider-level meter that stops before the ceiling independently of Agent intern
 deploy the guarded revision, verify exact effective flags/revision, run exactly three synthetic
 public flows, stop on the first failure, and require three consecutive grounded successes before
 leaving the provider enabled.
+
+## 10. Phase 6C Groq follow-up
+
+Commit `ef63a0ac9b65bd3024541cb82ebe341af8686c35` added the provider-level Redis request budget,
+safe budget telemetry and a staging-only Groq model-access probe. The frozen gates passed with
+Admin 14/14, API 92/92, Storefront 51/51, API E2E 65/65, Python 62/62 and the 62-case offline
+evaluation at 1.0 route/Agent/tool-selection accuracy with zero provider calls. GitHub Actions run
+`39763507810` passed all four jobs and Northflank deployed the exact commit with one replica.
+
+The bounded Groq canary started at `0/7`. Its first and only provider request claimed one Redis
+unit, then returned HTTP 404 `model_not_found` for `openai/gpt-oss-120b`. Stop-on-first-failure was
+honored: no retry and none of the three public flows ran. Groq, Gemini and fallback were disabled;
+the final budget snapshot was `1/7`. Runtime health and provider-off behavior passed after rollback.
 
 Do not begin RAG, LangGraph, AI commerce mutations or production deployment from this result.

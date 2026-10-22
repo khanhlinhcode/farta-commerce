@@ -64,3 +64,18 @@ This remediation has not been live-validated and does not close the release gate
 
 See `docs/phase-6/live-agent-release-closure.md` for the complete source, CI, runtime and rollback
 evidence.
+
+## Phase 6C Groq checkpoint
+
+Commit `ef63a0ac9b65bd3024541cb82ebe341af8686c35` added a Redis-backed provider HTTP-request
+budget. Local gates passed, GitHub Actions run `39763507810` passed all four required jobs, and
+Northflank deployed the exact commit with one replica.
+
+The stakeholder supplied Free Plan/model-limit evidence for Groq. The canary started at `0/7` and
+sent exactly one model metadata/access request for `openai/gpt-oss-120b`. The counter advanced to
+`1/7`, then Groq returned HTTP 404 `model_not_found`. Execution stopped immediately: zero public
+Groq Agent flows, zero retries and zero fallback calls.
+
+Groq, Gemini and fallback were disabled after the failure. AI live/ready remained healthy, all
+public application health checks returned HTTPS 200, provider-off returned
+`AI_PROVIDER_DISABLED`, and ordinary catalog browsing remained available. Phase 6C is **BLOCKED**.
