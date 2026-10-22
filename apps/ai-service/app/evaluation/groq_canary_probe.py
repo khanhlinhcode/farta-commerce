@@ -23,9 +23,13 @@ async def probe() -> dict[str, object]:
 
     client = provider.create_client()
     try:
-        model = await client.models.retrieve(settings.groq_model)
+        models = await client.models.list()
     finally:
         await client.close()
+
+    available_model_ids = {model.id for model in models.data}
+    if settings.groq_model not in available_model_ids:
+        raise RuntimeError("Configured Groq model is not available to this project.")
 
     after = await budget.snapshot()
     if after.consumed != 1:
@@ -33,8 +37,8 @@ async def probe() -> dict[str, object]:
     return {
         "provider": "groq",
         "requestedModel": settings.groq_model,
-        "returnedModel": model.id,
-        "modelMatched": model.id == settings.groq_model,
+        "returnedModel": settings.groq_model,
+        "modelMatched": True,
         "budgetConsumed": after.consumed,
         "budgetRemaining": after.remaining,
         "budgetLimit": after.limit,
