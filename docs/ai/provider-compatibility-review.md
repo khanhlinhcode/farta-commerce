@@ -130,3 +130,9 @@ requests, while the observable lower bound was nine. The exact total is between 
 because model-request telemetry was not attached for the first two public flows. No further live
 request is permitted until a new ceiling is approved and enforced independently of assumptions
 about how many model requests one Agent run will consume.
+
+Campaign 04 independently remains closed at 5/7. The Phase 6E typed availability-evidence fix is
+deployed provider-off at `4e7a4df6586caec836263048a140aafeaee4b804`, with exact-commit CI run
+`39885326931` green and zero new provider requests. This changes no provider compatibility claim:
+Groq model access is verified, but end-to-end live Agent acceptance is still unverified until a new
+authorized Campaign 05 passes all three public flows.

@@ -140,3 +140,29 @@ products. Recent reservation-expiry runs remained `SUCCESS`.
 **Remain provider-off and continue staging remediation.** Do not start RAG, LangGraph, production
 deployment or AI commerce mutations. A future live attempt requires a new canary ID, a separate
 request authorization and an offline fix for the availability-answer validation contract.
+
+## Phase 6E provider-off source and deployment result
+
+The availability-answer source defect is fixed in
+`4e7a4df6586caec836263048a140aafeaee4b804`. A request-local evidence ledger now binds semantic
+availability to the current `get_product_availability` observation, while strict final output must
+reference the matching slug, size/color and observation. Search/detail-only, stale, contradictory
+or model-only availability claims continue to fail closed.
+
+Evidence after the change:
+
+- focused Agent executor: 39/39 passed;
+- Python: 87/87 passed;
+- Agent evaluation: 62/62 passed with provider calls `0`;
+- Node unit/component tests: 157/157 passed;
+- API E2E/security: 65/65 passed;
+- format, lint, typecheck, build and production dependency audit passed;
+- GitHub Actions `39885326931`: all four required jobs passed;
+- Northflank API and AI: exact source revision, `SUCCESS`/`COMPLETED`, one replica each;
+- API/private AI live/ready, Storefront, Admin and catalog: HTTP 200;
+- recent reservation worker runs: `SUCCESS`;
+- public Agent: `AI_PROVIDER_DISABLED`, zero products.
+
+Phase 6E made zero Groq/Gemini requests, Campaign 05 was not created, and rollback was not required
+because providers stayed disabled. The source/deployment checkpoint is complete, but Phase 6E is
+**BLOCKED** at the explicit Campaign 05 authorization gate.

@@ -79,3 +79,15 @@ exposure or production use.
 Groq documents that usage metadata is retained and that inference content may be retained for up
 to 30 days for reliability/abuse purposes unless ZDR is enabled. Because account ZDR was disabled,
 continued staging or production exposure is not approved by this review.
+
+## Phase 6E provider-off remediation
+
+Commit `4e7a4df6586caec836263048a140aafeaee4b804` adds request-bound typed availability evidence and
+deploys it with Groq, Gemini and fallback disabled. GitHub Actions run `39885326931` passed all
+four required jobs. The Northflank Groq key remains non-empty and scoped to the private `farta-ai`
+service; its value was not read into reports or command output.
+
+No Phase 6E provider request has been made and Campaign 05 has not been created. Consequently this
+change improves the offline grounding boundary but does not change the data-retention decision:
+remain provider-off until a separately authorized synthetic-only campaign completes and is rolled
+back.

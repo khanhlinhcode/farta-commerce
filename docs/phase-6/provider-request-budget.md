@@ -52,3 +52,11 @@ Agent responses are both counted at the outbound HTTP boundary.
 5. Do not reset a non-zero counter to manufacture a fresh attempt.
 6. Disable the provider after evidence collection unless continued exposure was explicitly
    authorized.
+
+## Phase 6E checkpoint
+
+Campaign 04 remains immutable at **5/7**. Source commit
+`4e7a4df6586caec836263048a140aafeaee4b804` remediates availability grounding and is deployed
+provider-off, but it does not create or consume a new budget. Phase 6E has made zero Groq/Gemini
+HTTP requests. Campaign 05 requires a new canary ID and explicit stakeholder authorization before
+its Redis key may be created or claimed.

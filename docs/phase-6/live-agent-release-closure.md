@@ -285,3 +285,23 @@ Evidence:
 Groq, Gemini and automatic fallback remained disabled throughout. No provider request was made and
 Campaign 01, 02 and 03 counters were not reused or reset. Phase 6C remains **BLOCKED** because the
 remediation has not produced three consecutive grounded live public flows.
+
+## 14. Phase 6E provider-off closure checkpoint
+
+Source commit `4e7a4df6586caec836263048a140aafeaee4b804` implements the offline availability-answer fix.
+It preserves the one-tool/two-model-request Agent boundary while binding typed availability claims
+to current-request `get_product_availability` evidence. Cross-request/history evidence,
+contradictions, unobserved size/color, exact stock quantity, SKU and unverified price/URL claims
+remain rejected.
+
+Local evidence is Node 157/157, API E2E 65/65, Python 87/87 and Agent evaluation 62/62 with zero
+provider calls. GitHub Actions run `39885326931` passed `node-quality`, `api-e2e`,
+`python-quality` and `secret-scan`. Northflank API and AI both deploy the exact source commit with
+`SUCCESS` builds, `COMPLETED` deployments and one replica each. Provider-off runtime health,
+catalog, Storefront/Admin and reservation-worker checks passed; the public Agent returned
+`AI_PROVIDER_DISABLED` with zero products.
+
+Campaign 05 has not been created, enabled or consumed. Phase 6E external request count is zero and
+no rollback was required because providers remained disabled. The release remains **BLOCKED**
+until a separately authorized Campaign 05 passes all three grounded public flows and is rolled
+back.

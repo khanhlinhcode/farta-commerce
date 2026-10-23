@@ -189,3 +189,21 @@ Private AI and public API live/ready, Storefront and Admin returned HTTP 200. Al
 remained false and a public supported request returned `AI_PROVIDER_DISABLED`. No Groq request was
 made during this remediation. This is deployed provider-off evidence, not a passing live canary;
 Phase 6C remains **BLOCKED** pending a newly approved campaign ID and request budget.
+
+## Phase 6E availability remediation checkpoint
+
+Campaign 04 remains closed at 5/7 and was not reset. Commit
+`4e7a4df6586caec836263048a140aafeaee4b804` replaced the phrase-only availability decision with a
+request-bound typed evidence contract that requires a matching `get_product_availability`
+observation, observation reference, slug, optional size/color and semantic state. Free text and the
+typed claim must agree; search/detail observations, history and cross-request evidence remain
+insufficient.
+
+The offline regression and full frozen gates passed, including Python 87/87, Node 157/157, API E2E
+65/65 and the 62-case evaluation with zero provider calls. GitHub Actions run `39885326931` passed
+all four required jobs. API and AI run the exact commit provider-off with one replica each, and the
+runtime smoke remains healthy.
+
+Campaign 05 has not been created or run. Exact Phase 6E Groq request count is zero. Live Product
+Advisor status therefore remains **BLOCKED** pending explicit authorization for a new seven-request
+campaign; no partial or offline result is treated as live success.

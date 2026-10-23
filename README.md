@@ -265,10 +265,11 @@ unverified operational controls. Start with the
 - Staging approval does not imply production readiness or validated production capacity.
 - Real SePay Test-mode delivery, OAuth, transactional email and monitoring alerts remain external
   provider work until evidence is recorded.
-- AI service horizontal scaling remains limited to one replica while inbound replay claims are
-  process-local.
+- API and AI currently run one staging replica each; shared Redis replay claims are implemented,
+  but multi-replica load behavior has not been validated.
 - Live Product Advisor release remains blocked until a newly approved, exactly metered canary proves
-  three consecutive grounded public flows with the iteration guard.
+  three consecutive grounded public flows. The Phase 6E availability-evidence fix is deployed
+  provider-off and has only offline/CI evidence so far.
 - No RAG, LangGraph, AI commerce mutations, autonomous refunds, Wishlist, Reviews, Coupons or
   Loyalty are included in the current scope.
 

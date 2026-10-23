@@ -50,3 +50,11 @@ Do not send production traffic, customer PII or real payment data to the Product
 enable Groq or Gemini until a new bounded campaign is approved after the availability-validation
 contract is remediated offline. Monitoring, email, SePay, OAuth and recovery must retain `BLOCKED`
 status until provider-backed evidence exists.
+
+## Phase 6E update
+
+The availability-validation contract is now remediated offline in commit
+`4e7a4df6586caec836263048a140aafeaee4b804`, and exact-commit CI plus provider-off deployment
+passed. This closes the source defect but not the High live Product Advisor finding: Campaign 05
+has not been authorized or run, so no provider has yet passed three consecutive grounded public
+flows. The recommendation remains **REMEDIATION REQUIRED — REMAIN ON STAGING AND PROVIDER-OFF**.

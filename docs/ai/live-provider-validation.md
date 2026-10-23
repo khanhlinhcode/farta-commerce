@@ -123,3 +123,13 @@ post-observation iteration exposes only the strict final output tool. Local gate
 replica; AI/API health, Storefront and Admin returned 200, and the public Agent returned
 `AI_PROVIDER_DISABLED`. No new Groq request was made, so this remediation remains unverified by a
 live three-flow campaign.
+
+## Phase 6E availability grounding
+
+Commit `4e7a4df6586caec836263048a140aafeaee4b804` adds typed request-bound provenance for
+availability claims and passes Python 87/87 plus the 62-case zero-provider evaluation. GitHub
+Actions run `39885326931` passed, and API/AI deploy the exact source revision provider-off.
+
+Campaign 05 has not been created or consumed. No Groq or Gemini request was made in Phase 6E, so
+this is source, CI and deployed-runtime evidence only. Live validation remains **BLOCKED** pending
+the exact new authorization and three consecutive grounded public flows.
