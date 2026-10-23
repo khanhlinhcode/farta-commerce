@@ -9,6 +9,10 @@ if (!["local", "staging"].includes(e2eTarget)) {
   throw new Error("E2E_TARGET must be either local or staging.");
 }
 const isStagingTarget = e2eTarget === "staging";
+const aiProviderMode = process.env.E2E_AI_PROVIDER_MODE ?? "off";
+if (!["off", "live"].includes(aiProviderMode)) {
+  throw new Error("E2E_AI_PROVIDER_MODE must be either off or live.");
+}
 
 const supportedBrowsers = ["chromium", "firefox", "webkit"] as const;
 type SupportedBrowser = (typeof supportedBrowsers)[number];

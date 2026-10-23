@@ -2,9 +2,15 @@ import { expect, test } from "@playwright/test";
 
 import { assertNoHorizontalOverflow, seed, urls } from "./support";
 
+const providerMode = process.env.E2E_AI_PROVIDER_MODE ?? "off";
+
 test("guest uses the live Product Advisor and opens an authoritative product", async ({
   page,
 }) => {
+  test.skip(
+    providerMode !== "live",
+    "Live-provider behavior requires an approved canary.",
+  );
   await page.goto("/shop");
   const trigger = page.getByRole("button", {
     name: "Mở FARTA Product Advisor",
@@ -39,7 +45,7 @@ test("provider-off advice fails closed without fabricating recommendations", asy
     .fill("Tư vấn một outfit thanh lịch cho buổi tối cuối tuần");
   await page.getByRole("button", { name: "Gửi câu hỏi" }).click();
 
-  await expect(page.getByText(/Tư vấn nâng cao đang tạm tắt/)).toBeVisible();
+  await expect(page.getByText(/Trợ lý tư vấn đang tạm tắt/)).toBeVisible();
   await expect(page.getByLabel("Sản phẩm từ hệ thống FARTA")).toHaveCount(0);
 });
 

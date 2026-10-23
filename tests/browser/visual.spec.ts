@@ -11,6 +11,7 @@ import {
 } from "./support";
 
 test.use({ trace: "off" });
+const providerMode = process.env.E2E_AI_PROVIDER_MODE ?? "off";
 
 async function stableScreenshot(page: Page, name: string) {
   await page.locator("main:not(.page-loading)").waitFor();
@@ -69,6 +70,10 @@ test("Cart and Checkout visual baselines", async ({ page }) => {
 });
 
 test("Product Advisor visual baselines", async ({ page }) => {
+  test.skip(
+    providerMode !== "live",
+    "Live-provider visual state requires an approved canary.",
+  );
   test.setTimeout(90_000);
   for (const [name, width, height] of [
     ["ai-advisor-desktop.png", 1440, 900],
