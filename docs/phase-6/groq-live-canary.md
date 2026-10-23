@@ -1,9 +1,35 @@
-# Phase 6C bounded Groq live canary
+# Phase 6C/6D bounded Groq live canaries
 
-Date: 2026-10-22
+Updated: 2026-10-23
 
-Status: **BLOCKED — model access is verified, but Campaign 03 again failed on the first public
-Agent flow; zero campaigns have passed all three grounded flows**.
+Status: **BLOCKED — model access and Campaign 04 Flow 1 passed, but Flow 2 failed closed with
+`AI_OUTPUT_UNVERIFIED_CLAIM`; zero campaigns have passed all three grounded flows**.
+
+## Campaign 04 — deterministic two-step Agent validation
+
+Source revision `9b0ac2bbc2c1df0bc5fb563e97f0d9b3e6bf1e2a` passed exact-commit CI and Chromium,
+Firefox and WebKit staging coverage before live enablement. The stakeholder authorized canary
+`groq-canary-20261023-04` for at most seven Groq HTTP requests, synthetic prompts only,
+stop-on-first-failure, no retry/Gemini/fallback and mandatory rollback.
+
+The counter started at zero. One budgeted `models.list()` request found exact model ID
+`openai/gpt-oss-120b`, leaving `1/7` consumed.
+
+| Flow                                                 | Public result                                                               | Groq requests | Safe evidence                                                                             |
+| ---------------------------------------------------- | --------------------------------------------------------------------------- | ------------: | ----------------------------------------------------------------------------------------- |
+| `Tìm áo màu đen size M`                              | HTTP 201; `route=agent`; `status=completed`; one re-hydrated product        |             2 | one `search_products`; public 3.667 s; provider 2202.849 ms; request 2296.167 ms          |
+| `/product/dev-farta-essential-tee còn size M không?` | HTTP 201; `route=agent`; `status=unavailable`; `AI_OUTPUT_UNVERIFIED_CLAIM` |             2 | one `get_product_availability`; public 2.661 s; provider 1581.836 ms; request 1587.502 ms |
+| styling                                              | not run                                                                     |             0 | execution stopped at the first failure                                                    |
+
+Campaign 04 used exactly **5/7** Groq HTTP requests. Both attempted flows used one approved catalog
+tool and two model requests. The second final answer was rejected by the existing unverified-claim
+guard, so it was not exposed as a successful recommendation. No retry or provider switch occurred.
+Flow 3 was not sent. The counter was not reset and must never be reused.
+
+Rollback restored Groq, Gemini, both free-tier verification flags and fallback to `false`. Private
+AI/API health, Storefront, Admin and catalog returned HTTP 200; a supported public Agent request
+returned `AI_PROVIDER_DISABLED`. Campaign 04 therefore improves live evidence but does not close
+the release gate.
 
 ## Evidence boundary
 

@@ -1,9 +1,26 @@
 # Live provider validation
 
-Date: 2026-10-22
+Updated: 2026-10-23
 
-Status: **BLOCKED — live model/tool integration works, but the Phase 6B release gate and request
-budget did not pass**.
+Status: **BLOCKED — live model/tool integration works, but no Gemini/Groq campaign has passed three
+consecutive grounded public flows**.
+
+## Phase 6D Groq Campaign 04
+
+Campaign `groq-canary-20261023-04` ran on exact deployed source revision
+`9b0ac2bbc2c1df0bc5fb563e97f0d9b3e6bf1e2a` after all offline, CI and cross-browser gates passed.
+The Redis counter started at zero and the budgeted model-list request found exact model ID
+`openai/gpt-oss-120b` at `1/7`.
+
+The first public flow completed in 3.667 seconds with one `search_products` call, two model requests
+and one authoritative re-hydrated product. The second flow returned in 2.661 seconds with one
+`get_product_availability` call and two model requests, but the output guard rejected it as
+`AI_OUTPUT_UNVERIFIED_CLAIM`. Execution stopped before the third flow. Total external Groq requests
+were exactly **5/7**. There was no retry, Gemini call or fallback.
+
+Groq and Gemini were disabled immediately afterward. The AI/API health and public catalog remained
+available, while supported Product Advisor requests returned `AI_PROVIDER_DISABLED`. Campaign 04
+is a partial live result, not release acceptance.
 
 ## Current candidate
 

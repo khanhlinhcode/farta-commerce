@@ -1,20 +1,20 @@
 # Phase 6 external provider validation
 
-Date: 2026-10-22
+Updated: 2026-10-23
 
 Phase 6A and Phase 6B exercised Google Gemini only with synthetic staging data. The campaigns are
 reported separately because they had different approved request ceilings.
 
-| Provider boundary              | Status           | Requests/events                                | Exact blocker                                                                                                                                             |
-| ------------------------------ | ---------------- | ---------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Gemini `gemini-3.8-flash`      | BLOCKED          | 9 Google requests                              | Phase 6A key/model/shared-secret validation passed, but the deployed Agent hit its provider deadline                                                      |
-| Gemini `gemini-3.5-flash-lite` | BLOCKED          | 9–11 Google requests                           | Phase 6B had two successful public flows; the third failed with `AI_LIMIT_EXCEEDED`; the eight-request authorization was exceeded by at least one request |
-| Groq `openai/gpt-oss-120b`     | BLOCKED          | Campaign 01: 1; Campaign 02: 3; Campaign 03: 3 | Exact model access passed; Campaign 03 again stopped after the first public flow returned `AI_LIMIT_EXCEEDED`                                             |
-| SePay Test mode                | BLOCKED          | 0 external events                              | no approved Test-mode account/credential or official delivered webhook evidence                                                                           |
-| Transactional email            | BLOCKED          | 0 deliveries                                   | no approved provider, sender domain or staging mailbox                                                                                                    |
-| Google OAuth                   | DEFERRED/BLOCKED | 0 flows                                        | not in first-launch scope; adapter and development credentials absent                                                                                     |
-| Apple OAuth                    | DEFERRED/BLOCKED | 0 flows                                        | not in first-launch scope; Services ID/team/key/adapter absent                                                                                            |
-| Monitoring alerts              | BLOCKED          | 0 received alerts                              | no approved alert sink/recipient                                                                                                                          |
+| Provider boundary              | Status           | Requests/events                                                | Exact blocker                                                                                                                                             |
+| ------------------------------ | ---------------- | -------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Gemini `gemini-3.8-flash`      | BLOCKED          | 9 Google requests                                              | Phase 6A key/model/shared-secret validation passed, but the deployed Agent hit its provider deadline                                                      |
+| Gemini `gemini-3.5-flash-lite` | BLOCKED          | 9–11 Google requests                                           | Phase 6B had two successful public flows; the third failed with `AI_LIMIT_EXCEEDED`; the eight-request authorization was exceeded by at least one request |
+| Groq `openai/gpt-oss-120b`     | BLOCKED          | Campaign 01: 1; Campaign 02: 3; Campaign 03: 3; Campaign 04: 5 | Campaign 04 completed grounded search, then availability failed closed with `AI_OUTPUT_UNVERIFIED_CLAIM`                                                  |
+| SePay Test mode                | BLOCKED          | 0 external events                                              | no approved Test-mode account/credential or official delivered webhook evidence                                                                           |
+| Transactional email            | BLOCKED          | 0 deliveries                                                   | no approved provider, sender domain or staging mailbox                                                                                                    |
+| Google OAuth                   | DEFERRED/BLOCKED | 0 flows                                                        | not in first-launch scope; adapter and development credentials absent                                                                                     |
+| Apple OAuth                    | DEFERRED/BLOCKED | 0 flows                                                        | not in first-launch scope; Services ID/team/key/adapter absent                                                                                            |
+| Monitoring alerts              | BLOCKED          | 0 received alerts                                              | no approved alert sink/recipient                                                                                                                          |
 
 Local provider-shaped mocks and signed webhook tests are not external evidence. Browser return alone
 does not establish payment success. Required Gemini approval conditions and official sources are in
@@ -57,3 +57,15 @@ tool is eligible afterward. GitHub Actions `39874294385` passed all four jobs an
 deployed the exact commit provider-off with one replica. Health and public provider-off checks
 passed. This change made zero external provider requests and therefore does not change the Groq
 request totals or the **BLOCKED** external-provider status.
+
+Phase 6D deployed exact revision `9b0ac2bbc2c1df0bc5fb563e97f0d9b3e6bf1e2a` after GitHub CI runs
+`39876683662`, `39877062148` and `39878630621` passed. Campaign 04 used a new Redis namespace with
+a hard ceiling of seven. One model-list request verified `openai/gpt-oss-120b`; the product-search
+flow then completed with one `search_products` tool, two model requests and a NestJS re-hydrated
+product. The availability flow used one `get_product_availability` tool and two model requests but
+returned `AI_OUTPUT_UNVERIFIED_CLAIM`. Execution stopped immediately at 5/7; the styling prompt was
+not sent, and no retry, Gemini request or fallback occurred.
+
+Rollback disabled Groq, Gemini, both provider-verification flags and fallback. API/AI health,
+Storefront, Admin and catalog returned HTTP 200; the public Product Advisor returned
+`AI_PROVIDER_DISABLED`. Campaign 04 is closed and its counter must not be reset or reused.

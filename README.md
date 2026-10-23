@@ -8,9 +8,10 @@ and a private Pydantic AI Product Advisor that can access only allowlisted publi
 > production payment-provider delivery, OAuth, transactional email, alerting and production-scale
 > capacity are not yet validated. The Product Advisor source is deployed, but live providers remain
 > disabled: Gemini failed the third Phase 6B flow; Groq model access was later verified, but the
-> first public flow in both bounded Groq campaigns failed closed with `AI_LIMIT_EXCEEDED`. A strict
-> two-phase catalog-tool/final-output remediation is deployed provider-off, but has not passed a
-> live three-flow canary.
+> first public flow in Campaigns 02 and 03 failed closed with `AI_LIMIT_EXCEEDED`. Campaign 04 then
+> passed grounded product search but failed its availability flow with
+> `AI_OUTPUT_UNVERIFIED_CLAIM`. The canary stopped at 5/7 provider requests and staging was rolled
+> back to provider-off; no live provider has passed the required three consecutive flows.
 
 ## Live staging
 
@@ -125,12 +126,13 @@ execution and authoritative tool observations. See [AI API contract](docs/api/ai
 The staging providers are currently **off**. Two public Gemini Agent flows succeeded during Phase
 6B, but the third exhausted the Agent request budget. Phase 6C added an independent Redis ceiling.
 After correcting the namespaced metadata lookup, exact Groq model access passed. Campaign 02 found
-and corrected cumulative output-token accounting, but Campaign 03 still failed after one catalog
-tool and two model requests. The latest remediation uses a strict all-required final-output schema,
-zero Groq temperature, safe limit-subtype telemetry and deterministic per-step tool eligibility:
-the first iteration can use only a catalog tool and the final iteration can use only structured
-output. It is tested and deployed provider-off but not live-validated. Provider-off requests fail
-safely with `AI_PROVIDER_DISABLED` while ordinary catalog browsing continues to work.
+and corrected cumulative output-token accounting, while Campaign 03 exposed a final-output
+contract problem. Campaign 04 validated the strict two-phase execution far enough for grounded
+product search to complete: one `search_products` call, two model requests and one NestJS
+re-hydrated product. Its second flow executed authoritative `get_product_availability` but the final
+answer was rejected as `AI_OUTPUT_UNVERIFIED_CLAIM`; execution stopped at exactly 5/7 Groq HTTP
+requests and rollback restored provider-off. Provider-off requests fail safely with
+`AI_PROVIDER_DISABLED` while ordinary catalog browsing continues to work.
 
 ## Run locally
 

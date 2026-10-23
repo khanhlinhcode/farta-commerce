@@ -1,8 +1,9 @@
 # Groq security and data review
 
-Access date: 2026-10-22
+Access date: 2026-10-23
 
-Status: **provider disabled; live model access validated, live Agent release gate failed**.
+Status: **provider disabled; Campaign 04 stopped at Flow 2 and the live Agent release gate remains
+failed**.
 
 ## Official sources
 
@@ -59,3 +60,22 @@ Commit `b3e59fb3e349e0f0eedec8f3ebfab327f429ef7d` now enforces strict final-tool
 all-required schema, zero Groq temperature and redacted limit-subtype telemetry. It is deployed
 provider-off but has not received live validation. This review does not approve continued staging
 exposure or production use.
+
+## Campaign 04 security result
+
+- secret group remained restricted to the private `farta-ai` service;
+- the key was verified only as present/non-empty and was never printed, logged or committed;
+- account evidence showed Free Plan access and Inference API ZDR disabled;
+- only approved synthetic prompts were eligible; no customer PII/order/payment data was sent;
+- metadata plus two attempted public flows consumed exactly five Groq HTTP requests;
+- each public flow used one read-only catalog tool and two model requests;
+- Flow 1 completed and was re-hydrated by NestJS;
+- Flow 2 was rejected with `AI_OUTPUT_UNVERIFIED_CLAIM`, so it did not escape as a successful
+  response;
+- Flow 3 was not sent; no retry, Gemini call, fallback or mutation tool occurred;
+- logs contained allowlisted identifiers/counts/durations only, not raw prompts or credentials;
+- rollback restored every provider and verification flag to false.
+
+Groq documents that usage metadata is retained and that inference content may be retained for up
+to 30 days for reliability/abuse purposes unless ZDR is enabled. Because account ZDR was disabled,
+continued staging or production exposure is not approved by this review.

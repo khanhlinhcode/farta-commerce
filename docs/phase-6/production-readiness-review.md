@@ -1,40 +1,52 @@
-# Phase 6 production-readiness review
+# Phase 6D production-readiness review
 
-Date: 2026-10-21
+Date: 2026-10-23
 
-Recommendation: **REMEDIATION REQUIRED — REMAIN ON STAGING**.
+Recommendation: **REMEDIATION REQUIRED — REMAIN ON STAGING AND PROVIDER-OFF**.
 
-## Validated implementation scope
+## Validated boundaries
 
-- read-only Agent architecture remains behind NestJS authorization and signed tools;
-- no AI commerce mutation or direct database access exists;
-- provider-independent routing/evaluation, output grounding and safe observability are implemented;
-- Storefront failure/retry and source-distinction UX are implemented without raw model HTML;
-- deterministic provider-off behavior remains the safe default.
+- shared Redis replay claims protect FastAPI inbound gateway requests across replicas;
+- Pydantic AI remains limited to one read-only catalog tool and two model requests for the canary;
+- NestJS remains the authentication, authorization and commerce authority;
+- exact-commit Node/Python/CI/security gates passed;
+- Chromium, Firefox and WebKit staging suites passed with expected live-provider skips;
+- Campaign 04's provider request counter stopped at 5/7 and rollback was verified;
+- no AI Cart, Checkout, Order, Payment, Account or Admin mutation tool exists.
 
-## Security classification
+## Release findings
 
-| Severity | Item                                                | Status                                   |
-| -------- | --------------------------------------------------- | ---------------------------------------- |
-| Critical | none found in validated Phase 6 implementation      | —                                        |
-| High     | live Gemini Agent exceeds bounded provider deadline | deployed mitigation failed; provider off |
-| High     | alert delivery and operational ownership absent     | BLOCKED for production                   |
-| High     | staging backup/restore rehearsal absent             | BLOCKED for production                   |
-| High     | online SePay launch lacks actual Test-mode delivery | BLOCKED; do not enable online payment    |
-| Medium   | inbound AI replay cache is process-local            | single replica only                      |
-| Medium   | email delivery/retry has no external proof          | BLOCKED                                  |
-| Medium   | Redis recovery and deployment rollback unmeasured   | BLOCKED                                  |
-| Medium   | OAuth adapters absent                               | deferred; disabled UI only               |
-| Medium   | physical-device/screen-reader validation absent     | NOT TESTED                               |
+| Severity | Item                                                                              | Status                                         |
+| -------- | --------------------------------------------------------------------------------- | ---------------------------------------------- |
+| Critical | none found in the validated Phase 6D source scope                                 | —                                              |
+| High     | live Product Advisor availability flow rejected with `AI_OUTPUT_UNVERIFIED_CLAIM` | BLOCKED; provider off                          |
+| High     | alert delivery and operational ownership absent                                   | BLOCKED for production                         |
+| High     | isolated backup/restore and recovery rehearsal absent                             | BLOCKED for production                         |
+| High     | online SePay launch lacks official Test-mode evidence                             | BLOCKED; COD only                              |
+| Medium   | transactional email delivery/retry has no external proof                          | BLOCKED                                        |
+| Medium   | OAuth provider callbacks have no credential-backed proof                          | BLOCKED/deferred                               |
+| Medium   | Groq Inference API ZDR was disabled during synthetic canary                       | no PII sent; not approved for customer traffic |
+| Medium   | physical-device and screen-reader validation absent                               | NOT TESTED                                     |
+| Medium   | Cloudflare Free-plan capacity is not a production SLO                             | staging risk                                   |
 
-Source, exact-commit CI and staging browser success cannot close these external findings. No
-production deployment is recommended until every required provider/recovery boundary has exact
-evidence.
+Campaign 04 proved model access and one grounded product-search response. It did not prove three
+consecutive grounded flows: the second flow failed closed and the third was not run. Source, CI,
+browser and health evidence cannot substitute for this missing live behavior.
 
-## Transparent completion estimate
+## Dependabot audit
 
-The Phase 6 denominator is 100 weighted points: source/evaluation/security 30, local regression 20,
-exact-revision staging/browser validation 15, live LLM 10, operational alert/email/OAuth 10,
-SePay Test mode 5, backup/Redis/rollback 10. The measured score is **65/100**: source 30/30, local
-regression 20/20 and exact-revision staging/browser 15/15. Live LLM and every external/operational
-category score zero rather than being inferred from provider-off deployment health.
+No PR was merged or closed.
+
+- safe/current and green: `#18` Ruff, `#17` pydantic-settings, `#16` FastAPI; each still requires
+  normal dependency review because CI results predate the Phase 6D head;
+- green but breaking-major/manual review: `#1` actions/checkout 7;
+- failing CI: `#12` pnpm/action-setup, `#11` actions/setup-node, `#10` Mongoose, `#9` jose,
+  `#8` lucide-react, `#7` cookie and `#4` setup-uv;
+- breaking-major among the failing set: `#12`, `#11`, `#9` and `#7`.
+
+## Decision
+
+Do not send production traffic, customer PII or real payment data to the Product Advisor. Do not
+enable Groq or Gemini until a new bounded campaign is approved after the availability-validation
+contract is remediated offline. Monitoring, email, SePay, OAuth and recovery must retain `BLOCKED`
+status until provider-backed evidence exists.

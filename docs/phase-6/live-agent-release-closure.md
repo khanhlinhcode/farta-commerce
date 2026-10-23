@@ -1,12 +1,36 @@
 # Phase 6 live Agent release closure
 
-Date: 2026-10-22
+Updated: 2026-10-23
 
-Status: **BLOCKED — source and deployment boundaries are implemented, but neither Gemini nor Groq
-passed the live release gate**.
+Status: **BLOCKED — source and deployment boundaries are implemented, but Campaign 04 failed on
+its second public flow and no provider has passed the live release gate**.
 
 Gemini and Groq are disabled in staging. This report does not claim production readiness or a
 completed live Product Advisor release.
+
+## Phase 6D closure
+
+Revision `9b0ac2bbc2c1df0bc5fb563e97f0d9b3e6bf1e2a` is the exact deployed source revision.
+Its three source commits passed GitHub CI runs `39876683662`, `39877062148` and `39878630621`.
+The release adds shared Redis inbound replay claims, preserves the seven-request provider budget
+and aligns browser coverage with the explicit provider-off/live boundary.
+
+Offline evidence is Node 157/157, API E2E 65/65, Python 73/73 and Agent evaluation 62/62 with zero
+provider calls. Staging browser evidence is Chromium 29 passed / 2 expected skipped, Firefox 26/1
+in GitHub Actions run `39879376074`, and WebKit 26/1. API/AI remain one replica each and recent
+reservation-expiry runs are successful.
+
+Campaign 04 (`groq-canary-20261023-04`) verified exact model access with one request. Product search
+then completed with one authoritative `search_products` tool, two model requests and one NestJS
+re-hydrated product. The availability/detail flow used one `get_product_availability` tool and two
+model requests, but failed closed with `AI_OUTPUT_UNVERIFIED_CLAIM`. Execution stopped; the styling
+flow was never sent. Exact external request count was 5/7.
+
+Rollback restored Groq, Gemini, both verification flags and fallback to false. Private AI and API
+live/ready, Storefront, Admin and catalog returned HTTP 200; the public Product Advisor returned
+`AI_PROVIDER_DISABLED`. Campaign 04's counter remains non-zero and must not be reset or reused.
+The next live attempt requires an offline availability-answer validation fix, a new canary ID and
+new stakeholder request authorization.
 
 ## 1. Implemented source architecture
 

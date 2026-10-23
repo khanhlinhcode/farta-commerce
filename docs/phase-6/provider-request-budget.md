@@ -1,6 +1,6 @@
 # Provider request budget
 
-Date: 2026-10-22
+Updated: 2026-10-23
 
 ## Purpose
 
@@ -36,6 +36,12 @@ ambiguous per-model metadata error. Campaign 02 started with a new ID, spent one
 model-list matching and two on the first public Agent flow, then stopped at `3/7` after
 `AI_LIMIT_EXCEEDED`. Campaign 03 independently started at `0/7`, made the same bounded one-plus-two
 request sequence and stopped at `3/7` after the same safe error. No counter was reset or reused.
+
+Campaign 04 independently started at `0/7`. Exact `models.list()` matching consumed one unit, the
+first completed public flow consumed two units, and the second fail-closed flow consumed two units.
+The final snapshot was **5 consumed / 2 remaining / limit 7**. The third flow was not sent, the
+counter was not reset, and the provider was disabled. This confirms that successful and rejected
+Agent responses are both counted at the outbound HTTP boundary.
 
 ## Operational rules
 

@@ -1,6 +1,6 @@
 # Provider compatibility review
 
-Access date: 2026-10-22
+Access date: 2026-10-23
 
 Only official provider and Pydantic documentation was used for compatibility claims. Live inference
 evidence is reported separately from source compatibility below.
@@ -72,8 +72,8 @@ Verified documentation states:
 - Groq's strict Structured Outputs cannot currently be combined with tool use;
 - Groq documents local tool calling for this model and Pydantic AI's output is implemented as an
   output tool, so this repository does not request Groq `response_format` alongside tools;
-- Groq says inference inputs/outputs are not retained by default, with documented exceptions and
-  user-configurable Data Controls.
+- Groq documents that usage metadata is retained and inference inputs/outputs may be retained for
+  up to 30 days for reliability/abuse purposes unless Inference API ZDR is enabled.
 
 The stakeholder supplied dashboard evidence that the Groq project was on Free Plan, that the model
 appeared in the project's limit table, and that inference ZDR was disabled. Campaign 01's bounded
@@ -95,6 +95,13 @@ revision is deployed provider-off. It has not been live-validated.
 
 Decision: **BLOCKED and disabled**. Model access is verified; three consecutive grounded public
 flows are not.
+
+Campaign 04 live-tested the deterministic two-step revision. Exact model-list access passed, and
+the first product-search flow completed with one catalog tool, two model requests and a re-hydrated
+product. The second availability flow also stayed within one tool/two requests but its final text
+was rejected as `AI_OUTPUT_UNVERIFIED_CLAIM`. Execution stopped at 5/7 external requests, the third
+flow was not sent, and all provider flags were rolled back. This confirms provider compatibility
+but not the live release gate.
 
 Commit `f2267a69fdd6d025f566c1049e49ce9f01af7b4a` uses Pydantic AI `2.57.0`'s supported callable
 `model_settings` boundary to force a catalog function tool on the first iteration and restrict the
