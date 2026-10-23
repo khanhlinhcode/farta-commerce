@@ -3,6 +3,7 @@ import unicodedata
 from dataclasses import dataclass
 from typing import Literal
 
+from app.catalog_normalization import normalize_catalog_text
 from app.tools.schemas import ProductAvailabilityArgs, ProductDetailsArgs, SearchProductsArgs
 
 Intent = Literal[
@@ -25,7 +26,7 @@ class RouteDecision:
 
 class IntentRouter:
     _product_url = re.compile(r"/product/([a-z0-9]+(?:-[a-z0-9]+)*)")
-    _size = re.compile(r"\b(?:size|co)\s*([a-z0-9]{1,4})\b", re.IGNORECASE)
+    _size = re.compile(r"\b(?:size|co)\s+([a-z0-9]{1,4})\b", re.IGNORECASE)
     _price = re.compile(r"(?:duoi|toi da|khong qua)\s*([0-9]+(?:[.,][0-9]+)?)\s*(k|tr|trieu)?")
     _colors = {
         "den": "Đen",
@@ -130,7 +131,7 @@ class IntentRouter:
 
     @staticmethod
     def _normalize(value: str) -> str:
-        return unicodedata.normalize("NFKC", value).strip().lower()
+        return normalize_catalog_text(value)
 
     @staticmethod
     def _fold(value: str) -> str:
@@ -141,7 +142,14 @@ class IntentRouter:
         return without_marks.replace("đ", "d")
 
     def _color(self, value: str) -> str | None:
-        return next((label for color, label in self._colors.items() if color in value), None)
+        return next(
+            (
+                label
+                for color, label in self._colors.items()
+                if re.search(rf"(?<!\w){re.escape(color)}(?!\w)", value)
+            ),
+            None,
+        )
 
     def _size_value(self, value: str) -> str | None:
         match = self._size.search(value)

@@ -39,6 +39,5 @@ class ProductDetailsArgs(ToolArguments):
 
 
 class ProductAvailabilityArgs(ProductDetailsArgs):
-    variant_id: str | None = Field(default=None, pattern=r"^[a-fA-F0-9]{24}$")
     color: str | None = Field(default=None, max_length=80)
     size: str | None = Field(default=None, max_length=40)

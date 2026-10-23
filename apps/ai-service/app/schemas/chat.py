@@ -13,6 +13,7 @@ class ApiModel(BaseModel):
 
 
 Availability = Literal["IN_STOCK", "LOW_STOCK", "OUT_OF_STOCK"]
+AvailabilityResolutionStatus = Literal["MATCHED", "NOT_FOUND", "AMBIGUOUS"]
 
 
 class ProductVariant(ApiModel):
@@ -85,6 +86,14 @@ class AgentAvailabilityClaim(BaseModel):
     availability: Availability
 
 
+class ToolAvailabilityResolution(ApiModel):
+    status: AvailabilityResolutionStatus
+    product_slug: str = Field(pattern=r"^[a-z0-9]+(?:-[a-z0-9]+)*$", max_length=120)
+    size: str | None = Field(default=None, max_length=40)
+    color: str | None = Field(default=None, max_length=80)
+    availability: Availability | None = None
+
+
 class ToolResponse(ApiModel):
     tool: Literal[
         "search_products",
@@ -92,3 +101,4 @@ class ToolResponse(ApiModel):
         "get_product_availability",
     ]
     products: list[ProductReference] = Field(default_factory=list, max_length=12)
+    availability_resolution: ToolAvailabilityResolution | None = None

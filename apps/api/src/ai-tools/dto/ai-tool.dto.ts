@@ -2,7 +2,6 @@ import { Type } from "class-transformer";
 import {
   IsEnum,
   IsInt,
-  IsMongoId,
   IsOptional,
   IsString,
   Matches,
@@ -37,7 +36,6 @@ export class ProductDetailsToolDto {
 }
 
 export class ProductAvailabilityToolDto extends ProductDetailsToolDto {
-  @IsOptional() @IsMongoId() variantId?: string;
   @IsOptional() @IsString() @MaxLength(80) color?: string;
   @IsOptional() @IsString() @MaxLength(40) size?: string;
 }

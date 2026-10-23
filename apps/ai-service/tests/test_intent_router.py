@@ -22,6 +22,19 @@ def test_availability_requires_an_authoritative_product_reference() -> None:
     assert resolved.tool == "get_product_availability"
     assert isinstance(resolved.arguments, ProductAvailabilityArgs)
     assert resolved.arguments.slug == "farta-essential-tee"
+    assert resolved.arguments.size == "M"
+    assert resolved.arguments.color is None
+
+
+def test_availability_does_not_parse_khong_as_a_color_or_size() -> None:
+    resolved = IntentRouter().route(
+        "/product/dev-farta-essential-tee còn size M không?",
+        [],
+    )
+
+    assert isinstance(resolved.arguments, ProductAvailabilityArgs)
+    assert resolved.arguments.size == "M"
+    assert resolved.arguments.color is None
 
 
 def test_rejects_private_commerce_topics() -> None:

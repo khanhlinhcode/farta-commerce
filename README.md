@@ -11,7 +11,9 @@ and a private Pydantic AI Product Advisor that can access only allowlisted publi
 > first public flow in Campaigns 02 and 03 failed closed with `AI_LIMIT_EXCEEDED`. Campaign 04 then
 > passed grounded product search but failed its availability flow with
 > `AI_OUTPUT_UNVERIFIED_CLAIM`. The canary stopped at 5/7 provider requests and staging was rolled
-> back to provider-off; no live provider has passed the required three consecutive flows.
+> back to provider-off; no live provider has passed the required three consecutive flows. A newer
+> exact-variant authority and argument-grounding hardening has passed local offline gates, but it is
+> not yet pushed, CI-verified or deployed.
 
 ## Live staging
 
@@ -133,6 +135,11 @@ re-hydrated product. Its second flow executed authoritative `get_product_availab
 answer was rejected as `AI_OUTPUT_UNVERIFIED_CLAIM`; execution stopped at exactly 5/7 Groq HTTP
 requests and rollback restored provider-off. Provider-off requests fail safely with
 `AI_PROVIDER_DISABLED` while ordinary catalog browsing continues to work.
+
+The newer source candidate distinguishes exact `MATCHED`, `NOT_FOUND` and `AMBIGUOUS` variant
+resolution, verifies actual model tool arguments against deterministic intent, and renders exact
+availability wording from server-validated evidence. Its current evidence is offline only; see the
+[live staging recovery checkpoint](docs/phase-6/live-staging-recovery.md).
 
 ## Run locally
 

@@ -63,9 +63,18 @@ export type AiToolRequest = {
   arguments: Record<string, unknown>;
 };
 
+export type AiAvailabilityResolution = {
+  status: "MATCHED" | "NOT_FOUND" | "AMBIGUOUS";
+  productSlug: string;
+  color: string | null;
+  size: string | null;
+  availability: AiAvailability | null;
+};
+
 export type AiToolResponse = {
   tool: AiToolName;
   products: ReadonlyArray<AiProductReference>;
+  availabilityResolution?: AiAvailabilityResolution;
 };
 
 export type CartConflictCode =

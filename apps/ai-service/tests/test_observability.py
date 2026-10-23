@@ -14,6 +14,7 @@ def test_observability_emits_only_allowlisted_safe_fields(caplog) -> None:
             duration_ms=12.5,
             response_status="completed",
             limit_kind="request_limit",
+            validation_subtype="ARGUMENT_MISMATCH",
             raw_prompt="do not log this",
             authorization="do not log this either",
         )
@@ -21,6 +22,7 @@ def test_observability_emits_only_allowlisted_safe_fields(caplog) -> None:
     assert payload["event"] == "ai.request.completed"
     assert payload["request_id"] == "request-12345678"
     assert payload["limit_kind"] == "request_limit"
+    assert payload["validation_subtype"] == "ARGUMENT_MISMATCH"
     assert "raw_prompt" not in payload
     assert "authorization" not in payload
     assert "do not log" not in caplog.text

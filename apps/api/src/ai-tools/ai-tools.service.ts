@@ -10,6 +10,10 @@ import type {
   ProductAvailabilityToolDto,
   SearchProductsToolDto,
 } from "./dto/ai-tool.dto";
+import {
+  normalizeCatalogDimension,
+  normalizeCatalogSize,
+} from "./ai-tool-normalization";
 
 type PublicProduct = Awaited<ReturnType<ProductsService["getPublicBySlug"]>>;
 
@@ -52,18 +56,40 @@ export class AiToolsService {
     input: ProductAvailabilityToolDto,
   ): Promise<AiToolResponse> {
     const product = await this.products.getPublicBySlug(input.slug);
-    const color = input.color?.trim().toLocaleLowerCase("vi");
-    const size = input.size?.trim().toLocaleLowerCase("vi");
+    const color = normalizeCatalogDimension(input.color);
+    const size = normalizeCatalogSize(input.size);
     const variants = product.variants.filter(
       (variant) =>
-        (!input.variantId || variant.id === input.variantId) &&
-        (!color || variant.color.toLocaleLowerCase("vi") === color) &&
-        (!size || variant.size.toLocaleLowerCase("vi") === size),
+        (!color || normalizeCatalogDimension(variant.color) === color) &&
+        (!size || normalizeCatalogSize(variant.size) === size),
     );
+    const variant = variants[0];
+
+    if (variants.length !== 1 || !variant) {
+      return {
+        tool: "get_product_availability",
+        products: [],
+        availabilityResolution: {
+          status: variants.length === 0 ? "NOT_FOUND" : "AMBIGUOUS",
+          productSlug: product.slug,
+          color,
+          size,
+          availability: null,
+        },
+      };
+    }
+
     const narrowed = { ...product, variants };
     return {
       tool: "get_product_availability",
       products: [this.toReference(narrowed)],
+      availabilityResolution: {
+        status: "MATCHED",
+        productSlug: product.slug,
+        color,
+        size,
+        availability: variant.availability,
+      },
     };
   }
 

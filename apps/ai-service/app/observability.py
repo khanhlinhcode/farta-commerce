@@ -44,6 +44,7 @@ SAFE_FIELDS = frozenset(
         "response_status",
         "error_code",
         "limit_kind",
+        "validation_subtype",
         "canary_digest",
         "budget_consumed",
         "budget_remaining",

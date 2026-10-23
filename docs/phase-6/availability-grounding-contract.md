@@ -144,3 +144,21 @@ three synthetic public flows has run. Therefore the availability remediation is 
 deployed provider-off, but it is not live-provider validated. Phase 6E remains **BLOCKED** until a
 new explicitly authorized Campaign 05 produces three consecutive grounded public flows within the
 seven-request ceiling and is then rolled back.
+
+## Post-6E exact-variant hardening
+
+A later source-only remediation closes boundaries that the Phase 6E contract did not yet prove:
+
+- NestJS now emits a typed exact-variant resolution and distinguishes `MATCHED`, `NOT_FOUND` and
+  `AMBIGUOUS` without promoting aggregate availability;
+- Python validates the resolved product, normalized requested dimensions, exact one-variant payload
+  and availability state before creating request-bound evidence;
+- the actual model-selected tool and arguments must match the deterministic intent before the
+  Commerce Tool Gateway is called;
+- unresolved variants and clarification output cannot bypass claim validation;
+- exact public availability wording is rendered from validated evidence rather than model prose.
+
+The regression suite passes offline, including provider-shaped serialization through the locked
+Pydantic AI/Groq stack. This hardening is not yet pushed, CI-verified or deployed, so the Phase 6E
+deployment evidence above remains historical and must not be read as evidence for the newer source.
+See [live staging recovery checkpoint](live-staging-recovery.md).

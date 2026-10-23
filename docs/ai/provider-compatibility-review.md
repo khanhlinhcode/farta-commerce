@@ -136,3 +136,21 @@ deployed provider-off at `4e7a4df6586caec836263048a140aafeaee4b804`, with exact-
 `39885326931` green and zero new provider requests. This changes no provider compatibility claim:
 Groq model access is verified, but end-to-end live Agent acceptance is still unverified until a new
 authorized Campaign 05 passes all three public flows.
+
+## Locked serialization revalidation
+
+On 2026-10-23, the exact installed Pydantic AI `2.57.0`, Groq SDK `1.7.0` and HTTPX `0.28.1` path
+was revalidated with HTTPX `MockTransport`. This exercised real provider-request serialization but
+made zero external provider requests.
+
+The first serialized request contained the intent-selected catalog tool and Pydantic AI's strict
+`final_result` output-tool schema. An explicit catalog `tool_choice` made only the catalog function
+selectable. After one authoritative observation, the second request contained only `final_result`
+with `tool_choice=required`. The regression completed with exactly two mocked model HTTP requests,
+one catalog execution and no retry. It also asserted required nested arrays, required nullable
+fields, enums and `additionalProperties: false` in the generated output schema.
+
+This is evidence that the repository's single-run two-phase design remains compatible with the
+locked SDK serialization. It is not evidence that a new source candidate has passed Groq live
+inference, CI or deployment. See
+[live staging recovery checkpoint](../phase-6/live-staging-recovery.md).

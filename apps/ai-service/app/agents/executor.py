@@ -1,7 +1,6 @@
 import asyncio
 import re
 import time
-import unicodedata
 from collections.abc import Sequence
 
 from pydantic_ai import Agent, RunContext, Tool, ToolOutput
@@ -12,7 +11,13 @@ from pydantic_ai.tools import ToolDefinition
 from pydantic_ai.usage import UsageLimitExceeded, UsageLimits
 
 from app.agents.policy import AgentPolicy
-from app.agents.state import AgentState
+from app.agents.state import AgentState, AvailabilityResolutionEvidence
+from app.catalog_normalization import (
+    canonical_tool_arguments,
+    normalize_catalog_optional,
+    normalize_catalog_size,
+    normalize_catalog_text,
+)
 from app.config import Settings
 from app.llm.gemini_provider import GeminiProvider
 from app.llm.groq_provider import GroqModelProvider
@@ -26,7 +31,7 @@ from app.schemas.chat import (
     InternalChatResponse,
 )
 from app.tools.commerce_client import CommerceClient, CommerceToolError
-from app.tools.registry import APPROVED_TOOLS, AgentDependencies
+from app.tools.registry import APPROVED_TOOLS, AgentDependencies, ToolPolicyViolation
 
 
 class AgentExecutor:
@@ -124,6 +129,8 @@ class AgentExecutor:
         context: RunContext[AgentDependencies],
         tool_definition: ToolDefinition,
     ) -> ToolDefinition | None:
+        if tool_definition.name not in context.deps.state.allowed_tools:
+            return None
         # A tool call consumes a model request. Keep the final bounded request
         # available for AgentFinalResponse instead of exposing a catalog tool
         # that cannot be followed by validated structured output.
@@ -147,6 +154,17 @@ class AgentExecutor:
             current_request=request.message,
             resolved_intent=decision.intent,
             selected_product_slugs=request.selected_product_slugs,
+            allowed_tools=(
+                (decision.tool,)
+                if decision.tool is not None
+                else tuple(tool.__name__ for tool in APPROVED_TOOLS)
+            ),
+            expected_tool=decision.tool,
+            expected_tool_arguments=(
+                canonical_tool_arguments(decision.arguments)
+                if decision.arguments is not None
+                else None
+            ),
         )
         last_error: Exception | None = None
         for model in self._models[:1]:
@@ -175,7 +193,11 @@ class AgentExecutor:
                         model_name,
                     )
                 ),
-                tools=[Tool(tool, prepare=self._prepare_catalog_tool) for tool in APPROVED_TOOLS],
+                tools=[
+                    Tool(tool, prepare=self._prepare_catalog_tool)
+                    for tool in APPROVED_TOOLS
+                    if tool.__name__ in state.allowed_tools
+                ],
                 retries=0,
                 tool_timeout=self._settings.tool_timeout_seconds,
                 max_concurrency=1,
@@ -219,7 +241,13 @@ class AgentExecutor:
                     output_tokens=usage.output_tokens,
                 )
                 return self._validate_agent_output(request, result.output, dependencies)
-            except (AgentRunError, UsageLimitExceeded, TimeoutError, CommerceToolError) as error:
+            except (
+                AgentRunError,
+                UsageLimitExceeded,
+                TimeoutError,
+                CommerceToolError,
+                ToolPolicyViolation,
+            ) as error:
                 last_error = error
                 self._observability.emit(
                     "ai.provider.failed",
@@ -271,7 +299,63 @@ class AgentExecutor:
         output: AgentFinalResponse,
         dependencies: AgentDependencies,
     ) -> InternalChatResponse:
+        resolution = dependencies.state.availability_resolution
+        if resolution is not None and resolution.status != "MATCHED":
+            if resolution.request_id != dependencies.state.request_id:
+                return self._reject_unverified_claim(
+                    request,
+                    dependencies,
+                    "NO_CURRENT_REQUEST_EVIDENCE",
+                )
+            subtype = (
+                "VARIANT_NOT_FOUND" if resolution.status == "NOT_FOUND" else "AMBIGUOUS_VARIANT"
+            )
+            if (
+                output.product_slugs
+                or output.availability_claims
+                or self._contains_unverified_claim(output.message)
+                or self._mentions_availability(output.message)
+            ):
+                return self._reject_unverified_claim(request, dependencies, subtype)
+            self._observability.emit(
+                "ai.response.validated",
+                request_id=request.request_id,
+                conversation_digest=dependencies.conversation_digest,
+                route="agent",
+                response_status="clarification",
+                validation_subtype=subtype,
+            )
+            return self._response(
+                request,
+                "clarification",
+                "agent",
+                self._render_unresolved_availability(resolution),
+                products=[],
+            )
         if output.requires_clarification:
+            if (
+                output.product_slugs
+                or output.availability_claims
+                or self._contains_unverified_claim(output.message)
+                or self._mentions_availability(output.message)
+            ):
+                return self._reject_unverified_claim(
+                    request,
+                    dependencies,
+                    "CLARIFICATION_VALIDATION_BYPASS",
+                )
+            if resolution is not None:
+                if resolution.request_id != dependencies.state.request_id:
+                    return self._reject_unverified_claim(
+                        request,
+                        dependencies,
+                        "AVAILABILITY_EVIDENCE_REQUEST_MISMATCH",
+                    )
+                return self._reject_unverified_claim(
+                    request,
+                    dependencies,
+                    "MATCHED_VARIANT_REQUIRES_ANSWER",
+                )
             self._observability.emit(
                 "ai.response.validated",
                 request_id=request.request_id,
@@ -313,29 +397,23 @@ class AgentExecutor:
                     message="Model referenced products not returned by Commerce tools.",
                 ),
             )
-        if self._contains_unverified_claim(output.message) or not self._availability_claims_match(
-            output,
-            dependencies,
-        ):
-            self._observability.emit(
-                "ai.response.rejected",
-                request_id=request.request_id,
-                conversation_digest=dependencies.conversation_digest,
-                route="agent",
-                error_code="AI_OUTPUT_UNVERIFIED_CLAIM",
-            )
-            return self._response(
+        if self._contains_unverified_claim(output.message):
+            return self._reject_unverified_claim(
                 request,
-                "unavailable",
-                "agent",
-                "Trợ lý chưa thể xác minh đầy đủ nội dung tư vấn.",
-                error=ChatError(
-                    code="AI_OUTPUT_UNVERIFIED_CLAIM",
-                    message=(
-                        "Model returned a price, availability claim, or URL outside "
-                        "the safe advice boundary."
-                    ),
-                ),
+                dependencies,
+                "UNVERIFIED_TEXT_CLAIM",
+            )
+        if not self._availability_claims_match(output, dependencies):
+            return self._reject_unverified_claim(
+                request,
+                dependencies,
+                "AVAILABILITY_EVIDENCE_MISMATCH",
+            )
+        if not output.availability_claims and self._mentions_availability(output.message):
+            return self._reject_unverified_claim(
+                request,
+                dependencies,
+                "AVAILABILITY_TEXT_WITHOUT_EVIDENCE",
             )
         products = [
             dependencies.products_by_slug[slug]
@@ -349,7 +427,12 @@ class AgentExecutor:
             route="agent",
             response_status="completed",
         )
-        return self._response(request, "completed", "agent", output.message, products=products)
+        message = (
+            self._render_exact_availability(output, dependencies)
+            if output.availability_claims
+            else output.message
+        )
+        return self._response(request, "completed", "agent", message, products=products)
 
     def _configured_models(self) -> list[Model]:
         factories = {
@@ -389,9 +472,9 @@ class AgentExecutor:
             # catalog tool or emit unstructured text.
             settings["tool_choice"] = []
         else:
-            # Exclude the final output tool from the first iteration. A supported
-            # request must collect one authoritative catalog observation before
-            # it can construct AgentFinalResponse.
+            # Pydantic AI keeps its final output tool schema in the request, but
+            # an explicit catalog tool choice prevents the first iteration from
+            # selecting it before authoritative evidence has been collected.
             settings["tool_choice"] = list(context.deps.state.allowed_tools)
         return settings
 
@@ -454,19 +537,16 @@ class AgentExecutor:
         output: AgentFinalResponse,
         dependencies: AgentDependencies,
     ) -> bool:
-        message_states = cls._availability_states(output.message)
         if not output.availability_claims:
-            return not message_states
-        if not message_states:
-            return False
+            return not dependencies.state.availability_evidence
 
         evidence_by_ref = {
             evidence.observation_ref: evidence
             for evidence in dependencies.state.availability_evidence
             if evidence.request_id == dependencies.state.request_id
         }
-        claim_states: set[str] = set()
-        normalized_message = cls._normalize_text(output.message)
+        if {claim.observation_ref for claim in output.availability_claims} != set(evidence_by_ref):
+            return False
         for claim in output.availability_claims:
             evidence = evidence_by_ref.get(claim.observation_ref)
             if evidence is None:
@@ -475,70 +555,108 @@ class AgentExecutor:
                 return False
             if claim.product_slug != evidence.product_slug:
                 return False
-            if cls._normalize_optional(claim.size) != evidence.size:
+            if normalize_catalog_size(claim.size) != evidence.size:
                 return False
-            if cls._normalize_optional(claim.color) != evidence.color:
+            if normalize_catalog_optional(claim.color) != evidence.color:
                 return False
             if claim.availability != evidence.availability:
                 return False
-            if claim.size and not cls._message_contains_value(normalized_message, claim.size):
-                return False
-            if claim.color and not cls._message_contains_value(normalized_message, claim.color):
-                return False
-            claim_states.add(claim.availability)
-        return message_states == claim_states
+        return True
 
-    @classmethod
-    def _availability_states(cls, message: str) -> set[str]:
-        normalized = cls._normalize_text(message)
-        states: set[str] = set()
-        unavailable = (
+    @staticmethod
+    def _mentions_availability(message: str) -> bool:
+        normalized = normalize_catalog_text(message)
+        phrases = (
             "không còn",
             "không có sẵn",
             "không có size",
             "hết hàng",
             "hết size",
             "out of stock",
+            "sắp hết",
+            "low stock",
+            "còn hàng",
+            "còn size",
+            "có sẵn",
+            "in stock",
         )
-        low = ("sắp hết", "low stock")
-        available = ("còn hàng", "còn size", "có sẵn", "in stock")
-        remaining = normalized
-        for phrase in unavailable:
-            if phrase in remaining:
-                states.add("OUT_OF_STOCK")
-                remaining = remaining.replace(phrase, " ")
-        for phrase in low:
-            if phrase in remaining:
-                states.add("LOW_STOCK")
-                remaining = remaining.replace(phrase, " ")
-        if any(phrase in remaining for phrase in available):
-            states.add("IN_STOCK")
-        return states
-
-    @classmethod
-    def _message_contains_value(cls, normalized_message: str, value: str) -> bool:
-        normalized_value = cls._normalize_optional(value)
-        if not normalized_value:
-            return False
-        return bool(
-            re.search(
-                rf"(?<!\w){re.escape(normalized_value)}(?!\w)",
-                normalized_message,
-            )
-        )
+        return any(phrase in normalized for phrase in phrases)
 
     @staticmethod
     def _normalize_text(value: str) -> str:
-        return " ".join(unicodedata.normalize("NFKC", value).casefold().split())
+        return normalize_catalog_text(value)
 
-    @classmethod
-    def _normalize_optional(cls, value: str | None) -> str | None:
-        if value is None:
-            return None
-        normalized = cls._normalize_text(value)
-        if normalized.startswith("size "):
-            normalized = normalized[5:].strip()
-        return normalized or None
+    @staticmethod
+    def _render_unresolved_availability(
+        resolution: AvailabilityResolutionEvidence,
+    ) -> str:
+        dimensions = AgentExecutor._availability_dimensions(
+            resolution.color,
+            resolution.size,
+        )
+        if resolution.status == "NOT_FOUND":
+            return (
+                f"FARTA chưa tìm thấy đúng biến thể{dimensions} trong catalog hiện tại. "
+                "Bạn muốn chọn màu hoặc size khác?"
+            )
+        return (
+            f"Có nhiều biến thể khớp tiêu chí{dimensions}. "
+            "Bạn vui lòng chọn thêm màu hoặc size để FARTA kiểm tra chính xác."
+        )
+
+    @staticmethod
+    def _render_exact_availability(
+        output: AgentFinalResponse,
+        dependencies: AgentDependencies,
+    ) -> str:
+        rendered: list[str] = []
+        state_labels = {
+            "IN_STOCK": "hiện còn hàng",
+            "LOW_STOCK": "hiện sắp hết hàng",
+            "OUT_OF_STOCK": "hiện đã hết hàng",
+        }
+        for claim in output.availability_claims:
+            product = dependencies.products_by_slug[claim.product_slug]
+            dimensions = AgentExecutor._availability_dimensions(claim.color, claim.size)
+            rendered.append(f"{product.name}{dimensions} {state_labels[claim.availability]}.")
+        return " ".join(rendered)
+
+    @staticmethod
+    def _availability_dimensions(color: str | None, size: str | None) -> str:
+        parts: list[str] = []
+        if color:
+            parts.append(f"màu {color.strip()}")
+        if size:
+            normalized_size = normalize_catalog_size(size) or size.strip()
+            parts.append(f"size {normalized_size.upper()}")
+        return f" {' '.join(parts)}" if parts else ""
+
+    def _reject_unverified_claim(
+        self,
+        request: InternalChatRequest,
+        dependencies: AgentDependencies,
+        subtype: str,
+    ) -> InternalChatResponse:
+        self._observability.emit(
+            "ai.response.rejected",
+            request_id=request.request_id,
+            conversation_digest=dependencies.conversation_digest,
+            route="agent",
+            error_code="AI_OUTPUT_UNVERIFIED_CLAIM",
+            validation_subtype=subtype,
+        )
+        return self._response(
+            request,
+            "unavailable",
+            "agent",
+            "Trợ lý chưa thể xác minh đầy đủ nội dung tư vấn.",
+            error=ChatError(
+                code="AI_OUTPUT_UNVERIFIED_CLAIM",
+                message=(
+                    "Model returned a claim outside the current authoritative request evidence."
+                ),
+            ),
+        )
 
     @staticmethod
     def _model_identity(model: Model) -> tuple[str, str]:
@@ -556,7 +674,9 @@ class AgentExecutor:
             return "AI_PROVIDER_TIMEOUT"
         if isinstance(error, UsageLimitExceeded):
             return "AI_LIMIT_EXCEEDED"
-        if isinstance(error, CommerceToolError):
+        if AgentExecutor._caused_by(error, CommerceToolError):
+            return "AI_COMMERCE_TOOL_UNAVAILABLE"
+        if AgentExecutor._caused_by(error, ToolPolicyViolation):
             return "AI_COMMERCE_TOOL_UNAVAILABLE"
         if isinstance(error, ModelHTTPError) and error.status_code == 429:
             return "AI_PROVIDER_RATE_LIMIT"

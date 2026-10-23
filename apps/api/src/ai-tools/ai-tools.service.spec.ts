@@ -78,4 +78,97 @@ describe("AiToolsService", () => {
     expect(result.products[0]?.variants).toHaveLength(1);
     expect(result.products[0]?.variants[0]?.availability).toBe("IN_STOCK");
   });
+
+  it("does not reinterpret a missing exact variant as out of stock", async () => {
+    const products = {
+      getPublicBySlug: vi.fn().mockResolvedValue(product),
+    } as unknown as ProductsService;
+    const service = new AiToolsService(products);
+    const result = await service.availability({
+      slug: product.slug,
+      color: "Kem",
+      size: "L",
+    });
+
+    expect(result.products).toEqual([]);
+    expect(result.availabilityResolution).toEqual({
+      status: "NOT_FOUND",
+      productSlug: product.slug,
+      color: "kem",
+      size: "l",
+      availability: null,
+    });
+  });
+
+  it("fails closed when more than one variant matches the requested dimensions", async () => {
+    const duplicateDimensionProduct = {
+      ...product,
+      variants: [
+        product.variants[0],
+        {
+          ...product.variants[0],
+          id: "507f1f77bcf86cd799439099",
+          sku: "SECOND-INTERNAL-SKU",
+          availability: "OUT_OF_STOCK" as const,
+        },
+      ],
+    };
+    const products = {
+      getPublicBySlug: vi.fn().mockResolvedValue(duplicateDimensionProduct),
+    } as unknown as ProductsService;
+    const service = new AiToolsService(products);
+    const result = await service.availability({
+      slug: product.slug,
+      color: "Đen",
+      size: "M",
+    });
+
+    expect(result.products).toEqual([]);
+    expect(result.availabilityResolution).toEqual({
+      status: "AMBIGUOUS",
+      productSlug: product.slug,
+      color: "đen",
+      size: "m",
+      availability: null,
+    });
+  });
+
+  it("uses one exact variant instead of the product aggregate", async () => {
+    const exactVariantProduct = {
+      ...product,
+      variants: [
+        {
+          ...product.variants[0],
+          availability: "OUT_OF_STOCK" as const,
+        },
+        {
+          ...product.variants[0],
+          id: "507f1f77bcf86cd799439098",
+          sku: "CREAM-L",
+          color: "Kem",
+          size: "L",
+          availability: "IN_STOCK" as const,
+        },
+      ],
+    };
+    const products = {
+      getPublicBySlug: vi.fn().mockResolvedValue(exactVariantProduct),
+    } as unknown as ProductsService;
+    const service = new AiToolsService(products);
+    const result = await service.availability({
+      slug: product.slug,
+      color: "  Đen  ",
+      size: " size  M ",
+    });
+
+    expect(result.products[0]?.availability).toBe("OUT_OF_STOCK");
+    expect(result.products[0]?.variants).toHaveLength(1);
+    expect(result.availabilityResolution).toEqual({
+      status: "MATCHED",
+      productSlug: product.slug,
+      color: "đen",
+      size: "m",
+      availability: "OUT_OF_STOCK",
+    });
+  });
 });
