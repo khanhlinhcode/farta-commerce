@@ -2,7 +2,17 @@ from typing import Literal
 
 from pydantic import BaseModel, Field
 
-from app.schemas.chat import ProductReference
+from app.schemas.chat import Availability, ProductReference
+
+
+class AvailabilityEvidence(BaseModel):
+    observation_ref: str = Field(pattern=r"^availability-[1-9][0-9]*$", max_length=40)
+    request_id: str = Field(min_length=8, max_length=128)
+    tool: Literal["get_product_availability"] = "get_product_availability"
+    product_slug: str = Field(pattern=r"^[a-z0-9]+(?:-[a-z0-9]+)*$", max_length=120)
+    size: str | None = Field(default=None, max_length=40)
+    color: str | None = Field(default=None, max_length=80)
+    availability: Availability
 
 
 class ToolCallRecord(BaseModel):
@@ -28,6 +38,7 @@ class AgentState(BaseModel):
     )
     tool_history: list[ToolCallRecord] = Field(default_factory=list, max_length=3)
     observations: list[ProductReference] = Field(default_factory=list, max_length=24)
+    availability_evidence: list[AvailabilityEvidence] = Field(default_factory=list, max_length=12)
     step_count: int = Field(default=0, ge=0, le=3)
     stop_reason: str | None = None
     error_code: str | None = None

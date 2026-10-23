@@ -71,7 +71,18 @@ class AgentFinalResponse(BaseModel):
 
     message: str = Field(min_length=1, max_length=2_000)
     product_slugs: list[str] = Field(max_length=6)
+    availability_claims: list["AgentAvailabilityClaim"] = Field(max_length=6)
     requires_clarification: bool
+
+
+class AgentAvailabilityClaim(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    observation_ref: str = Field(pattern=r"^availability-[1-9][0-9]*$", max_length=40)
+    product_slug: str = Field(pattern=r"^[a-z0-9]+(?:-[a-z0-9]+)*$", max_length=120)
+    size: str | None = Field(max_length=40)
+    color: str | None = Field(max_length=80)
+    availability: Availability
 
 
 class ToolResponse(ApiModel):
