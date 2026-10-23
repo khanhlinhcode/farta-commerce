@@ -8,10 +8,16 @@ import time
 import httpx
 import pytest
 
+from app.api.chat import get_replay_store
 from app.config import Settings, get_settings
 from app.main import app
 
 SECRET = "g" * 32
+
+
+class AllowReplayStore:
+    async def claim(self, _nonce: str, _ttl_seconds: int) -> bool:
+        return True
 
 
 def signed_headers(body: bytes) -> dict[str, str]:
@@ -46,7 +52,9 @@ def enabled_settings() -> None:
         enabled=True,
         gateway_shared_secret=SECRET,
         tools_shared_secret="t" * 32,
+        provider_budget_redis_url="redis://test:6379/0",
     )
+    app.dependency_overrides[get_replay_store] = AllowReplayStore
     yield
     app.dependency_overrides.clear()
 

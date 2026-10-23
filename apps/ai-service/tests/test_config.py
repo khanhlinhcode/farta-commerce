@@ -29,8 +29,18 @@ def test_enabled_service_requires_distinct_internal_secrets() -> None:
         enabled=True,
         gateway_shared_secret="g" * 32,
         tools_shared_secret="t" * 32,
+        provider_budget_redis_url="redis://localhost:6379/0",
     )
     assert settings.enabled is True
+
+
+def test_enabled_service_requires_shared_replay_redis() -> None:
+    with pytest.raises(ValidationError, match="Shared replay/provider budget Redis URL"):
+        Settings(
+            enabled=True,
+            gateway_shared_secret="g" * 32,
+            tools_shared_secret="t" * 32,
+        )
 
 
 def test_provider_requires_explicit_free_tier_verification() -> None:

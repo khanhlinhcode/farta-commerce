@@ -60,6 +60,10 @@ class Settings(BaseSettings):
         if self.enabled:
             self._require_secret(self.gateway_shared_secret, "gateway shared secret")
             self._require_secret(self.tools_shared_secret, "tools shared secret")
+            self._require_redis_url(
+                self.provider_budget_redis_url,
+                "Shared replay/provider budget Redis URL",
+            )
         self._validate_provider(
             self.gemini_enabled,
             self.gemini_free_tier_verified,
@@ -75,9 +79,10 @@ class Settings(BaseSettings):
         if self.fallback_enabled:
             raise ValueError("Automatic provider fallback is disabled for the Phase 6 validation.")
         if self.provider_budget_enabled:
-            redis_url = self.provider_budget_redis_url.get_secret_value()
-            if not redis_url.startswith(("redis://", "rediss://")):
-                raise ValueError("Provider budget Redis URL must use redis:// or rediss://.")
+            self._require_redis_url(
+                self.provider_budget_redis_url,
+                "Provider budget Redis URL",
+            )
             if not re.fullmatch(r"[a-zA-Z0-9][a-zA-Z0-9._-]{7,79}", self.provider_budget_canary_id):
                 raise ValueError("Provider budget canary ID is invalid.")
             if not 1 <= self.provider_budget_max_requests <= 7:
@@ -103,6 +108,11 @@ class Settings(BaseSettings):
     def _require_secret(secret: SecretStr, name: str) -> None:
         if len(secret.get_secret_value()) < 32:
             raise ValueError(f"AI {name} must contain at least 32 characters.")
+
+    @staticmethod
+    def _require_redis_url(secret: SecretStr, name: str) -> None:
+        if not secret.get_secret_value().startswith(("redis://", "rediss://")):
+            raise ValueError(f"{name} must use redis:// or rediss://.")
 
     @classmethod
     def _validate_provider(
