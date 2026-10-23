@@ -16,7 +16,12 @@ made a live Groq request.
 - baseline matched `origin/main` and the worktree was clean;
 - frozen Python environment: Pydantic AI `2.57.0`, Groq SDK `1.7.0`, Redis client `8.1.0` and
   HTTPX `0.28.1`;
-- staging providers were documented provider-off at the baseline;
+- a read-only Northflank audit found both `farta-api` and `farta-ai` deployed from baseline
+  `a8a78438d047f5029b1fb2e457bbb8a8b0055b51`, with build `SUCCESS`, deployment `COMPLETED` and one
+  replica each;
+- effective staging flags were `AI_GROQ_ENABLED=false`,
+  `AI_GROQ_FREE_TIER_VERIFIED=false`, `AI_GEMINI_ENABLED=false`,
+  `AI_GEMINI_FREE_TIER_VERIFIED=false` and `AI_FALLBACK_ENABLED=false`;
 - no Groq or Gemini HTTP request was made during this remediation.
 
 The candidate commit is intentionally not pushed or deployed in this report. Phase M requires
@@ -107,6 +112,23 @@ deployed sitemap completeness.
 A pinned Docker Gitleaks attempt made no progress and was interrupted. No local full-history
 Gitleaks pass is claimed. The exact candidate revision still requires the repository's pinned CI
 `secret-scan` job after authorized push.
+
+## Current deployed baseline health
+
+The following read-only runtime smoke was executed after the local candidate commit. It verifies
+the still-deployed baseline `a8a78438d047f5029b1fb2e457bbb8a8b0055b51`, not the newer candidate:
+
+- API live: HTTP 200;
+- API ready: HTTP 200;
+- Storefront: HTTP 200;
+- Admin: HTTP 200;
+- bounded public product listing: HTTP 200;
+- supported public Agent request: `route=agent`, `status=unavailable`, zero products and
+  `AI_PROVIDER_DISABLED`.
+
+The provider-off request was sent only after the non-secret Northflank flags above were confirmed.
+No provider call was authorized or observed. Candidate-revision health remains untested until an
+authorized exact-revision deployment occurs.
 
 ## Release gates
 
