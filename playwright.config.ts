@@ -190,6 +190,7 @@ export default defineConfig({
             AI_API_BASE_URL: apiUrl,
             AI_GATEWAY_SHARED_SECRET: aiGatewaySecret,
             AI_TOOLS_SHARED_SECRET: aiToolsSecret,
+            AI_PROVIDER_BUDGET_REDIS_URL: "redis://127.0.0.1:6379/0",
             AI_GEMINI_ENABLED: "false",
             AI_GROQ_ENABLED: "false",
           },
