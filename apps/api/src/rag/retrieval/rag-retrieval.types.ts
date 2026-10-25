@@ -14,6 +14,10 @@ export type RagRetrievalCandidateQuery = Omit<
   RagRetrievalRequest,
   "query" | "limit"
 > & {
+  indexVersion: string;
+  embeddingModel: string;
+  embeddingVersion: string;
+  embeddingDimensions: number;
   maxCandidates: number;
 };
 
@@ -34,6 +38,9 @@ export type RagRetrievalCandidate = {
     categoryIds: string[];
     tags: string[];
   };
+  indexVersion: string;
+  embeddingModel: string;
+  embeddingVersion: string;
   embeddingDimensions: number;
   embedding: number[];
 };
@@ -60,7 +67,7 @@ export type RagRetrievalHit = {
 };
 
 export type RagRetrievalResult = {
-  mode: "LOCAL_DETERMINISTIC_HYBRID";
+  mode: "LOCAL_DETERMINISTIC_HYBRID" | "STAGING_NGRAM_HYBRID";
   query: string;
   hits: RagRetrievalHit[];
 };

@@ -5,7 +5,7 @@ import {
   RAG_EMBEDDING_PROVIDER,
   type RagEmbeddingProvider,
 } from "../embedding/embedding-provider";
-import { RAG_SOURCE_TYPES } from "../rag.constants";
+import { RAG_INDEX_VERSION, RAG_SOURCE_TYPES } from "../rag.constants";
 import {
   RAG_CANDIDATE_SOURCE,
   type RagCandidateSource,
@@ -42,6 +42,10 @@ export class RagRetrievalService {
       tenantId: request.tenantId,
       locale: request.locale,
       sourceTypes: request.sourceTypes,
+      indexVersion: RAG_INDEX_VERSION,
+      embeddingModel: this.embeddings.identity.model,
+      embeddingVersion: this.embeddings.identity.version,
+      embeddingDimensions: this.embeddings.identity.dimensions,
       ...(request.categoryIds ? { categoryIds: request.categoryIds } : {}),
       ...(request.tags ? { tags: request.tags } : {}),
       maxCandidates: MAX_CANDIDATES,
@@ -60,15 +64,21 @@ export class RagRetrievalService {
       )
       .slice(0, request.limit);
     return {
-      mode: "LOCAL_DETERMINISTIC_HYBRID",
+      mode:
+        this.embeddings.identity.runtimeScope === "STAGING_APPROVED"
+          ? "STAGING_NGRAM_HYBRID"
+          : "LOCAL_DETERMINISTIC_HYBRID",
       query: request.query,
       hits,
     };
   }
 
   private assertRuntimeBoundary(): void {
+    if (this.environment === "production") {
+      throw new Error("RAG_RETRIEVAL_ENVIRONMENT_NOT_APPROVED");
+    }
     if (
-      !this.embeddings.identity.productionSafe &&
+      this.embeddings.identity.runtimeScope === "LOCAL_ONLY" &&
       this.environment !== "development" &&
       this.environment !== "test"
     ) {

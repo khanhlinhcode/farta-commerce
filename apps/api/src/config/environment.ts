@@ -180,6 +180,13 @@ const environmentSchema = z
       .enum(["true", "false"])
       .default("false")
       .transform((value) => value === "true"),
+    AI_RAG_STAGING_APPROVED: z
+      .enum(["true", "false"])
+      .default("false")
+      .transform((value) => value === "true"),
+    AI_RAG_RETRIEVAL_PROFILE: z
+      .enum(["deterministic-local", "staging-ngram-v1"])
+      .default("deterministic-local"),
     AI_CONVERSATION_TTL_SECONDS: z.coerce
       .number()
       .int()
@@ -391,15 +398,41 @@ const environmentSchema = z
       });
     }
 
-    if (!isDeployedEnvironment(environment.APP_ENV)) return;
-    if (environment.AI_RAG_ENABLED) {
+    if (
+      environment.AI_RAG_STAGING_APPROVED &&
+      environment.APP_ENV !== "staging"
+    ) {
+      context.addIssue({
+        code: "custom",
+        path: ["AI_RAG_STAGING_APPROVED"],
+        message: "The RAG staging approval gate is valid only in staging.",
+      });
+    }
+    if (environment.APP_ENV === "production" && environment.AI_RAG_ENABLED) {
       context.addIssue({
         code: "custom",
         path: ["AI_RAG_ENABLED"],
-        message:
-          "RAG must remain disabled in deployed environments until a production-safe embedding and vector index are approved.",
+        message: "RAG remains disabled in production.",
       });
     }
+    if (environment.APP_ENV === "staging" && environment.AI_RAG_ENABLED) {
+      if (!environment.AI_RAG_STAGING_APPROVED) {
+        context.addIssue({
+          code: "custom",
+          path: ["AI_RAG_STAGING_APPROVED"],
+          message: "Staging RAG requires the explicit approval gate.",
+        });
+      }
+      if (environment.AI_RAG_RETRIEVAL_PROFILE !== "staging-ngram-v1") {
+        context.addIssue({
+          code: "custom",
+          path: ["AI_RAG_RETRIEVAL_PROFILE"],
+          message:
+            "Staging RAG requires the approved n-gram retrieval profile.",
+        });
+      }
+    }
+    if (!isDeployedEnvironment(environment.APP_ENV)) return;
     for (const key of ["APP_ORIGIN", "ADMIN_ORIGIN", "API_ORIGIN"] as const) {
       if (new URL(environment[key]).protocol !== "https:") {
         context.addIssue({

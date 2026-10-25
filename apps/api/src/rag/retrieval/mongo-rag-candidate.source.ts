@@ -28,6 +28,10 @@ export class MongoRagCandidateSource implements RagCandidateSource {
       status: "ACTIVE",
       locale: query.locale,
       sourceType: { $in: [...query.sourceTypes] },
+      indexVersion: query.indexVersion,
+      embeddingModel: query.embeddingModel,
+      embeddingVersion: query.embeddingVersion,
+      embeddingDimensions: query.embeddingDimensions,
       ...(query.categoryIds?.length
         ? { "metadata.categoryIds": { $in: [...query.categoryIds] } }
         : {}),
@@ -53,6 +57,9 @@ export class MongoRagCandidateSource implements RagCandidateSource {
         sourceVersion: 1,
         sourceUpdatedAt: 1,
         metadata: 1,
+        indexVersion: 1,
+        embeddingModel: 1,
+        embeddingVersion: 1,
         embeddingDimensions: 1,
         embedding: 1,
       })

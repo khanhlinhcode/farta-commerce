@@ -2,9 +2,14 @@ import { Module } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 import { MongooseModule } from "@nestjs/mongoose";
 
+import type { Environment } from "../config/environment";
 import { ProductsModule } from "../products/products.module";
 import { DeterministicEmbeddingProvider } from "./embedding/deterministic-embedding.provider";
-import { RAG_EMBEDDING_PROVIDER } from "./embedding/embedding-provider";
+import {
+  RAG_EMBEDDING_PROVIDER,
+  type RagEmbeddingProvider,
+} from "./embedding/embedding-provider";
+import { StagingNgramEmbeddingProvider } from "./embedding/staging-ngram-embedding.provider";
 import {
   DeterministicRagChunker,
   RAG_CHUNK_MAX_CHARACTERS,
@@ -42,9 +47,23 @@ import { ProductRagSourceService } from "./sources/product-rag-source.service";
     { provide: RAG_CHUNK_MAX_CHARACTERS, useValue: 1_200 },
     DeterministicRagChunker,
     DeterministicEmbeddingProvider,
+    StagingNgramEmbeddingProvider,
     {
       provide: RAG_EMBEDDING_PROVIDER,
-      useExisting: DeterministicEmbeddingProvider,
+      inject: [
+        ConfigService,
+        DeterministicEmbeddingProvider,
+        StagingNgramEmbeddingProvider,
+      ],
+      useFactory: (
+        config: ConfigService<Environment, true>,
+        deterministic: DeterministicEmbeddingProvider,
+        staging: StagingNgramEmbeddingProvider,
+      ): RagEmbeddingProvider =>
+        config.get("AI_RAG_RETRIEVAL_PROFILE", { infer: true }) ===
+        "staging-ngram-v1"
+          ? staging
+          : deterministic,
     },
     RagDocumentProjector,
     MongoRagKnowledgeRepository,

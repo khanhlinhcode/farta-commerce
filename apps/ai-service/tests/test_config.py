@@ -59,15 +59,32 @@ def test_automatic_provider_fallback_is_rejected() -> None:
         Settings(fallback_enabled=True)
 
 
-def test_rag_is_local_only_and_disabled_by_default() -> None:
+def test_rag_is_gated_for_staging_and_disabled_in_production() -> None:
     assert Settings().rag_enabled is False
     assert Settings(app_env="development", rag_enabled=True).rag_enabled is True
-    with pytest.raises(ValidationError, match="RAG must remain disabled"):
+    with pytest.raises(ValidationError, match="explicit approval gate"):
         Settings(
             app_env="staging",
             api_base_url="https://api.example",
             rag_enabled=True,
         )
+    assert (
+        Settings(
+            app_env="staging",
+            api_base_url="https://api.example",
+            rag_enabled=True,
+            rag_staging_approved=True,
+        ).rag_enabled
+        is True
+    )
+    with pytest.raises(ValidationError, match="disabled in production"):
+        Settings(
+            app_env="production",
+            api_base_url="https://api.example",
+            rag_enabled=True,
+        )
+    with pytest.raises(ValidationError, match="valid only in staging"):
+        Settings(app_env="development", rag_staging_approved=True)
 
 
 def test_groq_requires_atomic_canary_budget_and_bounded_agent() -> None:

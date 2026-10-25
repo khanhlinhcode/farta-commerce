@@ -48,16 +48,30 @@ export class MongoRagKnowledgeRepository implements RagKnowledgeRepository {
         sourceVersion: 1,
         contentHash: 1,
         sourceUpdatedAt: 1,
+        schemaVersion: 1,
+        indexVersion: 1,
       })
       .lean()
       .exec();
-    const activeChunkIds =
+    const activeChunks =
       current?.status === "ACTIVE"
-        ? await this.chunks.distinct("chunkId", {
-            tenantId: document.tenantId,
-            documentId: document.documentId,
-            status: "ACTIVE",
-          })
+        ? await this.chunks
+            .find({
+              tenantId: document.tenantId,
+              documentId: document.documentId,
+              status: "ACTIVE",
+            })
+            .select({
+              _id: 0,
+              chunkId: 1,
+              schemaVersion: 1,
+              indexVersion: 1,
+              embeddingModel: 1,
+              embeddingVersion: 1,
+              embeddingDimensions: 1,
+            })
+            .lean()
+            .exec()
         : [];
     const snapshot: RagActiveSnapshot | null = current
       ? {
@@ -65,7 +79,9 @@ export class MongoRagKnowledgeRepository implements RagKnowledgeRepository {
           sourceVersion: current.sourceVersion,
           contentHash: current.contentHash,
           sourceUpdatedAt: current.sourceUpdatedAt,
-          chunkIds: activeChunkIds,
+          schemaVersion: current.schemaVersion,
+          indexVersion: current.indexVersion,
+          chunks: activeChunks,
         }
       : null;
     const outcome = decideRagProjection(snapshot, projection);

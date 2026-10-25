@@ -2,6 +2,7 @@ import { createHash } from "node:crypto";
 import { performance } from "node:perf_hooks";
 
 import { DeterministicEmbeddingProvider } from "../embedding/deterministic-embedding.provider";
+import { RAG_INDEX_VERSION } from "../rag.constants";
 import type { RagCandidateSource } from "../retrieval/rag-candidate.source";
 import { RagRetrievalService } from "../retrieval/rag-retrieval.service";
 import type {
@@ -73,6 +74,10 @@ class EvaluationCandidateSource implements RagCandidateSource {
         (candidate) =>
           candidate.tenantId === query.tenantId &&
           candidate.locale === query.locale &&
+          candidate.indexVersion === query.indexVersion &&
+          candidate.embeddingModel === query.embeddingModel &&
+          candidate.embeddingVersion === query.embeddingVersion &&
+          candidate.embeddingDimensions === query.embeddingDimensions &&
           query.sourceTypes.includes(candidate.sourceType) &&
           (!query.categoryIds?.length ||
             candidate.metadata.categoryIds.some((categoryId) =>
@@ -122,6 +127,9 @@ async function buildCandidates(
       categoryIds: [...document.categoryIds],
       tags: [...document.tags],
     },
+    indexVersion: RAG_INDEX_VERSION,
+    embeddingModel: embeddings.identity.model,
+    embeddingVersion: embeddings.identity.version,
     embeddingDimensions: embeddings.identity.dimensions,
     embedding: vectors[index] ?? [],
   }));

@@ -1,7 +1,12 @@
-import { Injectable } from "@nestjs/common";
+import { Inject, Injectable } from "@nestjs/common";
 import { InjectModel } from "@nestjs/mongoose";
 import type { Model } from "mongoose";
 
+import {
+  RAG_EMBEDDING_PROVIDER,
+  type RagEmbeddingProvider,
+} from "../embedding/embedding-provider";
+import { RAG_INDEX_VERSION } from "../rag.constants";
 import {
   KnowledgeChunk,
   type KnowledgeChunkDocument,
@@ -15,6 +20,8 @@ export class RagCitationResolverService {
   constructor(
     @InjectModel(KnowledgeChunk.name)
     private readonly chunks: Model<KnowledgeChunkDocument>,
+    @Inject(RAG_EMBEDDING_PROVIDER)
+    private readonly embeddings: RagEmbeddingProvider,
   ) {}
 
   async resolveActive(
@@ -37,6 +44,10 @@ export class RagCitationResolverService {
         chunkId: { $in: chunkIds },
         audience: "PUBLIC",
         status: "ACTIVE",
+        indexVersion: RAG_INDEX_VERSION,
+        embeddingModel: this.embeddings.identity.model,
+        embeddingVersion: this.embeddings.identity.version,
+        embeddingDimensions: this.embeddings.identity.dimensions,
       })
       .select({
         _id: 0,

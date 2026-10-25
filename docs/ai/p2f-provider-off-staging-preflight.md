@@ -1,15 +1,15 @@
 # P2-F provider-off staging preflight
 
-Status: `P2F_STAGING_DEPLOY_BLOCKED`
+Status: historical preflight; provider-off P2-F deployment was subsequently completed and verified
 
-This preflight covers the P2 AI, RAG and Agent changes currently present only in the local working
-tree. It authorizes no commit, push, cloud configuration change, database/index operation, restart
-or deployment.
+This document records the provider-off deployment boundary used before the current P2-G work. It is
+not current authorization for a cloud change. P2-G staging RAG preview/backfill/activation remains a
+separate gated operation; see [`p2g-staging-rag-readiness.md`](p2g-staging-rag-readiness.md).
 
 ## Release invariant
 
-- `AI_RAG_ENABLED=false` in staging. Both API and AI configuration validators reject enabling it
-  in `staging` or `production`.
+- `AI_RAG_ENABLED=false` in staging for provider-off deployment. Current validators still reject
+  production activation; staging now additionally requires the explicit approval/profile gates.
 - Groq, Gemini, fallback and budget/provider controls remain off. Provider calls must remain zero.
 - The dedicated HMAC v2 group and Reservation Expiry configuration remain unchanged.
 - Deploy only immutable API and AI builds created from one reviewed commit. Do not rebuild or
@@ -54,12 +54,12 @@ activity. Stop on any build/SHA drift.
   behavior or catalog smoke fails. Do not restore compromised credentials and do not change the
   Reservation Expiry job.
 
-## Current blockers
+## Historical blockers at this checkpoint
 
 - The P2 changes have no immutable Git SHA or Northflank build yet.
 - The active Northflank CLI credential is a live session, while server-side containment of the
   previously exposed login/session credential is not evidenced.
 - GitHub CI cannot attest to uncommitted local changes.
 
-The release remains **Not ready** until all three blockers are closed and an explicit deployment
-authorization names the exact P2 commit and candidate build IDs.
+These blockers describe the pre-deployment checkpoint only. They must not be reused as evidence for
+the later P2-G database mutation gate.

@@ -15,7 +15,7 @@ export class DeterministicEmbeddingProvider implements RagEmbeddingProvider {
     model: RAG_DETERMINISTIC_EMBEDDING_MODEL,
     version: RAG_DETERMINISTIC_EMBEDDING_VERSION,
     dimensions: RAG_DETERMINISTIC_EMBEDDING_DIMENSIONS,
-    productionSafe: false,
+    runtimeScope: "LOCAL_ONLY",
   };
 
   async embed(texts: readonly string[]): Promise<number[][]> {

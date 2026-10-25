@@ -1,6 +1,8 @@
 import { describe, expect, it, vi } from "vitest";
 
 import { DeterministicEmbeddingProvider } from "../embedding/deterministic-embedding.provider";
+import { StagingNgramEmbeddingProvider } from "../embedding/staging-ngram-embedding.provider";
+import { RAG_INDEX_VERSION } from "../rag.constants";
 import type { RagCandidateSource } from "./rag-candidate.source";
 import { RagRetrievalService } from "./rag-retrieval.service";
 import type { RagRetrievalCandidate } from "./rag-retrieval.types";
@@ -29,6 +31,9 @@ async function candidate(
       categoryIds: ["category-1"],
       tags: ["cotton"],
     },
+    indexVersion: RAG_INDEX_VERSION,
+    embeddingModel: provider.identity.model,
+    embeddingVersion: provider.identity.version,
     embeddingDimensions: provider.identity.dimensions,
     embedding: embedding ?? [],
     ...overrides,
@@ -69,6 +74,10 @@ describe("RagRetrievalService", () => {
       tenantId: "farta",
       locale: "vi",
       sourceTypes: ["PRODUCT"],
+      indexVersion: RAG_INDEX_VERSION,
+      embeddingModel: "farta-deterministic-test-embedding",
+      embeddingVersion: "v1",
+      embeddingDimensions: 32,
       categoryIds: ["category-1"],
       tags: ["cotton"],
       maxCandidates: 200,
@@ -112,6 +121,63 @@ describe("RagRetrievalService", () => {
         sourceTypes: ["PRODUCT"],
       }),
     ).rejects.toThrow("RAG_RETRIEVAL_PROVIDER_NOT_PRODUCTION_SAFE");
+    expect(listCandidates).not.toHaveBeenCalled();
+  });
+
+  it("allows the bounded n-gram profile in staging", async () => {
+    const provider = new StagingNgramEmbeddingProvider();
+    const content = "FARTA Essential Tee. Áo cotton phom rộng màu đen.";
+    const [embedding] = await provider.embed([content]);
+    const listCandidates = vi.fn().mockResolvedValue([
+      await candidate({
+        content,
+        embeddingModel: provider.identity.model,
+        embeddingVersion: provider.identity.version,
+        embeddingDimensions: provider.identity.dimensions,
+        embedding: embedding ?? [],
+      }),
+    ]);
+    const service = new RagRetrievalService(
+      provider,
+      { listCandidates } as RagCandidateSource,
+      "staging",
+    );
+
+    const result = await service.retrieve({
+      tenantId: "farta",
+      query: "ao cotton den",
+      locale: "vi",
+      sourceTypes: ["PRODUCT"],
+    });
+
+    expect(result.mode).toBe("STAGING_NGRAM_HYBRID");
+    expect(result.hits).toHaveLength(1);
+    expect(listCandidates).toHaveBeenCalledWith(
+      expect.objectContaining({
+        indexVersion: RAG_INDEX_VERSION,
+        embeddingModel: provider.identity.model,
+        embeddingVersion: provider.identity.version,
+        embeddingDimensions: provider.identity.dimensions,
+      }),
+    );
+  });
+
+  it("rejects every retrieval profile in production", async () => {
+    const listCandidates = vi.fn();
+    const service = new RagRetrievalService(
+      new StagingNgramEmbeddingProvider(),
+      { listCandidates } as RagCandidateSource,
+      "production",
+    );
+
+    await expect(
+      service.retrieve({
+        tenantId: "farta",
+        query: "ao cotton den",
+        locale: "vi",
+        sourceTypes: ["PRODUCT"],
+      }),
+    ).rejects.toThrow("RAG_RETRIEVAL_ENVIRONMENT_NOT_APPROVED");
     expect(listCandidates).not.toHaveBeenCalled();
   });
 

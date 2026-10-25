@@ -55,6 +55,8 @@ describe("environment validation", () => {
       RESERVATION_WORKER_BATCH_SIZE: 50,
       AI_REQUEST_TIMEOUT_MS: 65_000,
       AI_RAG_ENABLED: false,
+      AI_RAG_STAGING_APPROVED: false,
+      AI_RAG_RETRIEVAL_PROFILE: "deterministic-local",
       SEPAY_ENABLED: false,
       SEPAY_DEPOSIT_MODE: "DISABLED",
     }));
@@ -195,7 +197,7 @@ describe("environment validation", () => {
       validateEnvironment({ ...valid, APP_ENV: "development" }),
     ).toMatchObject({ APP_ENV: "development" });
   });
-  it("allows local RAG explicitly and rejects it in deployed environments", () => {
+  it("allows local RAG and requires both staging gates", () => {
     expect(
       validateEnvironment({ ...valid, AI_RAG_ENABLED: "true" }),
     ).toMatchObject({
@@ -203,6 +205,34 @@ describe("environment validation", () => {
     });
     expect(() =>
       validateEnvironment({ ...validStaging, AI_RAG_ENABLED: "true" }),
+    ).toThrow("AI_RAG_STAGING_APPROVED");
+    expect(() =>
+      validateEnvironment({
+        ...validStaging,
+        AI_RAG_ENABLED: "true",
+        AI_RAG_STAGING_APPROVED: "true",
+      }),
+    ).toThrow("AI_RAG_RETRIEVAL_PROFILE");
+    expect(
+      validateEnvironment({
+        ...validStaging,
+        AI_RAG_ENABLED: "true",
+        AI_RAG_STAGING_APPROVED: "true",
+        AI_RAG_RETRIEVAL_PROFILE: "staging-ngram-v1",
+      }),
+    ).toMatchObject({
+      AI_RAG_ENABLED: true,
+      AI_RAG_STAGING_APPROVED: true,
+      AI_RAG_RETRIEVAL_PROFILE: "staging-ngram-v1",
+    });
+    expect(() =>
+      validateEnvironment({
+        ...validStaging,
+        APP_ENV: "production",
+        AI_RAG_ENABLED: "true",
+        AI_RAG_STAGING_APPROVED: "true",
+        AI_RAG_RETRIEVAL_PROFILE: "staging-ngram-v1",
+      }),
     ).toThrow("AI_RAG_ENABLED");
   });
   it("rejects insecure production origins and placeholder secrets", () => {

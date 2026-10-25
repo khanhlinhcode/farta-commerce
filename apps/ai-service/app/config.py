@@ -27,6 +27,7 @@ class Settings(BaseSettings):
     primary_provider: Literal["gemini", "groq"] = "gemini"
     fallback_enabled: bool = False
     rag_enabled: bool = False
+    rag_staging_approved: bool = False
 
     provider_budget_enabled: bool = False
     provider_budget_redis_url: SecretStr = SecretStr("")
@@ -79,11 +80,12 @@ class Settings(BaseSettings):
         )
         if self.fallback_enabled:
             raise ValueError("Automatic provider fallback is disabled for the Phase 6 validation.")
-        if self.rag_enabled and self.app_env in {"staging", "production"}:
-            raise ValueError(
-                "RAG must remain disabled in deployed environments until production "
-                "retrieval is approved."
-            )
+        if self.rag_staging_approved and self.app_env != "staging":
+            raise ValueError("The RAG staging approval gate is valid only in staging.")
+        if self.rag_enabled and self.app_env == "production":
+            raise ValueError("RAG remains disabled in production.")
+        if self.rag_enabled and self.app_env == "staging" and not self.rag_staging_approved:
+            raise ValueError("Staging RAG requires the explicit approval gate.")
         if self.provider_budget_enabled:
             self._require_redis_url(
                 self.provider_budget_redis_url,

@@ -33,7 +33,7 @@ export type RagEmbeddingIdentity = {
   model: string;
   version: string;
   dimensions: number;
-  productionSafe: boolean;
+  runtimeScope: "LOCAL_ONLY" | "STAGING_APPROVED";
 };
 
 export type RagProjectedDocument = {

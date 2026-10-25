@@ -4,6 +4,8 @@ import { describe, expect, it, vi } from "vitest";
 import type { CategoryDocument } from "../categories/schemas/category.schema";
 import type { ProductDocument } from "../products/schemas/product.schema";
 import { DeterministicEmbeddingProvider } from "./embedding/deterministic-embedding.provider";
+import type { RagEmbeddingProvider } from "./embedding/embedding-provider";
+import { StagingNgramEmbeddingProvider } from "./embedding/staging-ngram-embedding.provider";
 import { DeterministicRagChunker } from "./ingestion/deterministic-chunker";
 import { RagDocumentProjector } from "./ingestion/rag-document-projector";
 import { decideRagProjection } from "./rag-knowledge.repository";
@@ -36,9 +38,12 @@ function source(overrides: Partial<RagSourceDocument> = {}): RagSourceDocument {
   };
 }
 
-function projector(maxCharacters = 1_200): RagDocumentProjector {
+function projector(
+  maxCharacters = 1_200,
+  embeddings: RagEmbeddingProvider = new DeterministicEmbeddingProvider(),
+): RagDocumentProjector {
   return new RagDocumentProjector(
-    new DeterministicEmbeddingProvider(),
+    embeddings,
     new DeterministicRagChunker(maxCharacters),
   );
 }
@@ -54,11 +59,34 @@ describe("P2-B RAG foundation", () => {
     expect(first).toEqual(equivalent);
     expect(first).not.toEqual(different);
     expect(first).toHaveLength(provider.identity.dimensions);
-    expect(provider.identity.productionSafe).toBe(false);
+    expect(provider.identity.runtimeScope).toBe("LOCAL_ONLY");
     const magnitude = Math.sqrt(
       (first ?? []).reduce((sum, value) => sum + value * value, 0),
     );
     expect(magnitude).toBeCloseTo(1, 8);
+  });
+
+  it("creates accent-insensitive staging vectors without network access", async () => {
+    const provider = new StagingNgramEmbeddingProvider();
+    const [accented, plain, related, unrelated] = await provider.embed([
+      "Áo cotton màu đen",
+      "ao cotton mau den",
+      "áo cotton đen phom rộng",
+      "chính sách đổi trả",
+    ]);
+    const similarity = (left: number[] = [], right: number[] = []) =>
+      left.reduce((sum, value, index) => sum + value * (right[index] ?? 0), 0);
+    expect(accented).toEqual(plain);
+    expect(accented).toHaveLength(provider.identity.dimensions);
+    expect(provider.identity.runtimeScope).toBe("STAGING_APPROVED");
+    expect(similarity(accented, related)).toBeGreaterThan(
+      similarity(accented, unrelated),
+    );
+    expect(
+      Math.sqrt(
+        (accented ?? []).reduce((sum, value) => sum + value * value, 0),
+      ),
+    ).toBeCloseTo(1, 8);
   });
 
   it("chunks deterministically without exceeding the configured boundary", () => {
@@ -110,13 +138,31 @@ describe("P2-B RAG foundation", () => {
       sourceVersion: first.document.sourceVersion,
       contentHash: first.document.contentHash,
       sourceUpdatedAt: first.document.sourceUpdatedAt,
-      chunkIds: first.chunks.map((chunk) => chunk.chunkId),
+      schemaVersion: first.document.schemaVersion,
+      indexVersion: first.document.indexVersion,
+      chunks: first.chunks.map((chunk) => ({
+        chunkId: chunk.chunkId,
+        schemaVersion: chunk.schemaVersion,
+        indexVersion: chunk.indexVersion,
+        embeddingModel: chunk.embeddingModel,
+        embeddingVersion: chunk.embeddingVersion,
+        embeddingDimensions: chunk.embeddingDimensions,
+      })),
     };
     expect(decideRagProjection(null, first)).toBe("CREATED");
     expect(decideRagProjection(active, first)).toBe("UNCHANGED");
-    expect(decideRagProjection({ ...active, chunkIds: [] }, first)).toBe(
+    expect(decideRagProjection({ ...active, chunks: [] }, first)).toBe(
       "REPAIRED",
     );
+
+    const reembedded = await projector(
+      1_200,
+      new StagingNgramEmbeddingProvider(),
+    ).project(source());
+    expect(reembedded.chunks.map((chunk) => chunk.chunkId)).toEqual(
+      first.chunks.map((chunk) => chunk.chunkId),
+    );
+    expect(decideRagProjection(active, reembedded)).toBe("REPAIRED");
 
     const replacement = await projector().project(
       source({

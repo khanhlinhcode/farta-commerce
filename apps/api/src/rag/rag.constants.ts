@@ -1,5 +1,5 @@
 export const RAG_SCHEMA_VERSION = 1 as const;
-export const RAG_INDEX_VERSION = "rag-foundation-v1" as const;
+export const RAG_INDEX_VERSION = "rag-staging-ngram-v2" as const;
 
 export const RAG_SOURCE_TYPES = [
   "PRODUCT",
@@ -26,3 +26,7 @@ export const RAG_DETERMINISTIC_EMBEDDING_MODEL =
   "farta-deterministic-test-embedding" as const;
 export const RAG_DETERMINISTIC_EMBEDDING_VERSION = "v1" as const;
 export const RAG_DETERMINISTIC_EMBEDDING_DIMENSIONS = 32 as const;
+export const RAG_STAGING_NGRAM_EMBEDDING_MODEL =
+  "farta-staging-ngram-embedding" as const;
+export const RAG_STAGING_NGRAM_EMBEDDING_VERSION = "v1" as const;
+export const RAG_STAGING_NGRAM_EMBEDDING_DIMENSIONS = 256 as const;

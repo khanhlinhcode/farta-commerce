@@ -14,7 +14,18 @@ export type RagActiveSnapshot = {
   sourceVersion: string;
   contentHash: string;
   sourceUpdatedAt: Date;
-  chunkIds: string[];
+  schemaVersion: number;
+  indexVersion: string;
+  chunks: RagActiveChunkSnapshot[];
+};
+
+export type RagActiveChunkSnapshot = {
+  chunkId: string;
+  schemaVersion: number;
+  indexVersion: string;
+  embeddingModel: string;
+  embeddingVersion: string;
+  embeddingDimensions: number;
 };
 
 export type RagProjectionDecision = RagWriteResult["outcome"];
@@ -47,16 +58,29 @@ export function decideRagProjection(
   ) {
     throw new Error("RAG_SOURCE_VERSION_CONFLICT");
   }
-  const incomingChunkIds = projection.chunks
-    .map((chunk) => chunk.chunkId)
-    .sort();
-  const activeChunkIds = [...active.chunkIds].sort();
+  const chunkProfile = (chunk: RagActiveChunkSnapshot): string =>
+    JSON.stringify([
+      chunk.chunkId,
+      chunk.schemaVersion,
+      chunk.indexVersion,
+      chunk.embeddingModel,
+      chunk.embeddingVersion,
+      chunk.embeddingDimensions,
+    ]);
+  const incomingChunkProfiles = projection.chunks.map(chunkProfile).sort();
+  const activeChunkProfiles = active.chunks.map(chunkProfile).sort();
   if (
     active.status === "ACTIVE" &&
     active.sourceVersion === incoming.sourceVersion &&
     active.contentHash === incoming.contentHash
   ) {
-    return JSON.stringify(activeChunkIds) === JSON.stringify(incomingChunkIds)
+    const documentIdentityMatches =
+      active.schemaVersion === incoming.schemaVersion &&
+      active.indexVersion === incoming.indexVersion;
+    const chunkIdentitiesMatch =
+      JSON.stringify(activeChunkProfiles) ===
+      JSON.stringify(incomingChunkProfiles);
+    return documentIdentityMatches && chunkIdentitiesMatch
       ? "UNCHANGED"
       : "REPAIRED";
   }
