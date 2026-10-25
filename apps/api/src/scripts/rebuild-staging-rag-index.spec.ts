@@ -12,7 +12,7 @@ import {
 
 const deploymentSha = "a".repeat(40);
 const databaseFingerprint = fingerprintRagDatabaseTarget({
-  host: "staging-mongo.internal",
+  srvHost: "staging-mongo.internal",
   name: "farta-staging",
 });
 const preview = {
@@ -107,12 +107,45 @@ describe("staging RAG rebuild gate", () => {
     ).toThrow("deployment changed");
   });
 
-  it("fingerprints database metadata without returning it", () => {
+  it("fingerprints stable SRV database metadata without returning it", () => {
     expect(databaseFingerprint).toMatch(/^[a-f0-9]{64}$/);
     expect(databaseFingerprint).not.toContain("staging-mongo");
+    expect(
+      fingerprintRagDatabaseTarget({
+        srvHost: "STAGING-MONGO.INTERNAL.",
+        hosts: ["resolved-b.internal:27017"],
+        name: "farta-staging",
+      }),
+    ).toBe(
+      fingerprintRagDatabaseTarget({
+        srvHost: "staging-mongo.internal",
+        hosts: ["resolved-a.internal:27017"],
+        name: "farta-staging",
+      }),
+    );
     expect(() =>
-      fingerprintRagDatabaseTarget({ host: "", name: "farta-staging" }),
+      fingerprintRagDatabaseTarget({ hosts: [], name: "farta-staging" }),
     ).toThrow("identity is unavailable");
+  });
+
+  it("fingerprints non-SRV host sets independent of ordering", () => {
+    expect(
+      fingerprintRagDatabaseTarget({
+        hosts: ["MONGO-B:27017", "mongo-a:27017", "mongo-a:27017"],
+        name: "farta-staging",
+      }),
+    ).toBe(
+      fingerprintRagDatabaseTarget({
+        hosts: ["mongo-a:27017", "mongo-b:27017"],
+        name: "farta-staging",
+      }),
+    );
+    expect(
+      fingerprintRagDatabaseTarget({
+        hosts: ["mongo-a:27017", "mongo-b:27017"],
+        name: "other-database",
+      }),
+    ).not.toBe(databaseFingerprint);
   });
 
   it("fingerprints source identity/version independent of ordering", () => {

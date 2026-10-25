@@ -6,7 +6,7 @@ import mongoose, {
 
 import { KnowledgeChunkSchema } from "../rag/schemas/knowledge-chunk.schema";
 import { KnowledgeDocumentSchema } from "../rag/schemas/knowledge-document.schema";
-import { fingerprintRagDatabaseTarget } from "./rebuild-staging-rag-index";
+import { fingerprintRagDatabaseConnection } from "./rebuild-staging-rag-index";
 
 const STAGING_GATE = "CREATE_STAGING_RAG_INDEXES_V1";
 const STAGING_PROJECT_ID = "farta-commerce-staging";
@@ -315,10 +315,7 @@ export async function createStagingRagIndexes(): Promise<void> {
     })
     .asPromise();
   try {
-    const databaseFingerprint = fingerprintRagDatabaseTarget({
-      host: connection.host,
-      name: connection.name,
-    });
+    const databaseFingerprint = fingerprintRagDatabaseConnection(connection);
     if (databaseFingerprint !== boundary.expectedDatabaseFingerprint) {
       throw new Error(
         "Staging RAG database target changed after the approved preview.",

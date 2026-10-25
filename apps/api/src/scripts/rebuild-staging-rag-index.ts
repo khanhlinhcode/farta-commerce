@@ -129,15 +129,41 @@ export function fingerprintRagSources(
 }
 
 export function fingerprintRagDatabaseTarget(input: {
-  host: string | undefined;
+  srvHost?: string | undefined;
+  hosts?: readonly string[] | undefined;
   name: string | undefined;
 }): string {
-  if (!input.host?.trim() || !input.name?.trim()) {
+  const name = input.name?.trim();
+  const srvHost = input.srvHost?.trim().toLowerCase().replace(/\.$/, "");
+  const hosts = [
+    ...new Set(
+      (input.hosts ?? [])
+        .map((host) => host.trim().toLowerCase())
+        .filter(Boolean),
+    ),
+  ].sort();
+  const endpoint = srvHost
+    ? { type: "srv", value: srvHost }
+    : hosts.length > 0
+      ? { type: "hosts", value: hosts }
+      : null;
+  if (!endpoint || !name) {
     throw new Error("Staging RAG database identity is unavailable.");
   }
   return createHash("sha256")
-    .update(JSON.stringify([input.host, input.name]))
+    .update(JSON.stringify([endpoint, name]))
     .digest("hex");
+}
+
+export function fingerprintRagDatabaseConnection(
+  connection: Connection,
+): string {
+  const options = connection.getClient().options;
+  return fingerprintRagDatabaseTarget({
+    srvHost: options.srvHost,
+    hosts: options.hosts.map((host) => host.toString()),
+    name: connection.name,
+  });
 }
 
 export function assertRagSourceSnapshot(
@@ -218,10 +244,7 @@ export async function rebuildStagingRagIndex(): Promise<void> {
       );
     }
     const connection = app.get<Connection>(getConnectionToken());
-    const databaseFingerprint = fingerprintRagDatabaseTarget({
-      host: connection.host,
-      name: connection.name,
-    });
+    const databaseFingerprint = fingerprintRagDatabaseConnection(connection);
     assertStagingRagApplyBinding(boundary, databaseFingerprint);
     const sources = await app.get(ProductRagSourceService).listPublicSources();
     const fingerprint = fingerprintRagSources(sources);

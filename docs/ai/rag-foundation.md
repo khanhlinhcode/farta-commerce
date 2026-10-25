@@ -113,8 +113,9 @@ Both modes require Northflank-managed metadata to identify project `farta-commer
 Preview performs reads only and reports non-secret metadata:
 
 - public source count and SHA-256 source fingerprint;
-- SHA-256 fingerprint of the connected MongoDB host/database metadata (the raw host, database name
-  and URI are never printed);
+- SHA-256 fingerprint of the canonical MongoDB endpoint/database metadata. Atlas SRV connections
+  use the stable SRV seed instead of a resolved member, while non-SRV host sets are normalized,
+  deduplicated and sorted. The raw endpoint, database name and URI are never printed;
 - deployed SHA and compiled `RAG_INDEX_VERSION`.
 
 Apply requires those exact preview values through
