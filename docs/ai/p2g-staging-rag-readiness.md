@@ -37,7 +37,11 @@ authorize preview, apply or activation.
 4. Through one bounded API-container execution, run **preview only** with transient mode/gate
    values. Record only count, source/database fingerprints, deployment SHA and index version.
 5. Review the preview, database target, declared MongoDB indexes, disk headroom and rollback/
-   containment plan. Obtain separate approval for apply.
+   containment plan. If the six RAG indexes are absent, privately verify Atlas capacity and run
+   `rag:indexes:staging` through a separately approved bounded API-container execution. This
+   bootstrap is restricted to the two RAG collections and requires the previewed database, SHA and
+   document/chunk counts; do not use the repository-wide `indexes:staging` command for this gate.
+   Obtain separate approval for apply after all six index definitions are verified.
 6. Run apply once with the exact preview tuple. Keep public RAG disabled. Stop on any mismatch,
    partial failure or catalog drift; never proceed directly to activation.
 7. Validate counts, profile identity, citations and read-only HMAC tool behavior without a live
