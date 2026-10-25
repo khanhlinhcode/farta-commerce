@@ -1,6 +1,6 @@
 from typing import Literal
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 
 def to_camel(value: str) -> str:
@@ -14,6 +14,14 @@ class ApiModel(BaseModel):
 
 Availability = Literal["IN_STOCK", "LOW_STOCK", "OUT_OF_STOCK"]
 AvailabilityResolutionStatus = Literal["MATCHED", "NOT_FOUND", "AMBIGUOUS"]
+KnowledgeSourceType = Literal[
+    "PRODUCT",
+    "CATEGORY",
+    "SHIPPING_POLICY",
+    "RETURN_POLICY",
+    "SIZE_GUIDE",
+    "FAQ",
+]
 
 
 class ProductVariant(ApiModel):
@@ -56,6 +64,27 @@ class ChatError(ApiModel):
     message: str
 
 
+class KnowledgeCitation(ApiModel):
+    citation_id: str = Field(pattern=r"^citation:ragchunk_[a-f0-9]{64}$", max_length=100)
+    source_type: KnowledgeSourceType
+    source_id: str = Field(min_length=1, max_length=160)
+    title: str = Field(min_length=1, max_length=200)
+    canonical_path: str = Field(pattern=r"^/\S{1,499}$", max_length=500)
+    chunk_id: str = Field(pattern=r"^ragchunk_[a-f0-9]{64}$", max_length=80)
+    chunk_ordinal: int = Field(ge=0, le=10_000)
+    excerpt: str = Field(min_length=1, max_length=4_000)
+    source_version: str = Field(min_length=1, max_length=160)
+    source_updated_at: str = Field(min_length=20, max_length=40)
+    content_trust: Literal["UNTRUSTED_PUBLIC_CONTENT"]
+
+    @field_validator("canonical_path")
+    @classmethod
+    def validate_canonical_path(cls, value: str) -> str:
+        if value.startswith("//") or ".." in value:
+            raise ValueError("Canonical citation path is invalid.")
+        return value
+
+
 class InternalChatResponse(ApiModel):
     request_id: str
     conversation_id: str
@@ -63,7 +92,7 @@ class InternalChatResponse(ApiModel):
     route: Literal["agent", "clarification", "unsupported"]
     message: str
     products: list[ProductReference] = Field(default_factory=list, max_length=12)
-    citations: list[None] = Field(default_factory=list, max_length=0)
+    citations: list[KnowledgeCitation] = Field(default_factory=list, max_length=8)
     error: ChatError | None = None
 
 
@@ -73,6 +102,7 @@ class AgentFinalResponse(BaseModel):
     message: str = Field(min_length=1, max_length=2_000)
     product_slugs: list[str] = Field(max_length=6)
     availability_claims: list["AgentAvailabilityClaim"] = Field(max_length=6)
+    citation_ids: list[str] = Field(default_factory=list, max_length=8)
     requires_clarification: bool
 
 
@@ -102,3 +132,8 @@ class ToolResponse(ApiModel):
     ]
     products: list[ProductReference] = Field(default_factory=list, max_length=12)
     availability_resolution: ToolAvailabilityResolution | None = None
+
+
+class KnowledgeToolResponse(ApiModel):
+    tool: Literal["search_knowledge"]
+    citations: list[KnowledgeCitation] = Field(default_factory=list, max_length=8)

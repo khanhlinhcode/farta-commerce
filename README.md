@@ -277,8 +277,13 @@ unverified operational controls. Start with the
 - Live Product Advisor release remains blocked until a newly approved, exactly metered canary proves
   three consecutive grounded public flows. The Phase 6E availability-evidence fix is deployed
   provider-off and has only offline/CI evidence so far.
-- No RAG, LangGraph, AI commerce mutations, autonomous refunds, Wishlist, Reviews, Coupons or
-  Loyalty are included in the current scope.
+- A local provider-independent RAG ingestion/retrieval and Agent citation boundary exists. It is
+  disabled by default and forbidden in deployed environments until production semantic retrieval,
+  corpus governance and live embeddings are approved. The deterministic P2-E retrieval and
+  security evaluation is documented in
+  [`docs/ai/p2e-evaluation-security.md`](docs/ai/p2e-evaluation-security.md).
+  LangGraph, AI commerce mutations, autonomous refunds, Wishlist, Reviews, Coupons and Loyalty are
+  not included in the current runtime scope.
 
 ## License
 

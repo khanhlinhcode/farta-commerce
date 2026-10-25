@@ -1,6 +1,7 @@
 import { Body, Controller, Inject, Post, UseGuards } from "@nestjs/common";
 
 import { AiToolAuthGuard } from "./ai-tool-auth.guard";
+import { AiKnowledgeToolsService } from "./ai-knowledge-tools.service";
 import { AiToolsService } from "./ai-tools.service";
 // DTO classes are required as runtime decorator metadata by Nest.
 // eslint-disable-next-line @typescript-eslint/consistent-type-imports
@@ -8,12 +9,17 @@ import {
   ProductAvailabilityToolDto,
   ProductDetailsToolDto,
   SearchProductsToolDto,
+  SearchKnowledgeToolDto,
 } from "./dto/ai-tool.dto";
 
 @Controller("internal/ai/tools")
 @UseGuards(AiToolAuthGuard)
 export class AiToolsController {
-  constructor(@Inject(AiToolsService) private readonly tools: AiToolsService) {}
+  constructor(
+    @Inject(AiToolsService) private readonly tools: AiToolsService,
+    @Inject(AiKnowledgeToolsService)
+    private readonly knowledge: AiKnowledgeToolsService,
+  ) {}
 
   @Post("search-products")
   search(@Body() input: SearchProductsToolDto) {
@@ -28,5 +34,10 @@ export class AiToolsController {
   @Post("availability")
   availability(@Body() input: ProductAvailabilityToolDto) {
     return this.tools.availability(input);
+  }
+
+  @Post("search-knowledge")
+  searchKnowledge(@Body() input: SearchKnowledgeToolDto) {
+    return this.knowledge.search(input);
   }
 }

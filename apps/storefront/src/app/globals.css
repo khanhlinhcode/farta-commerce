@@ -2768,6 +2768,39 @@ img {
   text-transform: uppercase;
 }
 
+.ai-message__citations {
+  display: grid;
+  gap: 0.45rem;
+  margin: 0.75rem 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.ai-message__citations li {
+  border-left: 2px solid
+    color-mix(in srgb, var(--farta-color-text) 18%, transparent);
+  padding-left: 0.65rem;
+}
+
+.ai-message__citations a {
+  color: inherit;
+  font-size: 0.78rem;
+  font-weight: 650;
+  text-decoration: underline;
+  text-underline-offset: 0.16em;
+}
+
+.ai-message__citations p {
+  display: -webkit-box;
+  margin: 0.2rem 0 0;
+  overflow: hidden;
+  color: var(--farta-color-text-muted);
+  font-size: 0.75rem;
+  line-height: 1.45;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+
 .ai-product-results {
   display: grid;
   gap: 0.65rem;

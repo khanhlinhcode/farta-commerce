@@ -36,6 +36,8 @@ jobs:
       - run: pnpm build
         env:
           API_INTERNAL_URL: http://127.0.0.1:4000
+      - name: Run deterministic RAG evaluation
+        run: pnpm --filter @farta/api rag:evaluate:local
       - run: pnpm audit:prod
 
   api-e2e:
@@ -84,6 +86,10 @@ jobs:
       - run: uv sync --frozen
       - run: uv run ruff check .
       - run: uv run pytest
+      - name: Run deterministic Product Advisor evaluation
+        run: uv run python -m app.evaluation.agent_eval
+      - name: Run deterministic knowledge-agent evaluation
+        run: uv run python -m app.evaluation.knowledge_eval
 
   secret-scan:
     runs-on: ubuntu-latest

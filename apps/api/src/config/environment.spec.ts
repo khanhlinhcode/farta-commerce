@@ -54,6 +54,7 @@ describe("environment validation", () => {
       RESERVATION_WORKER_INTERVAL_MS: 15_000,
       RESERVATION_WORKER_BATCH_SIZE: 50,
       AI_REQUEST_TIMEOUT_MS: 65_000,
+      AI_RAG_ENABLED: false,
       SEPAY_ENABLED: false,
       SEPAY_DEPOSIT_MODE: "DISABLED",
     }));
@@ -193,6 +194,16 @@ describe("environment validation", () => {
     expect(
       validateEnvironment({ ...valid, APP_ENV: "development" }),
     ).toMatchObject({ APP_ENV: "development" });
+  });
+  it("allows local RAG explicitly and rejects it in deployed environments", () => {
+    expect(
+      validateEnvironment({ ...valid, AI_RAG_ENABLED: "true" }),
+    ).toMatchObject({
+      AI_RAG_ENABLED: true,
+    });
+    expect(() =>
+      validateEnvironment({ ...validStaging, AI_RAG_ENABLED: "true" }),
+    ).toThrow("AI_RAG_ENABLED");
   });
   it("rejects insecure production origins and placeholder secrets", () => {
     expect(() =>

@@ -22,6 +22,7 @@ import { validateEnvironment } from "./config/environment";
 import { HealthModule } from "./health/health.module";
 import { DatabaseModule } from "./infrastructure/database.module";
 import { RedisModule } from "./infrastructure/redis.module";
+import { RagModule } from "./rag/rag.module";
 
 @Module({
   imports: [
@@ -49,6 +50,7 @@ import { RedisModule } from "./infrastructure/redis.module";
     ProductsModule,
     VariantsModule,
     InventoryModule,
+    RagModule,
     HealthModule,
   ],
 })

@@ -5,7 +5,11 @@ import {
   ServiceUnavailableException,
 } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
-import type { AiChatResponse, AiProductReference } from "@farta/types";
+import type {
+  AiChatResponse,
+  AiCitation,
+  AiProductReference,
+} from "@farta/types";
 import { createHmac, randomBytes, randomUUID } from "node:crypto";
 import type { Request, Response } from "express";
 import { z } from "zod";
@@ -13,6 +17,7 @@ import { z } from "zod";
 import { AiToolsService } from "../ai-tools/ai-tools.service";
 import { ApiException } from "../common/api-exception";
 import type { Environment } from "../config/environment";
+import { RagCitationResolverService } from "../rag/retrieval/rag-citation-resolver.service";
 import { AiConversationCredentialService } from "./ai-conversation-credential.service";
 import { AiConversationService } from "./ai-conversation.service";
 
@@ -26,7 +31,9 @@ const aiResponseSchema = z
     products: z
       .array(z.object({ slug: z.string().max(120) }).passthrough())
       .max(12),
-    citations: z.array(z.never()).max(0),
+    citations: z
+      .array(z.object({ citationId: z.string().min(1).max(100) }).passthrough())
+      .max(8),
     error: z
       .object({ code: z.string().max(80), message: z.string().max(300) })
       .nullable(),
@@ -48,6 +55,8 @@ export class AiGatewayService {
     @Inject(AiConversationService)
     private readonly conversations: AiConversationService,
     @Inject(AiToolsService) private readonly tools: AiToolsService,
+    @Inject(RagCitationResolverService)
+    private readonly citationResolver: RagCitationResolverService,
   ) {
     this.enabled = config.get("AI_ENABLED", { infer: true });
     this.serviceUrl = config
@@ -115,6 +124,9 @@ export class AiGatewayService {
     const products = await this.hydrateProducts(
       parsed.products.map((product) => product.slug),
     );
+    const citations = await this.hydrateCitations(
+      parsed.citations.map((citation) => citation.citationId),
+    );
     const result: AiChatResponse = {
       requestId: parsed.requestId,
       conversationId: parsed.conversationId,
@@ -122,7 +134,7 @@ export class AiGatewayService {
       route: parsed.route,
       message: parsed.message,
       products,
-      citations: [],
+      citations,
       error: parsed.error,
     };
     await this.conversations.save(
@@ -148,6 +160,41 @@ export class AiGatewayService {
       }),
     );
     return results.filter((product) => product !== null);
+  }
+
+  private async hydrateCitations(
+    citationIds: readonly string[],
+  ): Promise<AiCitation[]> {
+    let resolved;
+    try {
+      resolved = await this.citationResolver.resolveActive(
+        "farta",
+        citationIds,
+      );
+    } catch {
+      throw new ApiException(
+        HttpStatus.BAD_GATEWAY,
+        "AI_CITATION_INVALID",
+        "AI Product Advisor returned an invalid citation.",
+      );
+    }
+    if (resolved.length !== citationIds.length) {
+      throw new ApiException(
+        HttpStatus.BAD_GATEWAY,
+        "AI_CITATION_STALE",
+        "AI Product Advisor returned a stale citation.",
+      );
+    }
+    return resolved.map((citation) => ({
+      citationId: citation.citationId,
+      sourceType: citation.sourceType,
+      sourceId: citation.sourceId,
+      title: citation.title,
+      canonicalPath: citation.canonicalPath,
+      excerpt: citation.excerpt,
+      sourceVersion: citation.sourceVersion,
+      sourceUpdatedAt: citation.sourceUpdatedAt,
+    }));
   }
 
   private sign(

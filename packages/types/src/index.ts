@@ -19,6 +19,31 @@ export type AiAvailability = "IN_STOCK" | "LOW_STOCK" | "OUT_OF_STOCK";
 export type AiRoute = "agent" | "clarification" | "unsupported";
 export type AiChatStatus = "completed" | "clarification" | "unavailable";
 
+export type AiKnowledgeSourceType =
+  | "PRODUCT"
+  | "CATEGORY"
+  | "SHIPPING_POLICY"
+  | "RETURN_POLICY"
+  | "SIZE_GUIDE"
+  | "FAQ";
+
+export type AiCitation = {
+  citationId: string;
+  sourceType: AiKnowledgeSourceType;
+  sourceId: string;
+  title: string;
+  canonicalPath: string;
+  excerpt: string;
+  sourceVersion: string;
+  sourceUpdatedAt: string;
+};
+
+export type AiKnowledgeCitation = AiCitation & {
+  chunkId: string;
+  chunkOrdinal: number;
+  contentTrust: "UNTRUSTED_PUBLIC_CONTENT";
+};
+
 export type AiProductReference = {
   id: string;
   slug: string;
@@ -51,12 +76,15 @@ export type AiChatResponse = {
   route: AiRoute;
   message: string;
   products: ReadonlyArray<AiProductReference>;
-  citations: ReadonlyArray<never>;
+  citations: ReadonlyArray<AiCitation>;
   error: { code: string; message: string } | null;
 };
 
 export type AiToolName =
-  "search_products" | "get_product_details" | "get_product_availability";
+  | "search_products"
+  | "get_product_details"
+  | "get_product_availability"
+  | "search_knowledge";
 
 export type AiToolRequest = {
   tool: AiToolName;
@@ -72,9 +100,14 @@ export type AiAvailabilityResolution = {
 };
 
 export type AiToolResponse = {
-  tool: AiToolName;
+  tool: Exclude<AiToolName, "search_knowledge">;
   products: ReadonlyArray<AiProductReference>;
   availabilityResolution?: AiAvailabilityResolution;
+};
+
+export type AiKnowledgeToolResponse = {
+  tool: "search_knowledge";
+  citations: ReadonlyArray<AiKnowledgeCitation>;
 };
 
 export type CartConflictCode =

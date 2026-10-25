@@ -176,6 +176,10 @@ const environmentSchema = z
       .min(10)
       .max(3600)
       .default(300),
+    AI_RAG_ENABLED: z
+      .enum(["true", "false"])
+      .default("false")
+      .transform((value) => value === "true"),
     AI_CONVERSATION_TTL_SECONDS: z.coerce
       .number()
       .int()
@@ -388,6 +392,14 @@ const environmentSchema = z
     }
 
     if (!isDeployedEnvironment(environment.APP_ENV)) return;
+    if (environment.AI_RAG_ENABLED) {
+      context.addIssue({
+        code: "custom",
+        path: ["AI_RAG_ENABLED"],
+        message:
+          "RAG must remain disabled in deployed environments until a production-safe embedding and vector index are approved.",
+      });
+    }
     for (const key of ["APP_ORIGIN", "ADMIN_ORIGIN", "API_ORIGIN"] as const) {
       if (new URL(environment[key]).protocol !== "https:") {
         context.addIssue({

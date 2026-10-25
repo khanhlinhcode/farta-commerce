@@ -59,6 +59,17 @@ def test_automatic_provider_fallback_is_rejected() -> None:
         Settings(fallback_enabled=True)
 
 
+def test_rag_is_local_only_and_disabled_by_default() -> None:
+    assert Settings().rag_enabled is False
+    assert Settings(app_env="development", rag_enabled=True).rag_enabled is True
+    with pytest.raises(ValidationError, match="RAG must remain disabled"):
+        Settings(
+            app_env="staging",
+            api_base_url="https://api.example",
+            rag_enabled=True,
+        )
+
+
 def test_groq_requires_atomic_canary_budget_and_bounded_agent() -> None:
     provider = {
         "groq_enabled": True,

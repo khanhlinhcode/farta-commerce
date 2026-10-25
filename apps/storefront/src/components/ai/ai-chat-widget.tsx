@@ -76,6 +76,7 @@ export function AiChatWidget() {
           role: "assistant",
           text: result.message,
           products: result.products,
+          citations: result.citations,
           error: unavailable,
           ...(result.status === "completed"
             ? { source: result.route === "agent" ? "advisor" : "catalog" }

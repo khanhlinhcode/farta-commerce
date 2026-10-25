@@ -32,6 +32,8 @@ FastAPI may call only:
 - `POST /api/v1/internal/ai/tools/search-products`
 - `POST /api/v1/internal/ai/tools/product-details`
 - `POST /api/v1/internal/ai/tools/availability`
+- `POST /api/v1/internal/ai/tools/search-knowledge` when the local-only
+  `AI_RAG_ENABLED` gate is enabled.
 
 Every request binds HMAC-SHA256 to timestamp, nonce, audience, HTTP method, exact path
 and raw request body. NestJS validates timestamp tolerance and atomically claims the
@@ -43,10 +45,12 @@ createdBy and administrative fields.
 
 ## Response authority
 
-The FastAPI response contains structured text and product references. Before returning
+The FastAPI response contains structured text, product references and optional citation IDs. Before returning
 to the browser, NestJS discards AI-supplied product fields and hydrates every referenced
-slug again through `AiToolsService`/`ProductsService`. Invalid or inactive references
-are omitted. React renders assistant text as plain text; raw HTML is not supported.
+slug again through `AiToolsService`/`ProductsService`. It also discards all model-supplied citation
+metadata and resolves each ID against current `ACTIVE`/`PUBLIC` RAG chunks. Invalid, duplicate,
+superseded or tombstoned citation IDs fail closed. React renders assistant text as plain text and
+server-authoritative citations as internal links; raw HTML is not supported.
 
 ## Disabled and failure behavior
 
@@ -76,8 +80,8 @@ Incident sequence:
 4. verify API/AI readiness and signed Tool Gateway behavior;
 5. re-enable only after quota, data policy and provider health are independently confirmed.
 
-Horizontal AI scaling is blocked while inbound FastAPI nonce replay claims are process-local.
-Operate one AI replica or implement an approved shared replay claim before increasing replicas.
+Inbound FastAPI nonce replay claims use the configured shared Redis boundary and fail closed if that
+boundary is unavailable.
 
 With the current three-request Agent budget, catalog tools are available for at most the first two
 tool-bearing iterations. The last request is reserved for the validated `AgentFinalResponse`; this

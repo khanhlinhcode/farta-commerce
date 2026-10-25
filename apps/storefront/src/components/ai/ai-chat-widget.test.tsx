@@ -53,7 +53,18 @@ describe("AiChatWidget", () => {
       route: "agent",
       message: "FARTA tìm thấy 1 sản phẩm phù hợp.",
       products: [],
-      citations: [],
+      citations: [
+        {
+          citationId: `citation:ragchunk_${"a".repeat(64)}`,
+          sourceType: "PRODUCT",
+          sourceId: "farta-essential-tee",
+          title: "FARTA Essential Tee",
+          canonicalPath: "/product/farta-essential-tee",
+          excerpt: "Áo cotton phom relaxed từ catalog công khai.",
+          sourceVersion: "v1",
+          sourceUpdatedAt: "2026-10-25T00:00:00.000Z",
+        },
+      ],
       error: null,
     });
     render(<AiChatWidget />);
@@ -77,6 +88,12 @@ describe("AiChatWidget", () => {
       expect.any(AbortSignal),
     );
     expect(screen.getByText("Tư vấn AI · sản phẩm đã xác minh")).toBeVisible();
+    expect(
+      screen.getByRole("link", { name: "FARTA Essential Tee" }),
+    ).toHaveAttribute("href", "/product/farta-essential-tee");
+    expect(
+      screen.getByText("Áo cotton phom relaxed từ catalog công khai."),
+    ).toBeVisible();
   });
 
   it("labels live generated advice and renders authoritative catalog results", async () => {

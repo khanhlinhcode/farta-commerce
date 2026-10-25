@@ -4,12 +4,18 @@ from dataclasses import dataclass
 from typing import Literal
 
 from app.catalog_normalization import normalize_catalog_text
-from app.tools.schemas import ProductAvailabilityArgs, ProductDetailsArgs, SearchProductsArgs
+from app.tools.schemas import (
+    ProductAvailabilityArgs,
+    ProductDetailsArgs,
+    SearchKnowledgeArgs,
+    SearchProductsArgs,
+)
 
 Intent = Literal[
     "PUBLIC_PRODUCT_SEARCH",
     "PUBLIC_PRODUCT_DETAILS",
     "PUBLIC_AVAILABILITY",
+    "PUBLIC_KNOWLEDGE",
     "COMPLEX_SHOPPING_ADVICE",
     "CLARIFICATION_REQUIRED",
     "UNSUPPORTED",
@@ -21,7 +27,13 @@ class RouteDecision:
     intent: Intent
     mode: Literal["agent", "clarification", "unsupported"]
     tool: str | None = None
-    arguments: SearchProductsArgs | ProductDetailsArgs | ProductAvailabilityArgs | None = None
+    arguments: (
+        SearchProductsArgs
+        | ProductDetailsArgs
+        | ProductAvailabilityArgs
+        | SearchKnowledgeArgs
+        | None
+    ) = None
 
 
 class IntentRouter:
@@ -77,12 +89,61 @@ class IntentRouter:
         "trang phuc cho",
         "hop voi",
     )
+    _knowledge_terms = {
+        "SHIPPING_POLICY": (
+            "giao hang",
+            "van chuyen",
+            "phi ship",
+            "thoi gian ship",
+            "shipping policy",
+            "shipping fee",
+            "delivery time",
+        ),
+        "RETURN_POLICY": (
+            "doi tra",
+            "tra hang",
+            "chinh sach doi",
+            "return policy",
+            "returns policy",
+        ),
+        "SIZE_GUIDE": (
+            "bang size",
+            "huong dan size",
+            "kich thuoc",
+            "chon size",
+            "size guide",
+            "size chart",
+        ),
+        "FAQ": ("cau hoi thuong gap", "faq", "frequently asked questions"),
+    }
+
+    def __init__(self, *, rag_enabled: bool = False) -> None:
+        self._rag_enabled = rag_enabled
 
     def route(self, message: str, selected_slugs: list[str]) -> RouteDecision:
         normalized = self._normalize(message)
         matchable = self._fold(normalized)
         if any(topic in matchable for topic in self._unsafe_topics):
             return RouteDecision("UNSUPPORTED", "unsupported")
+
+        knowledge_sources = [
+            source_type
+            for source_type, terms in self._knowledge_terms.items()
+            if any(term in matchable for term in terms)
+        ]
+        if knowledge_sources:
+            if not self._rag_enabled:
+                return RouteDecision("UNSUPPORTED", "unsupported")
+            return RouteDecision(
+                "PUBLIC_KNOWLEDGE",
+                "agent",
+                "search_knowledge",
+                SearchKnowledgeArgs(
+                    query=message,
+                    source_types=knowledge_sources,
+                    limit=5,
+                ),
+            )
 
         slug_match = self._product_url.search(matchable)
         slug = (

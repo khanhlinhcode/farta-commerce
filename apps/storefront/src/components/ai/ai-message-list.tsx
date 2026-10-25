@@ -1,4 +1,5 @@
-import type { AiProductReference } from "@farta/types";
+import type { AiCitation, AiProductReference } from "@farta/types";
+import Link from "next/link";
 
 import { AiProductResults } from "./ai-product-results";
 
@@ -7,6 +8,7 @@ export type AiUiMessage = {
   role: "user" | "assistant";
   text: string;
   products?: readonly AiProductReference[];
+  citations?: readonly AiCitation[];
   error?: boolean;
   source?: "catalog" | "advisor";
 };
@@ -41,6 +43,21 @@ export function AiMessageList({
             products={message.products ?? []}
             onNavigate={onProductNavigate}
           />
+          {(message.citations?.length ?? 0) > 0 && (
+            <ul className="ai-message__citations" aria-label="Nguồn tham khảo">
+              {message.citations?.map((citation) => (
+                <li key={citation.citationId}>
+                  <Link
+                    href={citation.canonicalPath}
+                    onClick={onProductNavigate}
+                  >
+                    {citation.title}
+                  </Link>
+                  <p>{citation.excerpt}</p>
+                </li>
+              ))}
+            </ul>
+          )}
         </div>
       ))}
     </div>

@@ -13,6 +13,8 @@
     "seed:development": "pnpm build && node --env-file=.env dist/scripts/development-seed.js",
     "seed:staging-sample": "node dist/scripts/staging-sample-seed.js",
     "indexes:staging": "node dist/scripts/create-declared-indexes.js",
+    "rag:rebuild:local": "pnpm build && node --env-file=.env dist/scripts/rebuild-local-rag-index.js",
+    "rag:evaluate:local": "pnpm build && node dist/scripts/evaluate-local-rag.js",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "test": "vitest run",
     "test:e2e": "vitest run --config vitest.e2e.config.mts"

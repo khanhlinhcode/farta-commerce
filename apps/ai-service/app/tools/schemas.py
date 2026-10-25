@@ -2,7 +2,7 @@ from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
-from app.schemas.chat import to_camel
+from app.schemas.chat import KnowledgeSourceType, to_camel
 
 
 class ToolArguments(BaseModel):
@@ -41,3 +41,12 @@ class ProductDetailsArgs(ToolArguments):
 class ProductAvailabilityArgs(ProductDetailsArgs):
     color: str | None = Field(default=None, max_length=80)
     size: str | None = Field(default=None, max_length=40)
+
+
+class SearchKnowledgeArgs(ToolArguments):
+    query: str = Field(min_length=2, max_length=300)
+    locale: Literal["vi", "en"] = "vi"
+    source_types: list[KnowledgeSourceType] = Field(min_length=1, max_length=6)
+    category_ids: list[str] | None = Field(default=None, max_length=20)
+    tags: list[str] | None = Field(default=None, max_length=20)
+    limit: int = Field(default=5, ge=1, le=8)

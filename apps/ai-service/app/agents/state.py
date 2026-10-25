@@ -5,6 +5,7 @@ from pydantic import BaseModel, Field
 from app.schemas.chat import (
     Availability,
     AvailabilityResolutionStatus,
+    KnowledgeCitation,
     ProductReference,
 )
 
@@ -29,14 +30,21 @@ class AvailabilityResolutionEvidence(BaseModel):
     availability: Availability | None = None
 
 
+class CitationEvidence(BaseModel):
+    request_id: str = Field(min_length=8, max_length=128)
+    citation: KnowledgeCitation
+
+
 class ToolCallRecord(BaseModel):
     tool: Literal[
         "search_products",
         "get_product_details",
         "get_product_availability",
+        "search_knowledge",
     ]
     succeeded: bool
     product_slugs: list[str] = Field(default_factory=list, max_length=12)
+    citation_ids: list[str] = Field(default_factory=list, max_length=8)
 
 
 class AgentState(BaseModel):
@@ -56,6 +64,7 @@ class AgentState(BaseModel):
     observations: list[ProductReference] = Field(default_factory=list, max_length=24)
     availability_evidence: list[AvailabilityEvidence] = Field(default_factory=list, max_length=12)
     availability_resolution: AvailabilityResolutionEvidence | None = None
+    citations: list[CitationEvidence] = Field(default_factory=list, max_length=8)
     step_count: int = Field(default=0, ge=0, le=3)
     stop_reason: str | None = None
     error_code: str | None = None

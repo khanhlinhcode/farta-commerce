@@ -33,4 +33,20 @@ def canonical_tool_arguments(request: BaseModel) -> dict[str, object]:
         arguments["color"] = normalize_catalog_optional(str(arguments["color"]))
     if "size" in arguments:
         arguments["size"] = normalize_catalog_size(str(arguments["size"]))
+    if "query" in arguments:
+        arguments["query"] = normalize_catalog_text(str(arguments["query"]))
+    if "source_types" in arguments:
+        arguments["source_types"] = sorted(str(value) for value in arguments["source_types"])
+    if "category_ids" in arguments:
+        arguments["category_ids"] = sorted(
+            {str(value).strip() for value in arguments["category_ids"] if str(value).strip()}
+        )
+    if "tags" in arguments:
+        arguments["tags"] = sorted(
+            {
+                normalize_catalog_text(str(value))
+                for value in arguments["tags"]
+                if str(value).strip()
+            }
+        )
     return arguments

@@ -4,13 +4,21 @@ import hmac
 import json
 import secrets
 import time
-from typing import Any
+from typing import Any, TypeVar
 
 import httpx
+from pydantic import BaseModel
 
 from app.config import Settings
-from app.schemas.chat import ToolResponse
-from app.tools.schemas import ProductAvailabilityArgs, ProductDetailsArgs, SearchProductsArgs
+from app.schemas.chat import KnowledgeToolResponse, ToolResponse
+from app.tools.schemas import (
+    ProductAvailabilityArgs,
+    ProductDetailsArgs,
+    SearchKnowledgeArgs,
+    SearchProductsArgs,
+)
+
+ResponseT = TypeVar("ResponseT", bound=BaseModel)
 
 
 class CommerceToolError(RuntimeError):
@@ -27,15 +35,31 @@ class CommerceClient:
         self._transport = transport
 
     async def search_products(self, arguments: SearchProductsArgs) -> ToolResponse:
-        return await self._post("/api/v1/internal/ai/tools/search-products", arguments)
+        return await self._post(
+            "/api/v1/internal/ai/tools/search-products", arguments, ToolResponse
+        )
 
     async def get_product_details(self, arguments: ProductDetailsArgs) -> ToolResponse:
-        return await self._post("/api/v1/internal/ai/tools/product-details", arguments)
+        return await self._post(
+            "/api/v1/internal/ai/tools/product-details", arguments, ToolResponse
+        )
 
     async def get_product_availability(self, arguments: ProductAvailabilityArgs) -> ToolResponse:
-        return await self._post("/api/v1/internal/ai/tools/availability", arguments)
+        return await self._post("/api/v1/internal/ai/tools/availability", arguments, ToolResponse)
 
-    async def _post(self, path: str, arguments: Any) -> ToolResponse:
+    async def search_knowledge(self, arguments: SearchKnowledgeArgs) -> KnowledgeToolResponse:
+        return await self._post(
+            "/api/v1/internal/ai/tools/search-knowledge",
+            arguments,
+            KnowledgeToolResponse,
+        )
+
+    async def _post(
+        self,
+        path: str,
+        arguments: Any,
+        response_model: type[ResponseT],
+    ) -> ResponseT:
         body = json.dumps(
             arguments.model_dump(mode="json", by_alias=True, exclude_none=True),
             ensure_ascii=False,
@@ -50,7 +74,7 @@ class CommerceClient:
             ) as client:
                 response = await client.post(path, content=body, headers=headers)
             response.raise_for_status()
-            return ToolResponse.model_validate(response.json())
+            return response_model.model_validate(response.json())
         except (httpx.HTTPError, ValueError) as error:
             raise CommerceToolError("Commerce tool request failed safely.") from error
 
