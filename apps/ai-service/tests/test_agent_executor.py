@@ -23,6 +23,7 @@ from app.llm.provider_budget import ProviderBudgetExceeded
 from app.observability import AiMetrics, AiObservability
 from app.schemas.chat import (
     AgentFinalResponse,
+    CatalogAgentFinalResponse,
     ConversationTurn,
     InternalChatRequest,
     KnowledgeCitation,
@@ -304,6 +305,58 @@ async def test_simple_product_search_uses_pydantic_agent_and_authoritative_tool(
     assert result.route == "agent"
     assert result.status == "completed"
     assert [product.slug for product in result.products] == [PRODUCT.slug]
+
+
+def test_catalog_search_route_uses_a_citation_free_final_schema() -> None:
+    executor = AgentExecutor(Settings(rag_enabled=True), FakeCommerce(), models=[])
+    decision = executor._router.route("Tìm áo màu đen size M dưới 500k", [])
+
+    assert decision.tool == "search_products"
+    assert executor._final_response_type(decision) is CatalogAgentFinalResponse
+    assert "citation_ids bắt buộc chính xác là mảng rỗng []" in executor._instructions(
+        decision.tool
+    )
+
+
+def test_catalog_citation_still_fails_closed_at_runtime_validation() -> None:
+    current_request = request("Tìm áo màu đen size M dưới 500k")
+    dependencies = AgentDependencies(
+        commerce=FakeCommerce(),
+        state=AgentState(
+            request_id=current_request.request_id,
+            conversation_id=current_request.conversation_id,
+            current_request=current_request.message,
+            resolved_intent="PUBLIC_PRODUCT_SEARCH",
+            allowed_tools=("search_products",),
+            tool_history=[
+                ToolCallRecord(
+                    tool="search_products",
+                    succeeded=True,
+                    product_slugs=[PRODUCT.slug],
+                )
+            ],
+        ),
+        observability=AiObservability(metrics=AiMetrics()),
+        conversation_digest="deadbeefdeadbeef",
+        provider="test",
+        model="test",
+        products_by_slug={PRODUCT.slug: PRODUCT},
+    )
+    output = AgentFinalResponse(
+        message="Mình đã tìm được một mẫu phù hợp với tiêu chí của bạn.",
+        product_slugs=[PRODUCT.slug],
+        availability_claims=[],
+        citation_ids=[KNOWLEDGE_CITATION.citation_id],
+        requires_clarification=False,
+    )
+
+    result = AgentExecutor(
+        Settings(rag_enabled=True), FakeCommerce(), models=[]
+    )._validate_agent_output(current_request, output, dependencies)
+
+    assert result.status == "unavailable"
+    assert result.products == []
+    assert result.error and result.error.code == "AI_OUTPUT_UNVERIFIED_CITATION"
 
 
 async def test_local_rag_returns_only_current_authoritative_citations() -> None:
@@ -1282,6 +1335,12 @@ def test_final_output_schema_requires_complete_strict_availability_claims() -> N
     }
 
 
+def test_catalog_final_output_schema_forbids_citations() -> None:
+    schema = CatalogAgentFinalResponse.model_json_schema()
+
+    assert schema["properties"]["citation_ids"]["maxItems"] == 0
+
+
 async def test_automatic_provider_fallback_is_not_used() -> None:
     def fail(_messages, _info):
         raise ModelHTTPError(429, "failed-test-provider")
@@ -1439,6 +1498,7 @@ async def test_locked_groq_serialization_preserves_the_bounded_two_request_contr
     assert second["response_format"]["json_schema"]["strict"] is True
     output_schema = second["response_format"]["json_schema"]["schema"]
     assert output_schema["additionalProperties"] is False
+    assert output_schema["properties"]["citation_ids"]["maxItems"] == 0
     assert set(output_schema["required"]) == {
         "message",
         "product_slugs",
@@ -1578,6 +1638,10 @@ async def test_groq_product_rag_uses_native_final_output_and_blocks_a_repeated_c
     assert "tool_choice" not in second
     assert second["response_format"]["type"] == "json_schema"
     assert second["response_format"]["json_schema"]["name"] == "final_result"
+    assert (
+        second["response_format"]["json_schema"]["schema"]["properties"]["citation_ids"]["maxItems"]
+        == 8
+    )
     assert commerce.search_knowledge_calls == 1
     assert result.status == expected_status
     if expected_status == "completed":

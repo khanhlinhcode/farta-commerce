@@ -106,6 +106,12 @@ class AgentFinalResponse(BaseModel):
     requires_clarification: bool
 
 
+class CatalogAgentFinalResponse(AgentFinalResponse):
+    """Structured output for routes that cannot produce RAG citation evidence."""
+
+    citation_ids: list[str] = Field(default_factory=list, max_length=0)
+
+
 class AgentAvailabilityClaim(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
