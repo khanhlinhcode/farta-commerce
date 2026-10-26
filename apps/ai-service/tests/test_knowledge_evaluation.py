@@ -3,7 +3,7 @@ from app.evaluation.knowledge_eval import evaluate_knowledge_routing, load_knowl
 
 def test_knowledge_dataset_is_versioned_unique_and_multilingual() -> None:
     cases = load_knowledge_cases()
-    assert len(cases) == 14
+    assert len(cases) == 15
     assert len({case.case_id for case in cases}) == len(cases)
     assert {case.category for case in cases} == {
         "knowledge_routing",
@@ -19,6 +19,7 @@ def test_knowledge_routing_passes_local_security_gates_without_provider_calls() 
     assert report["route_accuracy"] == 1.0
     assert report["tool_selection_accuracy"] == 1.0
     assert report["source_filter_accuracy"] == 1.0
+    assert report["query_shaping_accuracy"] == 1.0
     assert report["failures"] == []
     assert report["passed"] is True
     assert all(report["structural_gates"].values())

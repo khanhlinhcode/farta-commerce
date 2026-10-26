@@ -67,7 +67,33 @@ def test_product_knowledge_routes_to_the_staged_product_corpus() -> None:
     assert enabled.tool == "search_knowledge"
     assert isinstance(enabled.arguments, SearchKnowledgeArgs)
     assert enabled.arguments.source_types == ["PRODUCT"]
-    assert enabled.arguments.query == "FARTA Essential Tee làm từ chất liệu gì?"
+    assert enabled.arguments.query == "farta essential tee"
+
+
+def test_product_knowledge_query_uses_selected_product_context() -> None:
+    decision = IntentRouter(rag_enabled=True).route(
+        "Mẫu này làm từ chất liệu gì?",
+        ["dev-farta-essential-tee"],
+    )
+    assert decision.intent == "PUBLIC_KNOWLEDGE"
+    assert isinstance(decision.arguments, SearchKnowledgeArgs)
+    assert decision.arguments.query == "farta essential tee"
+
+
+def test_product_knowledge_without_a_product_reference_requires_clarification() -> None:
+    decision = IntentRouter(rag_enabled=True).route("Mẫu này làm từ chất liệu gì?", [])
+    assert decision.intent == "CLARIFICATION_REQUIRED"
+    assert decision.mode == "clarification"
+    assert decision.tool is None
+
+
+def test_english_product_knowledge_query_keeps_only_the_product_identity() -> None:
+    decision = IntentRouter(rag_enabled=True).route(
+        "What material is the FARTA Essential Tee made from?",
+        [],
+    )
+    assert isinstance(decision.arguments, SearchKnowledgeArgs)
+    assert decision.arguments.query == "farta essential tee"
 
 
 def test_product_knowledge_terms_do_not_capture_catalog_search() -> None:

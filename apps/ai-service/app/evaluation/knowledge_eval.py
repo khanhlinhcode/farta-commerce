@@ -35,6 +35,7 @@ class KnowledgeEvaluationCase(BaseModel):
             "FAQ",
         ]
     ] = Field(max_length=6)
+    expected_query: str | None = Field(default=None, min_length=2, max_length=300)
 
 
 def load_knowledge_cases(path: Path = DATASET_PATH) -> list[KnowledgeEvaluationCase]:
@@ -57,6 +58,7 @@ def evaluate_knowledge_routing(path: Path = DATASET_PATH) -> dict[str, object]:
     route_correct = 0
     tool_correct = 0
     source_filter_correct = 0
+    query_shaping_correct = 0
     disabled_fail_closed = 0
     knowledge_cases = 0
     failures: list[dict[str, object]] = []
@@ -69,9 +71,16 @@ def evaluate_knowledge_routing(path: Path = DATASET_PATH) -> dict[str, object]:
         if isinstance(decision.arguments, SearchKnowledgeArgs):
             actual_source_types = sorted(decision.arguments.source_types)
         source_matches = actual_source_types == sorted(case.expected_source_types)
+        actual_query = (
+            decision.arguments.query
+            if isinstance(decision.arguments, SearchKnowledgeArgs)
+            else None
+        )
+        query_matches = case.expected_query is None or actual_query == case.expected_query
         route_correct += int(route_matches)
         tool_correct += int(tool_matches)
         source_filter_correct += int(source_matches)
+        query_shaping_correct += int(query_matches)
         if case.expected_route == "PUBLIC_KNOWLEDGE":
             knowledge_cases += 1
             disabled = disabled_router.route(case.user_message, [])
@@ -80,13 +89,14 @@ def evaluate_knowledge_routing(path: Path = DATASET_PATH) -> dict[str, object]:
                 and disabled.mode == "unsupported"
                 and disabled.tool is None
             )
-        if not route_matches or not tool_matches or not source_matches:
+        if not route_matches or not tool_matches or not source_matches or not query_matches:
             failures.append(
                 {
                     "case_id": case.case_id,
                     "actual_route": decision.intent,
                     "actual_tool": decision.tool,
                     "actual_source_types": actual_source_types,
+                    "actual_query": actual_query,
                 }
             )
 
@@ -115,12 +125,14 @@ def evaluate_knowledge_routing(path: Path = DATASET_PATH) -> dict[str, object]:
         "route_accuracy": round(route_correct / count, 6),
         "tool_selection_accuracy": round(tool_correct / count, 6),
         "source_filter_accuracy": round(source_filter_correct / count, 6),
+        "query_shaping_accuracy": round(query_shaping_correct / count, 6),
         "structural_gates": structural_gates,
         "failures": failures,
         "passed": (
             route_correct == count
             and tool_correct == count
             and source_filter_correct == count
+            and query_shaping_correct == count
             and all(structural_gates.values())
             and not failures
         ),

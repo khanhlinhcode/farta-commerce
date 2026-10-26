@@ -127,6 +127,62 @@ class IntentRouter:
         ),
         "FAQ": ("cau hoi thuong gap", "faq", "frequently asked questions"),
     }
+    _product_context_terms = (
+        "mau nay",
+        "san pham nay",
+        "ao nay",
+        "dam nay",
+        "vay nay",
+        "quan nay",
+        "this product",
+        "this item",
+    )
+    _product_query_noise = {
+        "a",
+        "about",
+        "an",
+        "ao",
+        "are",
+        "biet",
+        "cai",
+        "chiec",
+        "cho",
+        "co",
+        "dam",
+        "does",
+        "duoc",
+        "dung",
+        "from",
+        "gi",
+        "hay",
+        "is",
+        "it",
+        "item",
+        "khong",
+        "la",
+        "lam",
+        "made",
+        "mau",
+        "me",
+        "nay",
+        "of",
+        "pham",
+        "please",
+        "product",
+        "quan",
+        "san",
+        "ta",
+        "tell",
+        "the",
+        "this",
+        "toi",
+        "tu",
+        "use",
+        "using",
+        "vay",
+        "what",
+        "which",
+    }
 
     def __init__(self, *, rag_enabled: bool = False) -> None:
         self._rag_enabled = rag_enabled
@@ -137,6 +193,10 @@ class IntentRouter:
         if any(topic in matchable for topic in self._unsafe_topics):
             return RouteDecision("UNSUPPORTED", "unsupported")
 
+        slug_match = self._product_url.search(matchable)
+        slug = (
+            slug_match.group(1) if slug_match else (selected_slugs[-1] if selected_slugs else None)
+        )
         knowledge_sources = [
             source_type
             for source_type, terms in self._knowledge_terms.items()
@@ -145,21 +205,23 @@ class IntentRouter:
         if knowledge_sources:
             if not self._rag_enabled:
                 return RouteDecision("UNSUPPORTED", "unsupported")
+            knowledge_query = message
+            if knowledge_sources == ["PRODUCT"]:
+                shaped_query = self._product_knowledge_query(matchable, slug)
+                if shaped_query is None:
+                    return RouteDecision("CLARIFICATION_REQUIRED", "clarification")
+                knowledge_query = shaped_query
             return RouteDecision(
                 "PUBLIC_KNOWLEDGE",
                 "agent",
                 "search_knowledge",
                 SearchKnowledgeArgs(
-                    query=message,
+                    query=knowledge_query,
                     source_types=knowledge_sources,
                     limit=5,
                 ),
             )
 
-        slug_match = self._product_url.search(matchable)
-        slug = (
-            slug_match.group(1) if slug_match else (selected_slugs[-1] if selected_slugs else None)
-        )
         if any(
             term in matchable for term in ("con hang", "con size", "con co", "con szie", "het hang")
         ):
@@ -235,6 +297,25 @@ class IntentRouter:
         suffix = match.group(2)
         multiplier = 1_000_000 if suffix in {"tr", "trieu"} else 1_000 if suffix == "k" else 1
         return int(amount * multiplier)
+
+    def _product_knowledge_query(self, value: str, slug: str | None) -> str | None:
+        cleaned = value
+        for term in sorted(self._knowledge_terms["PRODUCT"], key=len, reverse=True):
+            cleaned = re.sub(rf"(?<!\w){re.escape(term)}(?!\w)", " ", cleaned)
+        tokens = [
+            token
+            for token in re.findall(r"[^\W_]+", cleaned, flags=re.UNICODE)
+            if token not in self._product_query_noise
+        ]
+        refers_to_selected_product = any(term in value for term in self._product_context_terms)
+        if slug and (refers_to_selected_product or not tokens):
+            slug_tokens = slug.split("-")
+            if slug_tokens and slug_tokens[0] in {"dev", "staging"}:
+                slug_tokens = slug_tokens[1:]
+            tokens = [*slug_tokens, *tokens]
+        unique_tokens = list(dict.fromkeys(tokens))
+        query = " ".join(unique_tokens)[:300]
+        return query if len(query) >= 2 else None
 
     def _keyword(self, value: str) -> str | None:
         cleaned = self._price.sub("", value)

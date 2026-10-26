@@ -330,7 +330,7 @@ async def test_local_rag_answers_product_knowledge_from_the_product_corpus() -> 
     model = two_step_model(
         "search_knowledge",
         {
-            "query": message,
+            "query": "farta essential tee",
             "sourceTypes": ["PRODUCT"],
             "limit": 5,
         },
