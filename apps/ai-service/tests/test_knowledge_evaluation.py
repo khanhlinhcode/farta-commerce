@@ -3,7 +3,7 @@ from app.evaluation.knowledge_eval import evaluate_knowledge_routing, load_knowl
 
 def test_knowledge_dataset_is_versioned_unique_and_multilingual() -> None:
     cases = load_knowledge_cases()
-    assert len(cases) == 10
+    assert len(cases) == 14
     assert len({case.case_id for case in cases}) == len(cases)
     assert {case.category for case in cases} == {
         "knowledge_routing",

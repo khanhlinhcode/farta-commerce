@@ -84,6 +84,19 @@ KNOWLEDGE_CITATION = KnowledgeCitation(
     source_updated_at="2026-10-25T00:00:00.000Z",
     content_trust="UNTRUSTED_PUBLIC_CONTENT",
 )
+PRODUCT_KNOWLEDGE_CITATION = KnowledgeCitation(
+    citation_id=f"citation:ragchunk_{'b' * 64}",
+    source_type="PRODUCT",
+    source_id="farta-essential-tee",
+    title="FARTA Essential Tee",
+    canonical_path="/product/farta-essential-tee",
+    chunk_id=f"ragchunk_{'b' * 64}",
+    chunk_ordinal=0,
+    excerpt="FARTA Essential Tee sử dụng chất liệu cotton.",
+    source_version="rag-product-v1:essential-tee",
+    source_updated_at="2026-10-25T00:00:00.000Z",
+    content_trust="UNTRUSTED_PUBLIC_CONTENT",
+)
 
 
 class FakeCommerce:
@@ -109,6 +122,14 @@ class DevAvailabilityCommerce(FakeCommerce):
 
     async def get_product_availability(self, _arguments) -> ToolResponse:
         return availability_response(self.product, _arguments)
+
+
+class ProductKnowledgeCommerce(FakeCommerce):
+    async def search_knowledge(self, _arguments) -> KnowledgeToolResponse:
+        return KnowledgeToolResponse(
+            tool="search_knowledge",
+            citations=[PRODUCT_KNOWLEDGE_CITATION],
+        )
 
 
 def availability_response(
@@ -302,6 +323,35 @@ async def test_local_rag_returns_only_current_authoritative_citations() -> None:
     assert result.status == "completed"
     assert result.products == []
     assert result.citations == [KNOWLEDGE_CITATION]
+
+
+async def test_local_rag_answers_product_knowledge_from_the_product_corpus() -> None:
+    message = "FARTA Essential Tee làm từ chất liệu gì?"
+    model = two_step_model(
+        "search_knowledge",
+        {
+            "query": message,
+            "sourceTypes": ["PRODUCT"],
+            "limit": 5,
+        },
+        {
+            "message": "FARTA Essential Tee sử dụng chất liệu cotton.",
+            "product_slugs": [],
+            "availability_claims": [],
+            "citation_ids": [PRODUCT_KNOWLEDGE_CITATION.citation_id],
+            "requires_clarification": False,
+        },
+    )
+
+    result = await AgentExecutor(
+        Settings(rag_enabled=True),
+        ProductKnowledgeCommerce(),
+        models=[model],
+    ).execute(request(message))
+
+    assert result.status == "completed"
+    assert result.products == []
+    assert result.citations == [PRODUCT_KNOWLEDGE_CITATION]
 
 
 async def test_local_rag_rejects_a_fabricated_citation_id() -> None:

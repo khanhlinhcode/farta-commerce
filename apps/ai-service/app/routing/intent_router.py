@@ -90,6 +90,17 @@ class IntentRouter:
         "hop voi",
     )
     _knowledge_terms = {
+        "PRODUCT": (
+            "chat lieu",
+            "thanh phan vai",
+            "loai vai",
+            "vai gi",
+            "mo ta san pham",
+            "dac diem san pham",
+            "fabric",
+            "material",
+            "product description",
+        ),
         "SHIPPING_POLICY": (
             "giao hang",
             "van chuyen",
