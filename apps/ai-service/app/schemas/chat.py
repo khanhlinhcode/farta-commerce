@@ -112,6 +112,15 @@ class CatalogAgentFinalResponse(AgentFinalResponse):
     citation_ids: list[str] = Field(default_factory=list, max_length=0)
 
 
+class CatalogSearchFinalResponse(BaseModel):
+    """Minimal model output for catalog searches rendered from tool evidence."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    product_slugs: list[str] = Field(max_length=6)
+    requires_clarification: bool
+
+
 class AgentAvailabilityClaim(BaseModel):
     model_config = ConfigDict(extra="forbid")
 

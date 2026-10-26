@@ -24,6 +24,7 @@ from app.observability import AiMetrics, AiObservability
 from app.schemas.chat import (
     AgentFinalResponse,
     CatalogAgentFinalResponse,
+    CatalogSearchFinalResponse,
     ConversationTurn,
     InternalChatRequest,
     KnowledgeCitation,
@@ -293,9 +294,7 @@ async def test_simple_product_search_uses_pydantic_agent_and_authoritative_tool(
         "search_products",
         SEARCH_BLACK_M,
         {
-            "message": "Mình đã tìm được một mẫu phù hợp với tiêu chí của bạn.",
             "product_slugs": [PRODUCT.slug],
-            "availability_claims": [],
             "requires_clarification": False,
         },
     )
@@ -305,6 +304,31 @@ async def test_simple_product_search_uses_pydantic_agent_and_authoritative_tool(
     assert result.route == "agent"
     assert result.status == "completed"
     assert [product.slug for product in result.products] == [PRODUCT.slug]
+    assert result.message == (
+        "FARTA đã tìm thấy sản phẩm phù hợp. Bạn có thể xem thông tin trong thẻ sản phẩm bên dưới."
+    )
+    assert "399" not in result.message
+    assert "http" not in result.message
+
+
+async def test_catalog_search_rejects_a_free_form_model_claim_field() -> None:
+    model = two_step_model(
+        "search_products",
+        SEARCH_BLACK_M,
+        {
+            "message": "Mẫu này có giá 399k.",
+            "product_slugs": [PRODUCT.slug],
+            "requires_clarification": False,
+        },
+    )
+
+    result = await AgentExecutor(Settings(), FakeCommerce(), models=[model]).execute(
+        request("Tìm áo màu đen size M")
+    )
+
+    assert result.status == "unavailable"
+    assert result.products == []
+    assert result.error and result.error.code == "AI_PROVIDER_FAILED"
 
 
 def test_catalog_search_route_uses_a_citation_free_final_schema() -> None:
@@ -312,10 +336,11 @@ def test_catalog_search_route_uses_a_citation_free_final_schema() -> None:
     decision = executor._router.route("Tìm áo màu đen size M dưới 500k", [])
 
     assert decision.tool == "search_products"
-    assert executor._final_response_type(decision) is CatalogAgentFinalResponse
+    assert executor._final_response_type(decision) is CatalogSearchFinalResponse
     assert "citation_ids bắt buộc chính xác là mảng rỗng []" in executor._instructions(
         decision.tool
     )
+    assert "final output chỉ gồm product_slugs" in executor._instructions(decision.tool)
 
 
 def test_catalog_citation_still_fails_closed_at_runtime_validation() -> None:
@@ -1042,9 +1067,7 @@ async def test_output_token_limit_is_applied_per_bounded_model_request() -> None
                 ToolCallPart(
                     info.output_tools[0].name,
                     {
-                        "message": "Đây là mẫu phù hợp.",
                         "product_slugs": [PRODUCT.slug],
-                        "availability_claims": [],
                         "requires_clarification": False,
                     },
                 )
@@ -1339,6 +1362,14 @@ def test_catalog_final_output_schema_forbids_citations() -> None:
     schema = CatalogAgentFinalResponse.model_json_schema()
 
     assert schema["properties"]["citation_ids"]["maxItems"] == 0
+
+
+def test_catalog_search_schema_has_no_free_form_claim_channel() -> None:
+    schema = CatalogSearchFinalResponse.model_json_schema()
+
+    assert schema["additionalProperties"] is False
+    assert set(schema["properties"]) == {"product_slugs", "requires_clarification"}
+    assert set(schema["required"]) == {"product_slugs", "requires_clarification"}
 
 
 async def test_automatic_provider_fallback_is_not_used() -> None:

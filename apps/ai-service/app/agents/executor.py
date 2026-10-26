@@ -27,9 +27,11 @@ from app.routing.intent_router import IntentRouter, RouteDecision
 from app.schemas.chat import (
     AgentFinalResponse,
     CatalogAgentFinalResponse,
+    CatalogSearchFinalResponse,
     ChatError,
     InternalChatRequest,
     InternalChatResponse,
+    ProductReference,
 )
 from app.tools.commerce_client import CommerceClient, CommerceToolError
 from app.tools.registry import AgentDependencies, ToolPolicyViolation, approved_tools
@@ -310,9 +312,21 @@ class AgentExecutor:
     def _validate_agent_output(
         self,
         request: InternalChatRequest,
-        output: AgentFinalResponse,
+        output: AgentFinalResponse | CatalogSearchFinalResponse,
         dependencies: AgentDependencies,
     ) -> InternalChatResponse:
+        if isinstance(output, CatalogSearchFinalResponse):
+            catalog_search_output = True
+            output_message = None
+            output_product_slugs = output.product_slugs
+            output_availability_claims = []
+            output_citation_ids = []
+        else:
+            catalog_search_output = False
+            output_message = output.message
+            output_product_slugs = output.product_slugs
+            output_availability_claims = output.availability_claims
+            output_citation_ids = output.citation_ids
         resolution = dependencies.state.availability_resolution
         if resolution is not None and resolution.status != "MATCHED":
             if resolution.request_id != dependencies.state.request_id:
@@ -325,11 +339,11 @@ class AgentExecutor:
                 "VARIANT_NOT_FOUND" if resolution.status == "NOT_FOUND" else "AMBIGUOUS_VARIANT"
             )
             if (
-                output.product_slugs
-                or output.availability_claims
-                or output.citation_ids
-                or self._contains_unverified_claim(output.message)
-                or self._mentions_availability(output.message)
+                output_product_slugs
+                or output_availability_claims
+                or output_citation_ids
+                or (output_message is not None and self._contains_unverified_claim(output_message))
+                or (output_message is not None and self._mentions_availability(output_message))
             ):
                 return self._reject_unverified_claim(request, dependencies, subtype)
             self._observability.emit(
@@ -349,11 +363,11 @@ class AgentExecutor:
             )
         if output.requires_clarification:
             if (
-                output.product_slugs
-                or output.availability_claims
-                or output.citation_ids
-                or self._contains_unverified_claim(output.message)
-                or self._mentions_availability(output.message)
+                output_product_slugs
+                or output_availability_claims
+                or output_citation_ids
+                or (output_message is not None and self._contains_unverified_claim(output_message))
+                or (output_message is not None and self._mentions_availability(output_message))
             ):
                 return self._reject_unverified_claim(
                     request,
@@ -379,7 +393,18 @@ class AgentExecutor:
                 route="agent",
                 response_status="clarification",
             )
-            return self._response(request, "clarification", "agent", output.message, products=[])
+            message = (
+                self._render_catalog_search_clarification()
+                if catalog_search_output
+                else output_message
+            )
+            if message is None:
+                return self._reject_unverified_claim(
+                    request,
+                    dependencies,
+                    "MISSING_RESPONSE_MESSAGE",
+                )
+            return self._response(request, "clarification", "agent", message, products=[])
         if not dependencies.state.tool_history:
             self._observability.emit(
                 "ai.response.rejected",
@@ -412,7 +437,7 @@ class AgentExecutor:
             else set()
         )
         verified_product_slugs = set(dependencies.products_by_slug) | citation_product_slugs
-        unknown = set(output.product_slugs) - verified_product_slugs
+        unknown = set(output_product_slugs) - verified_product_slugs
         if unknown:
             self._observability.emit(
                 "ai.response.rejected",
@@ -431,14 +456,14 @@ class AgentExecutor:
                     message="Model referenced products not returned by Commerce tools.",
                 ),
             )
-        unknown_citations = set(output.citation_ids) - set(current_citations)
+        unknown_citations = set(output_citation_ids) - set(current_citations)
         if unknown_citations:
             return self._reject_unverified_citation(
                 request,
                 dependencies,
                 "UNKNOWN_CITATION_ID",
             )
-        if knowledge_used and current_citations and not output.citation_ids:
+        if knowledge_used and current_citations and not output_citation_ids:
             return self._reject_unverified_citation(
                 request,
                 dependencies,
@@ -450,25 +475,33 @@ class AgentExecutor:
                 dependencies,
                 "KNOWLEDGE_RESPONSE_WITHOUT_EVIDENCE",
             )
-        if not knowledge_used and output.citation_ids:
+        if not knowledge_used and output_citation_ids:
             return self._reject_unverified_citation(
                 request,
                 dependencies,
                 "CITATION_WITHOUT_KNOWLEDGE_TOOL",
             )
-        if self._contains_unverified_claim(output.message):
+        if output_message is not None and self._contains_unverified_claim(output_message):
             return self._reject_unverified_claim(
                 request,
                 dependencies,
                 "UNVERIFIED_TEXT_CLAIM",
             )
-        if not self._availability_claims_match(output, dependencies):
+        if catalog_search_output:
+            availability_claims_match = not dependencies.state.availability_evidence
+        else:
+            availability_claims_match = self._availability_claims_match(output, dependencies)
+        if not availability_claims_match:
             return self._reject_unverified_claim(
                 request,
                 dependencies,
                 "AVAILABILITY_EVIDENCE_MISMATCH",
             )
-        if not output.availability_claims and self._mentions_availability(output.message):
+        if (
+            not output_availability_claims
+            and output_message is not None
+            and self._mentions_availability(output_message)
+        ):
             return self._reject_unverified_claim(
                 request,
                 dependencies,
@@ -476,10 +509,10 @@ class AgentExecutor:
             )
         products = [
             dependencies.products_by_slug[slug]
-            for slug in output.product_slugs
+            for slug in output_product_slugs
             if slug in dependencies.products_by_slug
         ]
-        citations = [current_citations[citation_id] for citation_id in output.citation_ids]
+        citations = [current_citations[citation_id] for citation_id in output_citation_ids]
         self._observability.emit(
             "ai.response.validated",
             request_id=request.request_id,
@@ -487,11 +520,18 @@ class AgentExecutor:
             route="agent",
             response_status="completed",
         )
-        message = (
-            self._render_exact_availability(output, dependencies)
-            if output.availability_claims
-            else output.message
-        )
+        if isinstance(output, CatalogSearchFinalResponse):
+            message = self._render_catalog_search(products)
+        elif output.availability_claims:
+            message = self._render_exact_availability(output, dependencies)
+        else:
+            message = output.message
+        if message is None:
+            return self._reject_unverified_claim(
+                request,
+                dependencies,
+                "MISSING_RESPONSE_MESSAGE",
+            )
         return self._response(
             request,
             "completed",
@@ -577,6 +617,13 @@ class AgentExecutor:
                 "tool observation; câu trả lời dựa trên knowledge bắt buộc có ít nhất một citation "
                 "ID. Nếu tool được gọi không phải search_knowledge thì citation_ids bắt buộc là []."
             )
+        catalog_search_policy = (
+            " Với search_products, final output chỉ gồm product_slugs đã xuất hiện trong "
+            "tool observation và requires_clarification; không tạo trường message, citation "
+            "hoặc availability claim. Ứng dụng sẽ render nội dung public từ dữ liệu tool."
+            if expected_tool == "search_products"
+            else ""
+        )
         return (
             "Bạn là Product Advisor chỉ đọc của FARTA. Với mọi yêu cầu sản phẩm được hỗ trợ, "
             "bạn bắt buộc gọi ít nhất một tool đọc đã đăng ký trước khi trả lời. Chỉ gọi "
@@ -593,17 +640,33 @@ class AgentExecutor:
             "IN_STOCK, LOW_STOCK hoặc OUT_OF_STOCK trong evidence. "
             "Nếu thiếu dữ kiện, đặt một câu hỏi làm rõ. Trả lời ngắn gọn bằng tiếng Việt."
             + citation_policy
+            + catalog_search_policy
         )
 
     def _final_response_type(
         self,
         decision: RouteDecision,
-    ) -> type[AgentFinalResponse]:
+    ) -> type[AgentFinalResponse] | type[CatalogSearchFinalResponse]:
+        if decision.tool == "search_products":
+            return CatalogSearchFinalResponse
         if not self._settings.rag_enabled or (
             decision.tool is not None and decision.tool != "search_knowledge"
         ):
             return CatalogAgentFinalResponse
         return AgentFinalResponse
+
+    @staticmethod
+    def _render_catalog_search(products: list[ProductReference]) -> str:
+        if not products:
+            return "FARTA chưa tìm thấy sản phẩm phù hợp với tiêu chí hiện tại."
+        return (
+            "FARTA đã tìm thấy sản phẩm phù hợp. "
+            "Bạn có thể xem thông tin trong thẻ sản phẩm bên dưới."
+        )
+
+    @staticmethod
+    def _render_catalog_search_clarification() -> str:
+        return "Bạn muốn bổ sung màu, size hoặc khoảng giá để FARTA tìm chính xác hơn?"
 
     @staticmethod
     def _contains_unverified_claim(message: str) -> bool:
