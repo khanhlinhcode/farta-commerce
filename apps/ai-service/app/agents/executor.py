@@ -392,7 +392,25 @@ class AgentExecutor:
                 "agent",
                 "Bạn có thể cung cấp thêm tiêu chí sản phẩm để FARTA kiểm tra dữ liệu thực tế?",
             )
-        unknown = set(output.product_slugs) - set(dependencies.products_by_slug)
+        current_citations = {
+            evidence.citation.citation_id: evidence.citation
+            for evidence in dependencies.state.citations
+            if evidence.request_id == dependencies.state.request_id
+        }
+        knowledge_used = any(
+            record.tool == "search_knowledge" for record in dependencies.state.tool_history
+        )
+        citation_product_slugs = (
+            {
+                citation.source_id
+                for citation in current_citations.values()
+                if citation.source_type == "PRODUCT"
+            }
+            if knowledge_used
+            else set()
+        )
+        verified_product_slugs = set(dependencies.products_by_slug) | citation_product_slugs
+        unknown = set(output.product_slugs) - verified_product_slugs
         if unknown:
             self._observability.emit(
                 "ai.response.rejected",
@@ -411,14 +429,6 @@ class AgentExecutor:
                     message="Model referenced products not returned by Commerce tools.",
                 ),
             )
-        current_citations = {
-            evidence.citation.citation_id: evidence.citation
-            for evidence in dependencies.state.citations
-            if evidence.request_id == dependencies.state.request_id
-        }
-        knowledge_used = any(
-            record.tool == "search_knowledge" for record in dependencies.state.tool_history
-        )
         unknown_citations = set(output.citation_ids) - set(current_citations)
         if unknown_citations:
             return self._reject_unverified_citation(

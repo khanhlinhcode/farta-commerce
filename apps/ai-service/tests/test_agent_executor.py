@@ -15,7 +15,7 @@ from pydantic_ai.usage import RequestUsage, RunUsage, UsageLimitExceeded
 from pydantic_core import ValidationError
 
 from app.agents.executor import AgentExecutor
-from app.agents.state import AgentState, AvailabilityEvidence, ToolCallRecord
+from app.agents.state import AgentState, AvailabilityEvidence, CitationEvidence, ToolCallRecord
 from app.catalog_normalization import normalize_catalog_optional, normalize_catalog_size
 from app.config import Settings
 from app.llm.groq_provider import GroqTwoPhaseModel
@@ -345,7 +345,7 @@ async def test_local_rag_answers_product_knowledge_from_the_product_corpus() -> 
         },
         {
             "message": "FARTA Essential Tee sử dụng chất liệu cotton.",
-            "product_slugs": [],
+            "product_slugs": [PRODUCT_KNOWLEDGE_CITATION.source_id],
             "availability_claims": [],
             "citation_ids": [PRODUCT_KNOWLEDGE_CITATION.citation_id],
             "requires_clarification": False,
@@ -361,6 +361,106 @@ async def test_local_rag_answers_product_knowledge_from_the_product_corpus() -> 
     assert result.status == "completed"
     assert result.products == []
     assert result.citations == [PRODUCT_KNOWLEDGE_CITATION]
+
+
+async def test_local_rag_non_product_citation_cannot_authorize_product_reference() -> None:
+    model = two_step_model(
+        "search_knowledge",
+        {
+            "query": "Chính sách giao hàng thế nào?",
+            "sourceTypes": ["SHIPPING_POLICY"],
+            "limit": 5,
+        },
+        {
+            "message": "Bạn có thể xem chính sách giao hàng công khai của FARTA.",
+            "product_slugs": [KNOWLEDGE_CITATION.source_id],
+            "availability_claims": [],
+            "citation_ids": [KNOWLEDGE_CITATION.citation_id],
+            "requires_clarification": False,
+        },
+    )
+
+    result = await AgentExecutor(
+        Settings(rag_enabled=True),
+        FakeCommerce(),
+        models=[model],
+    ).execute(request("Chính sách giao hàng thế nào?"))
+
+    assert result.status == "unavailable"
+    assert result.products == []
+    assert result.error and result.error.code == "AI_OUTPUT_UNVERIFIED"
+
+
+async def test_local_rag_product_reference_must_exactly_match_citation_source_id() -> None:
+    model = two_step_model(
+        "search_knowledge",
+        {
+            "query": "farta essential tee",
+            "sourceTypes": ["PRODUCT"],
+            "limit": 5,
+        },
+        {
+            "message": "Đây là một tham chiếu sản phẩm không tồn tại.",
+            "product_slugs": [f"{PRODUCT_KNOWLEDGE_CITATION.source_id}-sale"],
+            "availability_claims": [],
+            "citation_ids": [PRODUCT_KNOWLEDGE_CITATION.citation_id],
+            "requires_clarification": False,
+        },
+    )
+
+    result = await AgentExecutor(
+        Settings(rag_enabled=True),
+        ProductKnowledgeCommerce(),
+        models=[model],
+    ).execute(request("FARTA Essential Tee làm từ chất liệu gì?"))
+
+    assert result.status == "unavailable"
+    assert result.products == []
+    assert result.error and result.error.code == "AI_OUTPUT_UNVERIFIED"
+
+
+def test_rag_citation_from_another_request_cannot_authorize_product_reference() -> None:
+    current_request = request("FARTA Essential Tee làm từ chất liệu gì?")
+    dependencies = AgentDependencies(
+        commerce=ProductKnowledgeCommerce(),
+        state=AgentState(
+            request_id=current_request.request_id,
+            conversation_id=current_request.conversation_id,
+            current_request=current_request.message,
+            resolved_intent="PUBLIC_KNOWLEDGE",
+            allowed_tools=("search_knowledge",),
+            tool_history=[ToolCallRecord(tool="search_knowledge", succeeded=True)],
+            citations=[
+                CitationEvidence(
+                    request_id="request-previous-1",
+                    citation=PRODUCT_KNOWLEDGE_CITATION,
+                )
+            ],
+        ),
+        observability=AiObservability(metrics=AiMetrics()),
+        conversation_digest="deadbeefdeadbeef",
+        provider="test",
+        model="test",
+    )
+    output = AgentFinalResponse(
+        message="FARTA Essential Tee sử dụng chất liệu cotton.",
+        product_slugs=[PRODUCT_KNOWLEDGE_CITATION.source_id],
+        availability_claims=[],
+        citation_ids=[PRODUCT_KNOWLEDGE_CITATION.citation_id],
+        requires_clarification=False,
+    )
+
+    result = AgentExecutor(
+        Settings(rag_enabled=True), ProductKnowledgeCommerce()
+    )._validate_agent_output(
+        current_request,
+        output,
+        dependencies,
+    )
+
+    assert result.status == "unavailable"
+    assert result.products == []
+    assert result.error and result.error.code == "AI_OUTPUT_UNVERIFIED"
 
 
 async def test_local_rag_rejects_a_fabricated_citation_id() -> None:
@@ -1419,7 +1519,7 @@ async def test_groq_product_rag_uses_native_final_output_and_blocks_a_repeated_c
         else:
             arguments = {
                 "message": "FARTA Essential Tee sử dụng chất liệu cotton.",
-                "product_slugs": [],
+                "product_slugs": [PRODUCT_KNOWLEDGE_CITATION.source_id],
                 "availability_claims": [],
                 "citation_ids": [PRODUCT_KNOWLEDGE_CITATION.citation_id],
                 "requires_clarification": False,
@@ -1481,6 +1581,7 @@ async def test_groq_product_rag_uses_native_final_output_and_blocks_a_repeated_c
     assert commerce.search_knowledge_calls == 1
     assert result.status == expected_status
     if expected_status == "completed":
+        assert result.products == []
         assert result.citations == [PRODUCT_KNOWLEDGE_CITATION]
     else:
         assert result.error and result.error.code == "AI_LIMIT_EXCEEDED"
