@@ -132,6 +132,15 @@ class ProductKnowledgeCommerce(FakeCommerce):
         )
 
 
+class CountingProductKnowledgeCommerce(ProductKnowledgeCommerce):
+    def __init__(self) -> None:
+        self.search_knowledge_calls = 0
+
+    async def search_knowledge(self, arguments) -> KnowledgeToolResponse:
+        self.search_knowledge_calls += 1
+        return await super().search_knowledge(arguments)
+
+
 def availability_response(
     product: ProductReference,
     arguments: ProductAvailabilityArgs,
@@ -970,6 +979,8 @@ def test_catalog_tools_leave_the_final_model_iteration_for_structured_output() -
         ]
     )
     assert executor._prepare_catalog_tool(context, definition) is None
+    dependencies.provider = "groq"
+    assert executor._prepare_catalog_tool(context, definition) is definition
 
 
 async def test_provider_timeout_fails_closed() -> None:
@@ -1327,9 +1338,15 @@ async def test_locked_groq_serialization_preserves_the_bounded_two_request_contr
     assert first_tools["get_product_availability"]["additionalProperties"] is False
     assert first_tools["get_product_availability"]["required"] == ["slug"]
 
-    assert second["tool_choice"] == "required"
-    assert [tool["function"]["name"] for tool in second["tools"]] == ["final_result"]
-    output_schema = second["tools"][0]["function"]["parameters"]
+    assert second["tool_choice"] == {
+        "type": "function",
+        "function": {"name": "final_result"},
+    }
+    second_tools = {
+        tool["function"]["name"]: tool["function"]["parameters"] for tool in second["tools"]
+    }
+    assert set(second_tools) == {"get_product_availability", "final_result"}
+    output_schema = second_tools["final_result"]
     assert output_schema["additionalProperties"] is False
     assert set(output_schema["required"]) == {
         "message",
@@ -1347,6 +1364,113 @@ async def test_locked_groq_serialization_preserves_the_bounded_two_request_contr
         "color",
         "availability",
     }
+
+
+@pytest.mark.parametrize(
+    ("second_tool_name", "expected_status"),
+    [
+        ("final_result", "completed"),
+        ("search_knowledge", "unavailable"),
+    ],
+)
+async def test_groq_product_rag_forces_final_output_and_blocks_a_repeated_catalog_call(
+    second_tool_name: str,
+    expected_status: str,
+) -> None:
+    captured: list[dict[str, object]] = []
+
+    async def handler(raw_request: httpx.Request) -> httpx.Response:
+        body = json.loads(raw_request.content)
+        captured.append(body)
+        if len(captured) == 1 or second_tool_name == "search_knowledge":
+            tool_name = "search_knowledge"
+            arguments = {
+                "query": "farta essential tee",
+                "sourceTypes": ["PRODUCT"],
+                "limit": 5,
+            }
+        else:
+            tool_name = "final_result"
+            arguments = {
+                "message": "FARTA Essential Tee sử dụng chất liệu cotton.",
+                "product_slugs": [],
+                "availability_claims": [],
+                "citation_ids": [PRODUCT_KNOWLEDGE_CITATION.citation_id],
+                "requires_clarification": False,
+            }
+        return httpx.Response(
+            200,
+            json={
+                "id": f"chatcmpl-rag-{len(captured)}",
+                "object": "chat.completion",
+                "created": 1,
+                "model": "openai/gpt-oss-120b",
+                "choices": [
+                    {
+                        "index": 0,
+                        "message": {
+                            "role": "assistant",
+                            "content": None,
+                            "tool_calls": [
+                                {
+                                    "id": f"call-rag-{len(captured)}",
+                                    "type": "function",
+                                    "function": {
+                                        "name": tool_name,
+                                        "arguments": json.dumps(arguments),
+                                    },
+                                }
+                            ],
+                        },
+                        "finish_reason": "tool_calls",
+                    }
+                ],
+                "usage": {
+                    "prompt_tokens": 10,
+                    "completion_tokens": 10,
+                    "total_tokens": 20,
+                },
+            },
+        )
+
+    http_client = httpx.AsyncClient(transport=httpx.MockTransport(handler))
+    groq_client = AsyncGroq(
+        api_key="local-test-placeholder",
+        max_retries=0,
+        http_client=http_client,
+    )
+    model = GroqModel(
+        "openai/gpt-oss-120b",
+        provider=GroqProvider(groq_client=groq_client),
+    )
+    commerce = CountingProductKnowledgeCommerce()
+    result = await AgentExecutor(
+        Settings(rag_enabled=True, max_agent_iterations=2, max_tool_executions=1),
+        commerce,
+        models=[model],
+    ).execute(request("FARTA Essential Tee làm từ chất liệu gì?"))
+    await groq_client.close()
+
+    assert len(captured) == 2
+    first, second = captured
+    assert first["tool_choice"] == {
+        "type": "function",
+        "function": {"name": "search_knowledge"},
+    }
+    assert second["tool_choice"] == {
+        "type": "function",
+        "function": {"name": "final_result"},
+    }
+    assert {tool["function"]["name"] for tool in second["tools"]} == {
+        "search_knowledge",
+        "final_result",
+    }
+    assert commerce.search_knowledge_calls == 1
+    assert result.status == expected_status
+    if expected_status == "completed":
+        assert result.citations == [PRODUCT_KNOWLEDGE_CITATION]
+    else:
+        assert result.error and result.error.code == "AI_LIMIT_EXCEEDED"
 
 
 def test_tool_registry_is_fixed_and_arguments_are_strict() -> None:
