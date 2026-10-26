@@ -1,9 +1,12 @@
+from dataclasses import replace
 from typing import Any
 
 import httpx
 from groq import AsyncGroq, DefaultAsyncHttpxClient
+from pydantic_ai.models import ModelRequestParameters
 from pydantic_ai.models.groq import GroqModel
 from pydantic_ai.providers.groq import GroqProvider as PydanticGroqProvider
+from pydantic_ai.settings import ModelSettings
 
 from app.config import Settings
 from app.llm.provider_budget import ProviderRequestBudget
@@ -20,6 +23,32 @@ class BudgetedGroqHttpClient(DefaultAsyncHttpxClient):
     async def send(self, request: httpx.Request, **kwargs: Any) -> httpx.Response:
         await self._budget.claim()
         return await super().send(request, **kwargs)
+
+
+class GroqTwoPhaseModel(GroqModel):
+    """Keep Groq tool calling and native structured output on separate requests."""
+
+    def prepare_request(
+        self,
+        model_settings: ModelSettings | None,
+        model_request_parameters: ModelRequestParameters,
+    ) -> tuple[ModelSettings | None, ModelRequestParameters]:
+        settings, parameters = super().prepare_request(
+            model_settings,
+            model_request_parameters,
+        )
+        if parameters.declared_function_tools and parameters.output_mode == "native":
+            # Groq does not support Structured Outputs and tool use in the same
+            # request. The bounded first iteration only gathers catalog data;
+            # the next iteration has no catalog tools and retains NativeOutput.
+            parameters = replace(
+                parameters,
+                output_mode="text",
+                output_object=None,
+                prompted_output_template=None,
+                allow_text_output=True,
+            )
+        return settings, parameters
 
 
 class GroqModelProvider:
@@ -51,9 +80,9 @@ class GroqModelProvider:
             http_client=http_client,
         )
 
-    def create(self) -> GroqModel:
+    def create(self) -> GroqTwoPhaseModel:
         client = self.create_client()
-        return GroqModel(
+        return GroqTwoPhaseModel(
             self._settings.groq_model,
             provider=PydanticGroqProvider(groq_client=client),
         )

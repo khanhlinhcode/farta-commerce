@@ -8,7 +8,6 @@ from pydantic_ai import RunContext
 from pydantic_ai.exceptions import ModelHTTPError
 from pydantic_ai.messages import ModelResponse, TextPart, ToolCallPart
 from pydantic_ai.models.function import FunctionModel
-from pydantic_ai.models.groq import GroqModel
 from pydantic_ai.models.test import TestModel
 from pydantic_ai.providers.groq import GroqProvider
 from pydantic_ai.tools import ToolDefinition
@@ -19,6 +18,7 @@ from app.agents.executor import AgentExecutor
 from app.agents.state import AgentState, AvailabilityEvidence, ToolCallRecord
 from app.catalog_normalization import normalize_catalog_optional, normalize_catalog_size
 from app.config import Settings
+from app.llm.groq_provider import GroqTwoPhaseModel
 from app.llm.provider_budget import ProviderBudgetExceeded
 from app.observability import AiMetrics, AiObservability
 from app.schemas.chat import (
@@ -980,7 +980,7 @@ def test_catalog_tools_leave_the_final_model_iteration_for_structured_output() -
     )
     assert executor._prepare_catalog_tool(context, definition) is None
     dependencies.provider = "groq"
-    assert executor._prepare_catalog_tool(context, definition) is definition
+    assert executor._prepare_catalog_tool(context, definition) is None
 
 
 async def test_provider_timeout_fails_closed() -> None:
@@ -1243,21 +1243,24 @@ async def test_locked_groq_serialization_preserves_the_bounded_two_request_contr
     async def handler(raw_request: httpx.Request) -> httpx.Response:
         body = json.loads(raw_request.content)
         captured.append(body)
-        tool_names = [tool["function"]["name"] for tool in body["tools"]]
         if len(captured) == 1:
-            tool_name = "get_product_availability"
             arguments = {"slug": DEV_PRODUCT.slug, "size": "M"}
+            message = {
+                "role": "assistant",
+                "content": None,
+                "tool_calls": [
+                    {
+                        "id": "call-1",
+                        "type": "function",
+                        "function": {
+                            "name": "get_product_availability",
+                            "arguments": json.dumps(arguments),
+                        },
+                    }
+                ],
+            }
+            finish_reason = "tool_calls"
         else:
-            tool_name = next(
-                name
-                for name in tool_names
-                if name
-                not in {
-                    "search_products",
-                    "get_product_details",
-                    "get_product_availability",
-                }
-            )
             arguments = {
                 "message": "Model text is not the public stock response.",
                 "product_slugs": [DEV_PRODUCT.slug],
@@ -1270,8 +1273,14 @@ async def test_locked_groq_serialization_preserves_the_bounded_two_request_contr
                         "availability": "IN_STOCK",
                     }
                 ],
+                "citation_ids": [],
                 "requires_clarification": False,
             }
+            message = {
+                "role": "assistant",
+                "content": json.dumps(arguments),
+            }
+            finish_reason = "stop"
         return httpx.Response(
             200,
             json={
@@ -1282,21 +1291,8 @@ async def test_locked_groq_serialization_preserves_the_bounded_two_request_contr
                 "choices": [
                     {
                         "index": 0,
-                        "message": {
-                            "role": "assistant",
-                            "content": None,
-                            "tool_calls": [
-                                {
-                                    "id": f"call-{len(captured)}",
-                                    "type": "function",
-                                    "function": {
-                                        "name": tool_name,
-                                        "arguments": json.dumps(arguments),
-                                    },
-                                }
-                            ],
-                        },
-                        "finish_reason": "tool_calls",
+                        "message": message,
+                        "finish_reason": finish_reason,
                     }
                 ],
                 "usage": {
@@ -1313,7 +1309,7 @@ async def test_locked_groq_serialization_preserves_the_bounded_two_request_contr
         max_retries=0,
         http_client=http_client,
     )
-    model = GroqModel(
+    model = GroqTwoPhaseModel(
         "openai/gpt-oss-120b",
         provider=GroqProvider(groq_client=groq_client),
     )
@@ -1327,26 +1323,21 @@ async def test_locked_groq_serialization_preserves_the_bounded_two_request_contr
     assert result.status == "completed"
     assert len(captured) == 2
     first, second = captured
-    assert first["tool_choice"] == {
-        "type": "function",
-        "function": {"name": "get_product_availability"},
-    }
+    assert first["tool_choice"] == "required"
     first_tools = {
         tool["function"]["name"]: tool["function"]["parameters"] for tool in first["tools"]
     }
-    assert set(first_tools) == {"get_product_availability", "final_result"}
+    assert set(first_tools) == {"get_product_availability"}
     assert first_tools["get_product_availability"]["additionalProperties"] is False
     assert first_tools["get_product_availability"]["required"] == ["slug"]
+    assert "response_format" not in first
 
-    assert second["tool_choice"] == {
-        "type": "function",
-        "function": {"name": "final_result"},
-    }
-    second_tools = {
-        tool["function"]["name"]: tool["function"]["parameters"] for tool in second["tools"]
-    }
-    assert set(second_tools) == {"get_product_availability", "final_result"}
-    output_schema = second_tools["final_result"]
+    assert "tools" not in second
+    assert "tool_choice" not in second
+    assert second["response_format"]["type"] == "json_schema"
+    assert second["response_format"]["json_schema"]["name"] == "final_result"
+    assert second["response_format"]["json_schema"]["strict"] is True
+    output_schema = second["response_format"]["json_schema"]["schema"]
     assert output_schema["additionalProperties"] is False
     assert set(output_schema["required"]) == {
         "message",
@@ -1367,14 +1358,14 @@ async def test_locked_groq_serialization_preserves_the_bounded_two_request_contr
 
 
 @pytest.mark.parametrize(
-    ("second_tool_name", "expected_status"),
+    ("second_response_kind", "expected_status"),
     [
-        ("final_result", "completed"),
-        ("search_knowledge", "unavailable"),
+        ("native_output", "completed"),
+        ("unexpected_tool", "unavailable"),
     ],
 )
-async def test_groq_product_rag_forces_final_output_and_blocks_a_repeated_catalog_call(
-    second_tool_name: str,
+async def test_groq_product_rag_uses_native_final_output_and_blocks_a_repeated_catalog_call(
+    second_response_kind: str,
     expected_status: str,
 ) -> None:
     captured: list[dict[str, object]] = []
@@ -1382,15 +1373,50 @@ async def test_groq_product_rag_forces_final_output_and_blocks_a_repeated_catalo
     async def handler(raw_request: httpx.Request) -> httpx.Response:
         body = json.loads(raw_request.content)
         captured.append(body)
-        if len(captured) == 1 or second_tool_name == "search_knowledge":
-            tool_name = "search_knowledge"
+        if len(captured) == 1:
             arguments = {
                 "query": "farta essential tee",
                 "sourceTypes": ["PRODUCT"],
                 "limit": 5,
             }
+            message = {
+                "role": "assistant",
+                "content": None,
+                "tool_calls": [
+                    {
+                        "id": "call-rag-1",
+                        "type": "function",
+                        "function": {
+                            "name": "search_knowledge",
+                            "arguments": json.dumps(arguments),
+                        },
+                    }
+                ],
+            }
+            finish_reason = "tool_calls"
+        elif second_response_kind == "unexpected_tool":
+            message = {
+                "role": "assistant",
+                "content": None,
+                "tool_calls": [
+                    {
+                        "id": "call-rag-2",
+                        "type": "function",
+                        "function": {
+                            "name": "search_knowledge",
+                            "arguments": json.dumps(
+                                {
+                                    "query": "farta essential tee",
+                                    "sourceTypes": ["PRODUCT"],
+                                    "limit": 5,
+                                }
+                            ),
+                        },
+                    }
+                ],
+            }
+            finish_reason = "tool_calls"
         else:
-            tool_name = "final_result"
             arguments = {
                 "message": "FARTA Essential Tee sử dụng chất liệu cotton.",
                 "product_slugs": [],
@@ -1398,6 +1424,11 @@ async def test_groq_product_rag_forces_final_output_and_blocks_a_repeated_catalo
                 "citation_ids": [PRODUCT_KNOWLEDGE_CITATION.citation_id],
                 "requires_clarification": False,
             }
+            message = {
+                "role": "assistant",
+                "content": json.dumps(arguments),
+            }
+            finish_reason = "stop"
         return httpx.Response(
             200,
             json={
@@ -1408,21 +1439,8 @@ async def test_groq_product_rag_forces_final_output_and_blocks_a_repeated_catalo
                 "choices": [
                     {
                         "index": 0,
-                        "message": {
-                            "role": "assistant",
-                            "content": None,
-                            "tool_calls": [
-                                {
-                                    "id": f"call-rag-{len(captured)}",
-                                    "type": "function",
-                                    "function": {
-                                        "name": tool_name,
-                                        "arguments": json.dumps(arguments),
-                                    },
-                                }
-                            ],
-                        },
-                        "finish_reason": "tool_calls",
+                        "message": message,
+                        "finish_reason": finish_reason,
                     }
                 ],
                 "usage": {
@@ -1439,7 +1457,7 @@ async def test_groq_product_rag_forces_final_output_and_blocks_a_repeated_catalo
         max_retries=0,
         http_client=http_client,
     )
-    model = GroqModel(
+    model = GroqTwoPhaseModel(
         "openai/gpt-oss-120b",
         provider=GroqProvider(groq_client=groq_client),
     )
@@ -1453,18 +1471,13 @@ async def test_groq_product_rag_forces_final_output_and_blocks_a_repeated_catalo
 
     assert len(captured) == 2
     first, second = captured
-    assert first["tool_choice"] == {
-        "type": "function",
-        "function": {"name": "search_knowledge"},
-    }
-    assert second["tool_choice"] == {
-        "type": "function",
-        "function": {"name": "final_result"},
-    }
-    assert {tool["function"]["name"] for tool in second["tools"]} == {
-        "search_knowledge",
-        "final_result",
-    }
+    assert first["tool_choice"] == "required"
+    assert {tool["function"]["name"] for tool in first["tools"]} == {"search_knowledge"}
+    assert "response_format" not in first
+    assert "tools" not in second
+    assert "tool_choice" not in second
+    assert second["response_format"]["type"] == "json_schema"
+    assert second["response_format"]["json_schema"]["name"] == "final_result"
     assert commerce.search_knowledge_calls == 1
     assert result.status == expected_status
     if expected_status == "completed":

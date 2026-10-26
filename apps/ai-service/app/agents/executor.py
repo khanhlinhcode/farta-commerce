@@ -3,7 +3,7 @@ import re
 import time
 from collections.abc import Sequence
 
-from pydantic_ai import Agent, RunContext, Tool, ToolOutput
+from pydantic_ai import Agent, NativeOutput, RunContext, Tool, ToolOutput
 from pydantic_ai.exceptions import AgentRunError, ModelHTTPError
 from pydantic_ai.models import Model
 from pydantic_ai.settings import ModelSettings
@@ -142,12 +142,6 @@ class AgentExecutor:
             max(1, self._policy.max_iterations - 1),
         )
         if len(context.deps.state.tool_history) >= tool_request_budget:
-            # Groq can enforce an exact named output tool only while another
-            # known tool exists. Keep the exhausted catalog definition on the
-            # wire for that provider; the second-step named tool choice below
-            # prevents it from being selected or executed again.
-            if context.deps.provider == "groq":
-                return tool_definition
             return None
         return tool_definition
 
@@ -188,11 +182,19 @@ class AgentExecutor:
             )
             agent = Agent(
                 model,
-                output_type=ToolOutput(
-                    AgentFinalResponse,
-                    name=FINAL_OUTPUT_TOOL_NAME,
-                    strict=True,
-                    max_retries=0,
+                output_type=(
+                    NativeOutput(
+                        AgentFinalResponse,
+                        name=FINAL_OUTPUT_TOOL_NAME,
+                        strict=True,
+                    )
+                    if provider == "groq"
+                    else ToolOutput(
+                        AgentFinalResponse,
+                        name=FINAL_OUTPUT_TOOL_NAME,
+                        strict=True,
+                        max_retries=0,
+                    )
                 ),
                 deps_type=AgentDependencies,
                 instructions=self._instructions(),
@@ -520,20 +522,13 @@ class AgentExecutor:
     ) -> ModelSettings:
         settings = self._model_settings(provider, model_name)
         if context.deps.state.tool_history:
-            if provider == "groq":
-                # With the exhausted catalog definition still known, Pydantic
-                # AI serializes this as Groq's exact named-function choice.
-                # `required` alone is insufficient because it permits the
-                # model to emit another function-kind catalog call.
-                settings["tool_choice"] = [FINAL_OUTPUT_TOOL_NAME]
-            else:
-                # Other providers can hide exhausted catalog tools and expose
-                # only the validated structured output tool.
-                settings["tool_choice"] = []
+            # Catalog tools are exhausted after one bounded call. Groq uses a
+            # native JSON-schema response for the final iteration, while the
+            # other providers expose only their validated output tool.
+            settings["tool_choice"] = []
         else:
-            # Pydantic AI keeps its final output tool schema in the request, but
-            # an explicit catalog tool choice prevents the first iteration from
-            # selecting it before authoritative evidence has been collected.
+            # Force the bounded evidence-gathering iteration to use one of the
+            # route-approved catalog tools before any final answer is accepted.
             settings["tool_choice"] = list(context.deps.state.allowed_tools)
         return settings
 
