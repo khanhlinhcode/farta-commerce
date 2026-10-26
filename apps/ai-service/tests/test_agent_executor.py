@@ -441,6 +441,35 @@ async def test_local_rag_answers_product_knowledge_from_the_product_corpus() -> 
     assert result.citations == [PRODUCT_KNOWLEDGE_CITATION]
 
 
+async def test_local_rag_rejects_provider_rewritten_router_arguments_before_tool_call() -> None:
+    commerce = CountingProductKnowledgeCommerce()
+    model = two_step_model(
+        "search_knowledge",
+        {
+            "query": "chất liệu áo thun farta",
+            "sourceTypes": ["PRODUCT"],
+            "limit": 5,
+        },
+        {
+            "message": "Không được sử dụng vì tool call phải bị chặn.",
+            "product_slugs": [],
+            "availability_claims": [],
+            "citation_ids": [],
+            "requires_clarification": False,
+        },
+    )
+
+    result = await AgentExecutor(
+        Settings(rag_enabled=True),
+        commerce,
+        models=[model],
+    ).execute(request("FARTA Essential Tee làm từ chất liệu gì?"))
+
+    assert result.status == "unavailable"
+    assert result.error and result.error.code == "AI_COMMERCE_TOOL_UNAVAILABLE"
+    assert commerce.search_knowledge_calls == 0
+
+
 async def test_local_rag_non_product_citation_cannot_authorize_product_reference() -> None:
     model = two_step_model(
         "search_knowledge",
@@ -1159,6 +1188,87 @@ def test_catalog_tools_leave_the_final_model_iteration_for_structured_output() -
     assert executor._prepare_catalog_tool(context, definition) is None
 
 
+@pytest.mark.parametrize(
+    ("tool_name", "arguments_model", "expected_arguments", "expected_properties"),
+    [
+        (
+            "search_products",
+            SearchProductsArgs,
+            {"keyword": "áo", "color": "đen", "size": "m", "limit": 6},
+            {"keyword", "color", "size", "limit"},
+        ),
+        (
+            "get_product_details",
+            ProductDetailsArgs,
+            {"slug": PRODUCT.slug},
+            {"slug"},
+        ),
+        (
+            "get_product_availability",
+            ProductAvailabilityArgs,
+            {"slug": PRODUCT.slug, "color": "đen", "size": "m"},
+            {"slug", "color", "size"},
+        ),
+        (
+            "search_knowledge",
+            SearchKnowledgeArgs,
+            {
+                "query": "farta essential tee",
+                "locale": "vi",
+                "source_types": ["PRODUCT"],
+                "limit": 5,
+            },
+            {"query", "locale", "sourceTypes", "limit"},
+        ),
+    ],
+)
+def test_routed_tool_schema_fixes_every_argument_to_the_router_decision(
+    tool_name,
+    arguments_model,
+    expected_arguments: dict[str, object],
+    expected_properties: set[str],
+) -> None:
+    executor = AgentExecutor(Settings(rag_enabled=True), FakeCommerce(), models=[])
+    dependencies = AgentDependencies(
+        commerce=FakeCommerce(),
+        state=AgentState(
+            request_id="request-12345678",
+            conversation_id="00000000-0000-4000-8000-000000000001",
+            current_request="Routed request",
+            resolved_intent="PUBLIC_KNOWLEDGE",
+            allowed_tools=(tool_name,),
+            expected_tool=tool_name,
+            expected_tool_arguments=expected_arguments,
+        ),
+        observability=AiObservability(metrics=AiMetrics()),
+        conversation_digest="deadbeefdeadbeef",
+        provider="groq",
+        model="test",
+    )
+    context = RunContext(deps=dependencies, model=TestModel(), usage=RunUsage())
+    original_schema = arguments_model.model_json_schema(by_alias=True)
+    definition = ToolDefinition(
+        name=tool_name,
+        parameters_json_schema=original_schema,
+    )
+
+    shaped = executor._prepare_catalog_tool(context, definition)
+
+    assert shaped is not None
+    assert shaped is not definition
+    assert definition.parameters_json_schema == original_schema
+    schema = shaped.parameters_json_schema
+    assert set(schema["properties"]) == expected_properties
+    assert set(schema["required"]) == expected_properties
+    assert schema["additionalProperties"] is False
+    aliases = {
+        "source_types": "sourceTypes",
+    }
+    for argument_name, expected_value in expected_arguments.items():
+        property_name = aliases.get(argument_name, argument_name)
+        assert schema["properties"][property_name]["const"] == expected_value
+
+
 async def test_provider_timeout_fails_closed() -> None:
     async def delayed(_messages, _info):
         await asyncio.sleep(2)
@@ -1518,8 +1628,12 @@ async def test_locked_groq_serialization_preserves_the_bounded_two_request_contr
         tool["function"]["name"]: tool["function"]["parameters"] for tool in first["tools"]
     }
     assert set(first_tools) == {"get_product_availability"}
-    assert first_tools["get_product_availability"]["additionalProperties"] is False
-    assert first_tools["get_product_availability"]["required"] == ["slug"]
+    availability_schema = first_tools["get_product_availability"]
+    assert availability_schema["additionalProperties"] is False
+    assert availability_schema["required"] == ["slug", "size"]
+    assert set(availability_schema["properties"]) == {"slug", "size"}
+    assert availability_schema["properties"]["slug"]["const"] == DEV_PRODUCT.slug
+    assert availability_schema["properties"]["size"]["const"] == "m"
     assert "response_format" not in first
 
     assert "tools" not in second
@@ -1664,6 +1778,14 @@ async def test_groq_product_rag_uses_native_final_output_and_blocks_a_repeated_c
     first, second = captured
     assert first["tool_choice"] == "required"
     assert {tool["function"]["name"] for tool in first["tools"]} == {"search_knowledge"}
+    tool_schema = first["tools"][0]["function"]["parameters"]
+    assert set(tool_schema["properties"]) == {"query", "locale", "sourceTypes", "limit"}
+    assert set(tool_schema["required"]) == {"query", "locale", "sourceTypes", "limit"}
+    assert tool_schema["additionalProperties"] is False
+    assert tool_schema["properties"]["query"]["const"] == "farta essential tee"
+    assert tool_schema["properties"]["locale"]["const"] == "vi"
+    assert tool_schema["properties"]["sourceTypes"]["const"] == ["PRODUCT"]
+    assert tool_schema["properties"]["limit"]["const"] == 5
     assert "response_format" not in first
     assert "tools" not in second
     assert "tool_choice" not in second

@@ -2,6 +2,8 @@ import asyncio
 import re
 import time
 from collections.abc import Sequence
+from copy import deepcopy
+from dataclasses import replace
 
 from pydantic_ai import Agent, NativeOutput, RunContext, Tool, ToolOutput
 from pydantic_ai.exceptions import AgentRunError, ModelHTTPError
@@ -32,6 +34,7 @@ from app.schemas.chat import (
     InternalChatRequest,
     InternalChatResponse,
     ProductReference,
+    to_camel,
 )
 from app.tools.commerce_client import CommerceClient, CommerceToolError
 from app.tools.registry import AgentDependencies, ToolPolicyViolation, approved_tools
@@ -146,7 +149,29 @@ class AgentExecutor:
         )
         if len(context.deps.state.tool_history) >= tool_request_budget:
             return None
-        return tool_definition
+        expected_arguments = context.deps.state.expected_tool_arguments
+        if context.deps.state.expected_tool != tool_definition.name or expected_arguments is None:
+            return tool_definition
+
+        schema = deepcopy(tool_definition.parameters_json_schema)
+        properties = schema.get("properties")
+        if not isinstance(properties, dict):
+            raise ToolPolicyViolation("ROUTED_TOOL_SCHEMA_MISMATCH")
+
+        shaped_properties: dict[str, object] = {}
+        for argument_name, expected_value in expected_arguments.items():
+            property_name = to_camel(argument_name)
+            property_schema = properties.get(property_name)
+            if not isinstance(property_schema, dict):
+                raise ToolPolicyViolation("ROUTED_TOOL_SCHEMA_MISMATCH")
+            shaped_property = deepcopy(property_schema)
+            shaped_property["const"] = expected_value
+            shaped_properties[property_name] = shaped_property
+
+        schema["properties"] = shaped_properties
+        schema["required"] = list(shaped_properties)
+        schema["additionalProperties"] = False
+        return replace(tool_definition, parameters_json_schema=schema)
 
     async def _execute_agent(
         self,
