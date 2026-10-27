@@ -1,4 +1,5 @@
 import asyncio
+import json
 import re
 import time
 from collections.abc import Sequence
@@ -165,6 +166,8 @@ class AgentExecutor:
             if not isinstance(property_schema, dict):
                 raise ToolPolicyViolation("ROUTED_TOOL_SCHEMA_MISMATCH")
             shaped_property = deepcopy(property_schema)
+            # Optional-model defaults may contradict this route's fixed value.
+            shaped_property.pop("default", None)
             shaped_property["const"] = expected_value
             shaped_properties[property_name] = shaped_property
 
@@ -615,7 +618,14 @@ class AgentExecutor:
         selected = ", ".join(request.selected_product_slugs) or "không có"
         suggested_tool = decision.tool or "model chọn trong allowlist"
         suggested_arguments = (
-            decision.arguments.model_dump_json(by_alias=True)
+            json.dumps(
+                {
+                    to_camel(name): value
+                    for name, value in canonical_tool_arguments(decision.arguments).items()
+                },
+                ensure_ascii=False,
+                separators=(",", ":"),
+            )
             if decision.arguments is not None
             else "{}"
         )

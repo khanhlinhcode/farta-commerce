@@ -21,6 +21,7 @@ from app.config import Settings
 from app.llm.groq_provider import GroqTwoPhaseModel
 from app.llm.provider_budget import ProviderBudgetExceeded
 from app.observability import AiMetrics, AiObservability
+from app.routing.intent_router import IntentRouter
 from app.schemas.chat import (
     AgentFinalResponse,
     CatalogAgentFinalResponse,
@@ -1267,6 +1268,49 @@ def test_routed_tool_schema_fixes_every_argument_to_the_router_decision(
     for argument_name, expected_value in expected_arguments.items():
         property_name = aliases.get(argument_name, argument_name)
         assert schema["properties"][property_name]["const"] == expected_value
+        assert "default" not in schema["properties"][property_name]
+
+
+@pytest.mark.parametrize(
+    ("message", "tool", "expected"),
+    [
+        (
+            "FARTA Essential Tee làm từ chất liệu gì?",
+            "search_knowledge",
+            {
+                "query": "farta essential tee",
+                "locale": "vi",
+                "sourceTypes": ["PRODUCT"],
+                "limit": 5,
+            },
+        ),
+        (
+            "Tìm áo màu đen size M",
+            "search_products",
+            {"keyword": "áo", "color": "đen", "size": "m", "limit": 6},
+        ),
+        (
+            "/product/farta-essential-tee còn size M không?",
+            "get_product_availability",
+            {"slug": "farta-essential-tee", "size": "m"},
+        ),
+        (
+            "Chi tiết /product/farta-essential-tee",
+            "get_product_details",
+            {"slug": "farta-essential-tee"},
+        ),
+    ],
+)
+def test_routed_prompt_uses_canonical_arguments_without_forbidden_null_fields(
+    message: str, tool: str, expected: dict[str, object]
+) -> None:
+    current_request = request(message)
+    decision = IntentRouter(rag_enabled=True).route(message, [])
+    assert decision.tool == tool
+    prompt = AgentExecutor._prompt(current_request, decision)
+    hint = next(line for line in prompt.splitlines() if line.startswith("Tool hint"))
+    prompt_arguments = json.loads(hint.split(f"{tool} ", 1)[1])
+    assert prompt_arguments == expected
 
 
 async def test_provider_timeout_fails_closed() -> None:
