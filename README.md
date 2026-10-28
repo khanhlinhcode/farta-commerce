@@ -6,14 +6,11 @@ and a private Pydantic AI Product Advisor that can access only allowlisted publi
 
 > **Release status:** staging candidate. Core commerce and automated release gates are implemented;
 > production payment-provider delivery, OAuth, transactional email, alerting and production-scale
-> capacity are not yet validated. The Product Advisor source is deployed, but live providers remain
-> disabled: Gemini failed the third Phase 6B flow; Groq model access was later verified, but the
-> first public flow in Campaigns 02 and 03 failed closed with `AI_LIMIT_EXCEEDED`. Campaign 04 then
-> passed grounded product search but failed its availability flow with
-> `AI_OUTPUT_UNVERIFIED_CLAIM`. The canary stopped at 5/7 provider requests and staging was rolled
-> back to provider-off; no live provider has passed the required three consecutive flows. A newer
-> exact-variant authority and argument-grounding hardening has passed local offline gates, but it is
-> not yet pushed, CI-verified or deployed.
+> capacity are not yet validated. The Product Advisor source and subsequent grounding and tool
+> argument fixes are deployed to staging, but no live provider has passed the required three
+> consecutive grounded flows. Historical Gemini/Groq canaries failed closed and were rolled back to
+> provider-off. Current effective provider flags must be verified in Northflank before a new canary;
+> deployed code, CI and offline evaluation alone do not establish live Agent readiness.
 
 ## Live staging
 
@@ -53,7 +50,7 @@ flowchart LR
   API --> Redis[(Redis)]
   API --> Cloudinary[Cloudinary]
   API --> AI[Private FastAPI + Pydantic AI]
-  AI -. providers disabled .-> Providers[Gemini / Groq]
+  AI -. runtime-gated provider access .-> Providers[Gemini / Groq]
   AI -->|HMAC signed, read-only tools| API
   API --> SePay[SePay boundary]
 ```
@@ -125,7 +122,7 @@ The model cannot answer supported catalog requests from router templates; it mus
 execution and authoritative tool observations. See [AI API contract](docs/api/ai-agent.md) and
 [evaluation methodology](docs/ai/evaluation-methodology.md).
 
-The staging providers are currently **off**. Two public Gemini Agent flows succeeded during Phase
+The last documented canary rollback left staging providers **off**. Two public Gemini Agent flows succeeded during Phase
 6B, but the third exhausted the Agent request budget. Phase 6C added an independent Redis ceiling.
 After correcting the namespaced metadata lookup, exact Groq model access passed. Campaign 02 found
 and corrected cumulative output-token accounting, while Campaign 03 exposed a final-output
@@ -136,10 +133,12 @@ answer was rejected as `AI_OUTPUT_UNVERIFIED_CLAIM`; execution stopped at exactl
 requests and rollback restored provider-off. Provider-off requests fail safely with
 `AI_PROVIDER_DISABLED` while ordinary catalog browsing continues to work.
 
-The newer source candidate distinguishes exact `MATCHED`, `NOT_FOUND` and `AMBIGUOUS` variant
-resolution, verifies actual model tool arguments against deterministic intent, and renders exact
-availability wording from server-validated evidence. Its current evidence is offline only; see the
-[live staging recovery checkpoint](docs/phase-6/live-staging-recovery.md).
+The deployed AI source distinguishes exact `MATCHED`, `NOT_FOUND` and `AMBIGUOUS` variant
+resolution, verifies actual model tool arguments against deterministic intent, shapes routed tool
+arguments to the constrained schema, and renders catalog answers from server-validated evidence.
+These later fixes have CI and offline evidence but still need a fresh bounded live canary. The
+[live staging recovery checkpoint](docs/phase-6/live-staging-recovery.md) records earlier evidence;
+it is not a current deployment snapshot.
 
 ## Run locally
 
@@ -255,9 +254,10 @@ Architecture decisions live under [`docs/adr`](docs/adr/), API contracts under
 
 Source presence, local tests and successful builds do not prove production readiness. Current
 reports deliberately separate local evidence, CI, deployed runtime, external-provider tests and
-unverified operational controls. Start with the
+unverified operational controls. The
 [Phase 6 live Agent closure](docs/phase-6/live-agent-release-closure.md) and
-[Groq canary report](docs/phase-6/groq-live-canary.md) for the latest status.
+[Groq canary report](docs/phase-6/groq-live-canary.md) are historical canary reports. Check the
+current deployed SHA and provider flags before making a new release decision.
 
 ## CV-ready summary
 
@@ -274,12 +274,13 @@ unverified operational controls. Start with the
   provider work until evidence is recorded.
 - API and AI currently run one staging replica each; shared Redis replay claims are implemented,
   but multi-replica load behavior has not been validated.
-- Live Product Advisor release remains blocked until a newly approved, exactly metered canary proves
-  three consecutive grounded public flows. The Phase 6E availability-evidence fix is deployed
-  provider-off and has only offline/CI evidence so far.
+- Live Product Advisor release remains blocked until a new, exactly metered canary proves three
+  consecutive grounded public flows on the deployed AI revision. The later grounding and tool
+  argument fixes have offline/CI evidence; their live behavior is unverified.
 - A provider-independent RAG ingestion/retrieval and Agent citation boundary exists. It is disabled
   by default. An offline n-gram profile and guarded two-phase rebuild are implemented for explicit
-  staging validation only; no staging backfill or activation is implied. Production remains
+  staging validation only. Source and CI results do not establish the current staging corpus or
+  effective activation flags; verify those through deployment metadata. Production remains
   rejected until semantic retrieval, corpus governance, capacity and live embeddings are approved.
   See [`docs/ai/p2e-evaluation-security.md`](docs/ai/p2e-evaluation-security.md) and
   [`docs/ai/p2g-staging-rag-readiness.md`](docs/ai/p2g-staging-rag-readiness.md).
