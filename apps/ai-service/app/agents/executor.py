@@ -373,7 +373,19 @@ class AgentExecutor:
                 or (output_message is not None and self._contains_unverified_claim(output_message))
                 or (output_message is not None and self._mentions_availability(output_message))
             ):
-                return self._reject_unverified_claim(request, dependencies, subtype)
+                if resolution.status != "AMBIGUOUS":
+                    return self._reject_unverified_claim(request, dependencies, subtype)
+                # Multiple variants are authoritative evidence that the customer must
+                # narrow their choice. Ignore model claims and render only our fixed
+                # clarification; no product or availability claim escapes.
+                self._observability.emit(
+                    "ai.response.rejected",
+                    request_id=request.request_id,
+                    conversation_digest=dependencies.conversation_digest,
+                    route="agent",
+                    error_code="AI_OUTPUT_UNVERIFIED_CLAIM",
+                    validation_subtype=subtype,
+                )
             self._observability.emit(
                 "ai.response.validated",
                 request_id=request.request_id,

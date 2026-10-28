@@ -896,6 +896,48 @@ async def test_duplicate_exact_variants_require_clarification() -> None:
     assert "nhiều biến thể khớp" in result.message
 
 
+async def test_ambiguous_size_ignores_model_stock_claim_and_asks_for_color() -> None:
+    ambiguous_product = DEV_PRODUCT.model_copy(
+        update={
+            "variants": [
+                DEV_PRODUCT.variants[0],
+                DEV_PRODUCT.variants[0].model_copy(
+                    update={"id": "507f1f77bcf86cd799439099", "color": "Kem"}
+                ),
+            ]
+        }
+    )
+    model = two_step_model(
+        "get_product_availability",
+        {"slug": DEV_PRODUCT.slug, "size": "M"},
+        {
+            "message": "FARTA Essential Tee size M còn hàng.",
+            "product_slugs": [DEV_PRODUCT.slug],
+            "availability_claims": [
+                {
+                    "observation_ref": "availability-1",
+                    "product_slug": DEV_PRODUCT.slug,
+                    "size": "M",
+                    "color": None,
+                    "availability": "IN_STOCK",
+                }
+            ],
+            "requires_clarification": False,
+        },
+    )
+
+    result = await AgentExecutor(
+        Settings(), DevAvailabilityCommerce(ambiguous_product), models=[model]
+    ).execute(request("/product/dev-farta-essential-tee còn size M không?"))
+
+    assert result.status == "clarification"
+    assert result.error is None
+    assert "chọn thêm màu" in result.message
+    assert "còn hàng" not in result.message
+    assert result.products == []
+    assert result.citations == []
+
+
 async def test_grounded_color_and_size_claim_normalizes_authoritative_values() -> None:
     model = two_step_model(
         "get_product_availability",
