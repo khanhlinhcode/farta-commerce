@@ -4,7 +4,7 @@ version = "0.1.0"
 description = "AI-ready boundary for FARTA; no direct commerce data access"
 requires-python = ">=3.12,<3.15"
 dependencies = [
-  "fastapi==0.142.2",
+  "fastapi==0.149.0",
   "google-genai==2.31.0",
   "groq==1.7.0",
   "pydantic-ai-slim[google,groq]==2.57.0",
