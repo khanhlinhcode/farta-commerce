@@ -3,6 +3,11 @@
   "compilerOptions": {
     "module": "CommonJS",
     "moduleResolution": "Node",
+    // cookie v2 publishes types only through exports; legacy Node resolution
+    // needs this type-only path while Node 22 loads its ESM entry at runtime.
+    "paths": {
+      "cookie": ["./node_modules/cookie/dist/index.d.ts"]
+    },
     "target": "ES2022",
     "lib": ["ES2023"],
     "types": ["node"],

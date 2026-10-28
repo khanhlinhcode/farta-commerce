@@ -1,6 +1,6 @@
 import { Inject, Injectable, UnauthorizedException } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
-import { parse, serialize } from "cookie";
+import { parseCookie, stringifySetCookie } from "cookie";
 import { createHmac, randomBytes, timingSafeEqual } from "node:crypto";
 import type { Request, Response } from "express";
 
@@ -21,7 +21,7 @@ export class CartCredentialService {
   }
 
   read(request: Request): string | undefined {
-    const raw = parse(request.headers.cookie ?? "")[this.cookieName()];
+    const raw = parseCookie(request.headers.cookie ?? "")[this.cookieName()];
     if (!raw) return undefined;
     const [nonce, signature, extra] = raw.split(".");
     if (
@@ -41,7 +41,9 @@ export class CartCredentialService {
     const raw = `${nonce}.${this.sign(nonce)}`;
     response.append(
       "Set-Cookie",
-      serialize(this.cookieName(), raw, {
+      stringifySetCookie({
+        name: this.cookieName(),
+        value: raw,
         httpOnly: true,
         secure: this.deployed,
         sameSite: "lax",
@@ -55,7 +57,9 @@ export class CartCredentialService {
   clear(response: Response): void {
     response.append(
       "Set-Cookie",
-      serialize(this.cookieName(), "", {
+      stringifySetCookie({
+        name: this.cookieName(),
+        value: "",
         httpOnly: true,
         secure: this.deployed,
         sameSite: "lax",
