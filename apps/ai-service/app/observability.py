@@ -16,6 +16,7 @@ AI_EVENTS = frozenset(
         "ai.provider.started",
         "ai.provider.completed",
         "ai.provider.failed",
+        "ai.provider.catalog_fallback",
         "ai.provider.budget.claimed",
         "ai.provider.budget.exceeded",
         "ai.provider.budget.failed",

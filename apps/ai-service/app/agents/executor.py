@@ -311,6 +311,11 @@ class AgentExecutor:
                     limit_kind=self._usage_limit_kind(error),
                     provider_failure_kind=self._provider_failure_kind(error),
                 )
+                catalog_response = self._recover_catalog_search_after_model_error(
+                    request, decision, dependencies, error
+                )
+                if catalog_response is not None:
+                    return catalog_response
                 break
         error_code = (
             self._provider_error_code(last_error)
@@ -343,6 +348,52 @@ class AgentExecutor:
                 code=error_code,
                 message="Provider không trả về kết quả hợp lệ trong giới hạn cho phép.",
             ),
+        )
+
+    def _recover_catalog_search_after_model_error(
+        self,
+        request: InternalChatRequest,
+        decision: RouteDecision,
+        dependencies: AgentDependencies,
+        error: Exception,
+    ) -> InternalChatResponse | None:
+        """Render a catalog search only after its trusted read tool succeeded.
+
+        Groq can reject the final structured-output request with HTTP 400 even
+        after the search tool has returned. The model has no authority to add
+        catalog facts, so a verified tool observation is sufficient to finish
+        this one route without another provider request.
+        """
+        records = dependencies.state.tool_history
+        if not (
+            isinstance(error, ModelHTTPError)
+            and error.status_code == 400
+            and decision.tool == "search_products"
+            and len(records) == 1
+            and records[0].tool == "search_products"
+            and records[0].succeeded
+            and len(records[0].product_slugs) <= 6
+            and len(records[0].product_slugs) == len(set(records[0].product_slugs))
+            and set(records[0].product_slugs) == set(dependencies.products_by_slug)
+            and not dependencies.state.availability_evidence
+            and not dependencies.state.citations
+        ):
+            return None
+        self._observability.emit(
+            "ai.provider.catalog_fallback",
+            request_id=request.request_id,
+            conversation_digest=dependencies.conversation_digest,
+            route="agent",
+            tool="search_products",
+            provider_failure_kind="HTTP_400",
+        )
+        return self._validate_agent_output(
+            request,
+            CatalogSearchFinalResponse(
+                product_slugs=records[0].product_slugs,
+                requires_clarification=False,
+            ),
+            dependencies,
         )
 
     def _validate_agent_output(

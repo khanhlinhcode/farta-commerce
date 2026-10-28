@@ -1162,6 +1162,44 @@ async def test_output_token_limit_is_applied_per_bounded_model_request() -> None
     assert [product.slug for product in result.products] == [PRODUCT.slug]
 
 
+async def test_catalog_search_uses_verified_tool_result_after_final_http_400() -> None:
+    request_count = 0
+    metrics = AiMetrics()
+
+    async def respond(_messages, _info):
+        nonlocal request_count
+        request_count += 1
+        if request_count == 1:
+            return ModelResponse(parts=[ToolCallPart("search_products", SEARCH_BLACK_M)])
+        raise ModelHTTPError(400, "groq")
+
+    result = await AgentExecutor(
+        Settings(),
+        FakeCommerce(),
+        models=[FunctionModel(respond)],
+        observability=AiObservability(metrics=metrics),
+    ).execute(request("Tìm áo màu đen size M"))
+
+    assert request_count == 2
+    assert result.status == "completed"
+    assert result.error is None
+    assert result.message == AgentExecutor._render_catalog_search([PRODUCT])
+    assert [product.slug for product in result.products] == [PRODUCT.slug]
+    assert metrics.snapshot()["counts"]["ai.provider.catalog_fallback"] == 1
+
+
+async def test_catalog_search_cannot_recover_http_400_without_tool_evidence() -> None:
+    def fail(_messages, _info):
+        raise ModelHTTPError(400, "groq")
+
+    result = await AgentExecutor(Settings(), FakeCommerce(), models=[FunctionModel(fail)]).execute(
+        request("Tìm áo màu đen size M")
+    )
+
+    assert result.status == "unavailable"
+    assert result.error and result.error.code == "AI_PROVIDER_FAILED"
+
+
 async def test_cumulative_output_token_limit_still_stops_oversized_run() -> None:
     request_count = 0
 
