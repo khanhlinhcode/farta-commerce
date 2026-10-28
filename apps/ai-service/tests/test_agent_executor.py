@@ -1615,6 +1615,17 @@ def test_usage_limit_kind_is_safe_and_specific() -> None:
     assert AgentExecutor._usage_limit_kind(RuntimeError("provider failed")) is None
 
 
+def test_provider_failure_kind_uses_only_fixed_categories() -> None:
+    assert AgentExecutor._provider_failure_kind(ModelHTTPError(400, "groq")) == "HTTP_400"
+    assert AgentExecutor._provider_failure_kind(ModelHTTPError(503, "groq")) == "HTTP_5XX"
+    assert AgentExecutor._provider_failure_kind(RuntimeError("private provider body")) == (
+        "OTHER_AGENT_ERROR"
+    )
+    wrapped = RuntimeError("private provider body")
+    wrapped.__cause__ = ModelHTTPError(422, "groq")
+    assert AgentExecutor._provider_failure_kind(wrapped) == "HTTP_422"
+
+
 def test_gemini_uses_documented_minimal_thinking_without_affecting_other_models() -> None:
     executor = AgentExecutor(Settings(), FakeCommerce(), models=[])
     assert executor._model_settings("google", "gemini-3.5-flash-lite")["thinking"] == "minimal"

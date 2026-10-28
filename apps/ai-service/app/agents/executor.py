@@ -7,7 +7,14 @@ from copy import deepcopy
 from dataclasses import replace
 
 from pydantic_ai import Agent, NativeOutput, RunContext, Tool, ToolOutput
-from pydantic_ai.exceptions import AgentRunError, ModelHTTPError
+from pydantic_ai.exceptions import (
+    AgentRunError,
+    IncompleteToolCall,
+    ModelHTTPError,
+    ToolFailedError,
+    ToolRetryError,
+    UnexpectedModelBehavior,
+)
 from pydantic_ai.models import Model
 from pydantic_ai.settings import ModelSettings
 from pydantic_ai.tools import ToolDefinition
@@ -302,6 +309,7 @@ class AgentExecutor:
                     duration_ms=round((time.perf_counter() - provider_started) * 1_000, 3),
                     error_code=self._provider_error_code(error),
                     limit_kind=self._usage_limit_kind(error),
+                    provider_failure_kind=self._provider_failure_kind(error),
                 )
                 break
         error_code = (
@@ -906,6 +914,36 @@ class AgentExecutor:
         if isinstance(error, ModelHTTPError) and error.status_code == 429:
             return "AI_PROVIDER_RATE_LIMIT"
         return "AI_PROVIDER_FAILED"
+
+    @staticmethod
+    def _provider_failure_kind(error: BaseException) -> str:
+        current: BaseException | None = error
+        visited: set[int] = set()
+        while current is not None and id(current) not in visited:
+            if isinstance(current, ModelHTTPError):
+                status = current.status_code
+                if status in {400, 401, 403, 404, 408, 409, 422, 429}:
+                    return f"HTTP_{status}"
+                if 500 <= status <= 599:
+                    return "HTTP_5XX"
+                return "HTTP_OTHER"
+            for kind, exception_type in (
+                ("MODEL_BEHAVIOR", UnexpectedModelBehavior),
+                ("INCOMPLETE_TOOL_CALL", IncompleteToolCall),
+                ("TOOL_RETRY", ToolRetryError),
+                ("TOOL_FAILED", ToolFailedError),
+                ("BUDGET_EXCEEDED", ProviderBudgetExceeded),
+                ("BUDGET_UNAVAILABLE", ProviderBudgetUnavailable),
+                ("USAGE_LIMIT", UsageLimitExceeded),
+                ("COMMERCE_TOOL", CommerceToolError),
+                ("TOOL_POLICY", ToolPolicyViolation),
+                ("TIMEOUT", TimeoutError),
+            ):
+                if isinstance(current, exception_type):
+                    return kind
+            visited.add(id(current))
+            current = current.__cause__ or current.__context__
+        return "OTHER_AGENT_ERROR"
 
     @staticmethod
     def _usage_limit_kind(error: BaseException) -> str | None:
