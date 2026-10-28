@@ -1,6 +1,6 @@
 import { Inject, Injectable, UnauthorizedException } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
-import { parse, serialize } from "cookie";
+import { parseCookie, stringifySetCookie } from "cookie";
 import { createHmac, randomBytes, timingSafeEqual } from "node:crypto";
 import type { Request, Response } from "express";
 
@@ -24,7 +24,9 @@ export class AiConversationCredentialService {
 
   ownerReference(request: Request, response: Response): string {
     if (request.principal) return `customer:${request.principal.sessionId}`;
-    const existing = parse(request.headers.cookie ?? "")[this.cookieName()];
+    const existing = parseCookie(request.headers.cookie ?? "")[
+      this.cookieName()
+    ];
     const credential = existing ? this.verify(existing) : this.issue(response);
     return `guest:${this.digest(credential)}`;
   }
@@ -34,7 +36,9 @@ export class AiConversationCredentialService {
     const credential = `${nonce}.${this.sign(nonce)}`;
     response.append(
       "Set-Cookie",
-      serialize(this.cookieName(), credential, {
+      stringifySetCookie({
+        name: this.cookieName(),
+        value: credential,
         httpOnly: true,
         secure: this.deployed,
         sameSite: "lax",

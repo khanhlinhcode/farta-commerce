@@ -1,6 +1,6 @@
 import { Inject, Injectable } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
-import { parse, serialize, type SerializeOptions } from "cookie";
+import { parseCookie, stringifySetCookie, type SerializeOptions } from "cookie";
 import type { Request, Response } from "express";
 
 import {
@@ -30,7 +30,7 @@ export class AuthCookieService {
     kind: "access" | "refresh" | "csrf",
     realm: AuthRealm,
   ) {
-    const cookies = parse(request.headers.cookie ?? "");
+    const cookies = parseCookie(request.headers.cookie ?? "");
     return cookies[this.name(kind, realm)];
   }
 
@@ -95,7 +95,9 @@ export class AuthCookieService {
   ): void {
     response.append(
       "Set-Cookie",
-      serialize(this.name(kind, realm), value, {
+      stringifySetCookie({
+        name: this.name(kind, realm),
+        value,
         ...options,
         secure: this.deployed,
       }),
