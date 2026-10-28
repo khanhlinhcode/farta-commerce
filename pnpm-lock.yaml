@@ -61,8 +61,8 @@ importers:
         specifier: 5.104.1
         version: 5.104.1(react@19.3.0)
       lucide-react:
-        specifier: 1.50.0
-        version: 1.50.0(@types/react@19.3.0)(react@19.3.0)
+        specifier: 1.61.0
+        version: 1.61.0(@types/react@19.3.0)(react@19.3.0)
       react:
         specifier: 'catalog:'
         version: 19.3.0
@@ -234,8 +234,8 @@ importers:
         specifier: 5.104.1
         version: 5.104.1(react@19.3.0)
       lucide-react:
-        specifier: 1.50.0
-        version: 1.50.0(@types/react@19.3.0)(react@19.3.0)
+        specifier: 1.61.0
+        version: 1.61.0(@types/react@19.3.0)(react@19.3.0)
       next:
         specifier: 16.4.2
         version: 16.4.2(@playwright/test@1.64.0)(@types/node@26.6.4)(react-dom@19.3.0(react@19.3.0))(react@19.3.0)
@@ -2898,8 +2898,8 @@ packages:
     resolution: {integrity: sha512-U4N8FgzmWxc8k1VH8Kr6lQg18U7Fjvby6wXHVRX/ZZ7IwWbRMgrRbP0Wrb5q5NVinryp4SQampHKdvtecItxUg==}
     engines: {node: 20 || >=22}
 
-  lucide-react@1.50.0:
-    resolution: {integrity: sha512-RqHPQtKX6S9IE1xOL4oTHHsVQbcwJWTnmlxI6AdI9IpOwKiy7q+COPCQyMepI/Qu1x3h7sunpyEMvqtgFbgNiQ==}
+  lucide-react@1.61.0:
+    resolution: {integrity: sha512-v2SQPPPNjnr+BlhL9Spuzmo5yR+hLkftfuE4E3jaxdNPgSH0hJKPcLJBP7yAta87jQNPsSERS59PJjCJ/CorBA==}
     peerDependencies:
       '@types/react': '*'
       react: ^16.5.1 || ^17.0.0 || ^18.0.0 || ^19.0.0
@@ -6486,7 +6486,7 @@ snapshots:
 
   lru-cache@11.5.3: {}
 
-  lucide-react@1.50.0(@types/react@19.3.0)(react@19.3.0):
+  lucide-react@1.61.0(@types/react@19.3.0)(react@19.3.0):
     dependencies:
       react: 19.3.0
     optionalDependencies:
