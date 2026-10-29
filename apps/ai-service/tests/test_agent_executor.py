@@ -556,15 +556,61 @@ async def test_rag_clarification_discards_model_claims_and_citations() -> None:
     assert "còn 12" not in result.message
 
 
-async def test_local_rag_rejects_provider_rewritten_router_arguments_before_tool_call() -> None:
-    commerce = CountingProductKnowledgeCommerce()
+async def test_product_rag_uses_router_query_and_scope_if_model_rewrites_arguments() -> None:
+    class RecordingProductKnowledgeCommerce(ProductKnowledgeCommerce):
+        received: SearchKnowledgeArgs | None = None
+
+        async def search_knowledge(self, arguments: SearchKnowledgeArgs) -> KnowledgeToolResponse:
+            self.received = arguments
+            return await super().search_knowledge(arguments)
+
+    commerce = RecordingProductKnowledgeCommerce()
     model = two_step_model(
         "search_knowledge",
         {
-            "query": "chất liệu áo thun farta",
-            "sourceTypes": ["PRODUCT"],
-            "limit": 5,
+            "query": "chính sách đổi trả",
+            "sourceTypes": ["RETURN_POLICY"],
+            "limit": 8,
         },
+        {
+            "message": "FARTA Essential Tee sử dụng chất liệu cotton.",
+            "product_slugs": [PRODUCT_KNOWLEDGE_CITATION.source_id],
+            "availability_claims": [],
+            "citation_ids": [PRODUCT_KNOWLEDGE_CITATION.citation_id],
+            "requires_clarification": False,
+        },
+    )
+
+    result = await AgentExecutor(
+        Settings(
+            app_env="staging",
+            api_base_url="https://api.example",
+            rag_enabled=True,
+            rag_staging_approved=True,
+        ),
+        commerce,
+        models=[model],
+    ).execute(request("FARTA Essential Tee làm từ chất liệu gì?"))
+
+    assert result.status == "completed"
+    assert result.citations == [PRODUCT_KNOWLEDGE_CITATION]
+    assert commerce.received == SearchKnowledgeArgs(
+        query="farta essential tee", source_types=["PRODUCT"], limit=5
+    )
+
+
+async def test_policy_rag_still_rejects_rewritten_router_arguments() -> None:
+    class CountingPolicyCommerce(FakeCommerce):
+        calls = 0
+
+        async def search_knowledge(self, arguments: SearchKnowledgeArgs) -> KnowledgeToolResponse:
+            self.calls += 1
+            return await super().search_knowledge(arguments)
+
+    commerce = CountingPolicyCommerce()
+    model = two_step_model(
+        "search_knowledge",
+        {"query": "unrelated", "sourceTypes": ["PRODUCT"], "limit": 5},
         {
             "message": "Không được sử dụng vì tool call phải bị chặn.",
             "product_slugs": [],
@@ -573,16 +619,21 @@ async def test_local_rag_rejects_provider_rewritten_router_arguments_before_tool
             "requires_clarification": False,
         },
     )
-
     result = await AgentExecutor(
-        Settings(rag_enabled=True),
+        Settings(
+            app_env="staging",
+            api_base_url="https://api.example",
+            rag_enabled=True,
+            rag_staging_approved=True,
+            rag_policy_corpus_approved=True,
+        ),
         commerce,
         models=[model],
-    ).execute(request("FARTA Essential Tee làm từ chất liệu gì?"))
+    ).execute(request("Chính sách giao hàng thế nào?"))
 
     assert result.status == "unavailable"
     assert result.error and result.error.code == "AI_COMMERCE_TOOL_UNAVAILABLE"
-    assert commerce.search_knowledge_calls == 0
+    assert commerce.calls == 0
 
 
 async def test_local_rag_non_product_citation_cannot_authorize_product_reference() -> None:

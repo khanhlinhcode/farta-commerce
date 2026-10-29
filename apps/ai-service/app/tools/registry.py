@@ -270,18 +270,24 @@ async def _invoke[ArgsT](
     try:
         if not isinstance(request, BaseModel):
             raise ToolPolicyViolation("TOOL_ARGUMENT_TYPE_MISMATCH")
+        routed_arguments = context.deps.routed_arguments
+        router_owns_search = tool == "search_products" or (
+            tool == "search_knowledge"
+            and isinstance(routed_arguments, SearchKnowledgeArgs)
+            and routed_arguments.source_types == ["PRODUCT"]
+        )
         if (
-            tool == "search_products"
+            router_owns_search
             and context.deps.state.expected_tool == tool
-            and context.deps.routed_arguments is not None
+            and routed_arguments is not None
         ):
-            # The router owns a search's filters. Groq may produce different,
-            # still-valid JSON despite the constrained tool schema; never let
-            # that change the catalog search we actually execute. Other routed
-            # tools retain exact-argument rejection for identity and scope.
-            if type(context.deps.routed_arguments) is not type(request):
+            # The router owns catalog filters and approved product-knowledge
+            # scope. A model may rewrite valid JSON despite the constrained
+            # schema; execute only the router's arguments. Policy knowledge,
+            # product identity and availability retain exact-argument checks.
+            if type(routed_arguments) is not type(request):
                 raise ToolPolicyViolation("ROUTED_TOOL_ARGUMENT_TYPE_MISMATCH")
-            request = context.deps.routed_arguments
+            request = routed_arguments
         context.deps.assert_expected_tool_call(tool, request)
         telemetry.emit("ai.tool.started", **fields)
         response = await operation(request)
