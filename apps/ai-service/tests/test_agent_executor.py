@@ -465,6 +465,35 @@ async def test_local_rag_answers_product_knowledge_from_the_product_corpus() -> 
     assert result.citations == [PRODUCT_KNOWLEDGE_CITATION]
 
 
+async def test_rag_clarification_discards_model_claims_and_citations() -> None:
+    model = two_step_model(
+        "search_knowledge",
+        {
+            "query": "farta essential tee",
+            "sourceTypes": ["PRODUCT"],
+            "limit": 5,
+        },
+        {
+            "message": "Giá 999k và còn 12 sản phẩm.",
+            "product_slugs": [PRODUCT_KNOWLEDGE_CITATION.source_id],
+            "availability_claims": [],
+            "citation_ids": [PRODUCT_KNOWLEDGE_CITATION.citation_id],
+            "requires_clarification": True,
+        },
+    )
+
+    result = await AgentExecutor(
+        Settings(rag_enabled=True), ProductKnowledgeCommerce(), models=[model]
+    ).execute(request("FARTA Essential Tee làm từ chất liệu gì?"))
+
+    assert result.status == "clarification"
+    assert result.error is None
+    assert result.products == []
+    assert result.citations == []
+    assert "999" not in result.message
+    assert "còn 12" not in result.message
+
+
 async def test_local_rag_rejects_provider_rewritten_router_arguments_before_tool_call() -> None:
     commerce = CountingProductKnowledgeCommerce()
     model = two_step_model(

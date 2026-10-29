@@ -58,3 +58,12 @@ The next code change makes a routed `search_products` call execute the router's 
 filters even if the model proposes different valid filters. Availability, product details
 and knowledge calls continue to reject argument mismatches. A fresh live pilot must use
 a new budget ID and verify the deployed build before enabling Groq again.
+
+The second pilot on `guided-seashore-5732` (`e998b28`) confirmed public catalog search:
+`completed`, one authoritative product, and no citation claim. A product material question
+then returned `AI_OUTPUT_UNVERIFIED_CLAIM` with safe subtype
+`CLARIFICATION_VALIDATION_BYPASS`. The RAG tool succeeded with one product citation, but
+the cited public excerpt did not contain material information. Groq was disabled at this
+first error; no further provider request was sent in that pilot. The follow-up change
+renders a fixed, citation-free clarification when a routed knowledge call succeeds and
+the model flags insufficient evidence. It discards all model-authored fields in that case.
