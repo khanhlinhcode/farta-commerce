@@ -436,6 +436,68 @@ async def test_local_rag_returns_only_current_authoritative_citations() -> None:
     assert result.citations == [KNOWLEDGE_CITATION]
 
 
+@pytest.mark.parametrize(
+    "message",
+    [
+        "Chính sách giao hàng của FARTA thế nào?",
+        "Tôi có thể đổi trả sản phẩm như thế nào?",
+        "Cho tôi xem bảng size để chọn kích thước",
+        "Câu hỏi thường gặp FAQ ở đâu?",
+    ],
+)
+async def test_staging_policy_question_is_blocked_before_provider_without_approved_corpus(
+    message: str,
+) -> None:
+    calls = 0
+
+    async def respond(_messages, _info):
+        nonlocal calls
+        calls += 1
+        raise AssertionError("Policy question must not call a provider")
+
+    settings = Settings(
+        app_env="staging",
+        api_base_url="https://api.example",
+        rag_enabled=True,
+        rag_staging_approved=True,
+    )
+    result = await AgentExecutor(settings, FakeCommerce(), models=[FunctionModel(respond)]).execute(
+        request(message)
+    )
+
+    assert result.status == "unavailable"
+    assert result.route == "unsupported"
+    assert result.error and result.error.code == "AI_KNOWLEDGE_SOURCE_UNAVAILABLE"
+    assert calls == 0
+
+
+async def test_staging_product_knowledge_remains_available_without_policy_corpus() -> None:
+    model = two_step_model(
+        "search_knowledge",
+        {"query": "farta essential tee", "sourceTypes": ["PRODUCT"], "limit": 5},
+        {
+            "message": "FARTA Essential Tee sử dụng chất liệu cotton.",
+            "product_slugs": [PRODUCT_KNOWLEDGE_CITATION.source_id],
+            "availability_claims": [],
+            "citation_ids": [PRODUCT_KNOWLEDGE_CITATION.citation_id],
+            "requires_clarification": False,
+        },
+    )
+    settings = Settings(
+        app_env="staging",
+        api_base_url="https://api.example",
+        rag_enabled=True,
+        rag_staging_approved=True,
+    )
+
+    result = await AgentExecutor(settings, ProductKnowledgeCommerce(), models=[model]).execute(
+        request("FARTA Essential Tee làm từ chất liệu gì?")
+    )
+
+    assert result.status == "completed"
+    assert result.citations == [PRODUCT_KNOWLEDGE_CITATION]
+
+
 async def test_local_rag_answers_product_knowledge_from_the_product_corpus() -> None:
     message = "FARTA Essential Tee làm từ chất liệu gì?"
     model = two_step_model(

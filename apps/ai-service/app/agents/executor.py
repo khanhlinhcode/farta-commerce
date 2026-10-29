@@ -46,6 +46,7 @@ from app.schemas.chat import (
 )
 from app.tools.commerce_client import CommerceClient, CommerceToolError
 from app.tools.registry import AgentDependencies, ToolPolicyViolation, approved_tools
+from app.tools.schemas import SearchKnowledgeArgs
 
 FINAL_OUTPUT_TOOL_NAME = "final_result"
 
@@ -107,6 +108,24 @@ class AgentExecutor:
             conversation_digest=conversation_digest,
             route=decision.mode,
         )
+        if (
+            self._settings.app_env == "staging"
+            and not self._settings.rag_policy_corpus_approved
+            and decision.tool == "search_knowledge"
+            and isinstance(decision.arguments, SearchKnowledgeArgs)
+            and any(source != "PRODUCT" for source in decision.arguments.source_types)
+        ):
+            return self._response(
+                request,
+                "unavailable",
+                "unsupported",
+                "FARTA chưa có nội dung chính sách công khai đã được xác minh "
+                "để trả lời câu hỏi này.",
+                error=ChatError(
+                    code="AI_KNOWLEDGE_SOURCE_UNAVAILABLE",
+                    message="Nguồn chính sách công khai chưa được duyệt cho RAG staging.",
+                ),
+            )
         if decision.mode == "clarification":
             return self._response(
                 request,

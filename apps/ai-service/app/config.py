@@ -28,6 +28,7 @@ class Settings(BaseSettings):
     fallback_enabled: bool = False
     rag_enabled: bool = False
     rag_staging_approved: bool = False
+    rag_policy_corpus_approved: bool = False
 
     provider_budget_enabled: bool = False
     provider_pilot_approved: bool = False
@@ -87,6 +88,8 @@ class Settings(BaseSettings):
             raise ValueError("RAG remains disabled in production.")
         if self.rag_enabled and self.app_env == "staging" and not self.rag_staging_approved:
             raise ValueError("Staging RAG requires the explicit approval gate.")
+        if self.rag_policy_corpus_approved and (self.app_env != "staging" or not self.rag_enabled):
+            raise ValueError("Policy corpus approval requires staging RAG to be enabled.")
         if self.provider_budget_enabled:
             self._require_redis_url(
                 self.provider_budget_redis_url,

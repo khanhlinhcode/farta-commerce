@@ -85,3 +85,11 @@ and the original provider-off configuration restored. This is a content-source g
 shipping, returns, size-guide and FAQ evaluation fixtures are synthetic and must not be
 published as business policy. Obtain approved public policy sources, build and review a
 separate ingestion path, then rerun RAG acceptance before keeping the Agent live.
+
+Until those sources are approved, the staging Agent blocks non-product knowledge routes
+before provider execution with `AI_KNOWLEDGE_SOURCE_UNAVAILABLE`. Product RAG remains
+available from the approved product corpus. The separate
+`AI_RAG_POLICY_CORPUS_APPROVED` gate defaults to false and is valid only alongside staging
+RAG approval. Do not enable it until governed policy documents have been indexed and
+verified. The router's policy evaluation fixtures remain a routing test, not publication
+authorization.
