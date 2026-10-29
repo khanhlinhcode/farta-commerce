@@ -93,3 +93,46 @@ available from the approved product corpus. The separate
 RAG approval. Do not enable it until governed policy documents have been indexed and
 verified. The router's policy evaluation fixtures remain a routing test, not publication
 authorization.
+
+## 2026-10-29 product-only RAG recovery
+
+AI build `loyal-surprise-7417` (`b589d69`) deployed the policy-corpus gate with providers off.
+Public shipping, returns, size and FAQ requests returned
+`AI_KNOWLEDGE_SOURCE_UNAVAILABLE`; a product request returned `AI_PROVIDER_DISABLED`.
+One bounded Groq canary on that build completed catalog search but stopped at the next
+product RAG request: `search_knowledge` failed the router's exact-argument check with
+safe subtype `ARGUMENT_MISMATCH`. The provider-off configuration was restored.
+
+Commit `cc7114a` keeps the router's query and `PRODUCT` source restriction authoritative
+even when Groq proposes different valid search arguments. Identity and availability
+tools, and future policy-knowledge routes, retain exact-argument checks. Python tests
+passed 147/147; offline Agent evaluation passed 62/62. GitHub CI passed and AI build
+`flawless-sofa-2008` (`cc7114a`) was deployed with providers off.
+
+A fresh canary on `flawless-sofa-2008` used six of seven durable Groq HTTP allowances.
+The public product RAG request completed with one `PRODUCT` citation; catalog search
+completed with one authoritative product; ambiguous availability returned a safe
+clarification. A shipping-policy request was blocked before any provider or tool call
+and did not consume a budget unit. Telemetry recorded one successful read-only tool
+call for each supported request and no provider failure. The canary was closed:
+Groq, Gemini, fallback and provider budget are OFF, the original Config group was
+restored, and the active AI build/SHA remained unchanged. This verifies a bounded
+product-only pilot, not an always-on provider release.
+
+The operator then approved a separate, limited staging Product Advisor release. A new
+Groq budget ID was configured with a ceiling of 24 outbound HTTP requests per 24-hour
+Redis window and five requests per minute. The new budget was confirmed unused before
+Groq was enabled. Gemini, fallback and policy RAG remained OFF. On the unchanged
+`flawless-sofa-2008` build, a public product-material request completed with one
+`PRODUCT` citation; the response's cotton statement was present in that citation's
+public excerpt. A shipping-policy request remained blocked before provider execution.
+The first failed canary had also consumed three units, so the live ceiling was reduced
+to **21** without changing its ID or Redis counter. A final public catalog-search
+request completed with one authoritative product after the limit change. Its final
+Groq response produced HTTP 400, and the existing catalog-only fallback safely
+rendered the verified tool result; this path still warrants monitoring. The final
+live budget snapshot was 4/21. The combined maximum across the first canary (3), second canary (6) and live
+window (21) is 30 requests. The API and AI remained healthy, and the active AI
+build/SHA did not change. This is a bounded staging-only release; exhaustion returns
+a safe unavailable response. Global provider-off rollback still requires an operator
+configuration update and AI restart.
