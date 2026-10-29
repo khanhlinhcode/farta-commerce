@@ -67,3 +67,11 @@ the cited public excerpt did not contain material information. Groq was disabled
 first error; no further provider request was sent in that pilot. The follow-up change
 renders a fixed, citation-free clarification when a routed knowledge call succeeds and
 the model flags insufficient evidence. It discards all model-authored fields in that case.
+
+A third isolated pilot on `plum-instrument-471` (`94b1feb`) stopped after its first
+Groq HTTP request. Pydantic AI reported `MODEL_BEHAVIOR` before any catalog tool call;
+the public response was `AI_PROVIDER_FAILED`. The provider-off configuration was restored.
+The specific model-behavior category was not present in the existing safe telemetry.
+The next revision adds fixed, non-sensitive diagnostic categories for token exhaustion,
+output retries and other model behavior. Do not infer a root cause or enable a standing
+pilot from this result alone.

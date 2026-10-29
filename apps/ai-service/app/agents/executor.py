@@ -311,6 +311,7 @@ class AgentExecutor:
                     error_code=self._provider_error_code(error),
                     limit_kind=self._usage_limit_kind(error),
                     provider_failure_kind=self._provider_failure_kind(error),
+                    validation_subtype=self._model_behavior_subtype(error),
                 )
                 catalog_response = self._recover_catalog_search_after_model_error(
                     request, decision, dependencies, error
@@ -1024,6 +1025,25 @@ class AgentExecutor:
             visited.add(id(current))
             current = current.__cause__ or current.__context__
         return "OTHER_AGENT_ERROR"
+
+    @staticmethod
+    def _model_behavior_subtype(error: BaseException) -> str | None:
+        """Report a fixed category without logging model output or exception text."""
+        current: BaseException | None = error
+        visited: set[int] = set()
+        while current is not None and id(current) not in visited:
+            if isinstance(current, UnexpectedModelBehavior):
+                message = str(current).lower()
+                if message.startswith("model token limit"):
+                    return "MODEL_TOKEN_LIMIT"
+                if message.startswith("exceeded maximum output retries"):
+                    return "OUTPUT_RETRIES_EXCEEDED"
+                if message.startswith("exceeded maximum retries"):
+                    return "TOOL_RETRIES_EXCEEDED"
+                return "OTHER_MODEL_BEHAVIOR"
+            visited.add(id(current))
+            current = current.__cause__ or current.__context__
+        return None
 
     @staticmethod
     def _usage_limit_kind(error: BaseException) -> str | None:

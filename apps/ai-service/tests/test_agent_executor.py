@@ -5,7 +5,7 @@ import httpx
 import pytest
 from groq import AsyncGroq
 from pydantic_ai import RunContext
-from pydantic_ai.exceptions import ModelHTTPError
+from pydantic_ai.exceptions import ModelHTTPError, UnexpectedModelBehavior
 from pydantic_ai.messages import ModelResponse, TextPart, ToolCallPart
 from pydantic_ai.models.function import FunctionModel
 from pydantic_ai.models.test import TestModel
@@ -1714,6 +1714,25 @@ def test_provider_failure_kind_uses_only_fixed_categories() -> None:
     wrapped = RuntimeError("private provider body")
     wrapped.__cause__ = ModelHTTPError(422, "groq")
     assert AgentExecutor._provider_failure_kind(wrapped) == "HTTP_422"
+
+
+def test_model_behavior_subtype_never_returns_exception_text() -> None:
+    assert (
+        AgentExecutor._model_behavior_subtype(
+            UnexpectedModelBehavior("Model token limit (768) exceeded before a response")
+        )
+        == "MODEL_TOKEN_LIMIT"
+    )
+    assert (
+        AgentExecutor._model_behavior_subtype(
+            UnexpectedModelBehavior("Exceeded maximum output retries (0)")
+        )
+        == "OUTPUT_RETRIES_EXCEEDED"
+    )
+    wrapped = RuntimeError("private model output")
+    wrapped.__cause__ = UnexpectedModelBehavior("private model output")
+    assert AgentExecutor._model_behavior_subtype(wrapped) == "OTHER_MODEL_BEHAVIOR"
+    assert AgentExecutor._model_behavior_subtype(RuntimeError("private body")) is None
 
 
 def test_gemini_uses_documented_minimal_thinking_without_affecting_other_models() -> None:
