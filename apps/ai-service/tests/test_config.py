@@ -130,6 +130,42 @@ def test_provider_budget_configuration_is_bounded() -> None:
         Settings(**(common | {"provider_budget_redis_url": "https://example.com"}))
 
 
+def test_staging_pilot_requires_explicit_gate_and_daily_budget() -> None:
+    common = {
+        "api_base_url": "https://api-staging.example",
+        "provider_budget_enabled": True,
+        "provider_budget_redis_url": "redis://localhost:6379/0",
+        "provider_budget_canary_id": "groq-pilot-20261029",
+        "provider_budget_max_requests": 30,
+        "provider_budget_ttl_seconds": 86_400,
+    }
+    with pytest.raises(ValidationError, match="between 1 and 7"):
+        Settings(app_env="staging", **common)
+    with pytest.raises(ValidationError, match="restricted to staging"):
+        Settings(app_env="production", provider_pilot_approved=True, **common)
+    with pytest.raises(ValidationError, match="dedicated budget ID"):
+        Settings(
+            app_env="staging",
+            provider_pilot_approved=True,
+            **(common | {"provider_budget_canary_id": "groq-canary-20261029"}),
+        )
+    with pytest.raises(ValidationError, match="86400 seconds"):
+        Settings(
+            app_env="staging",
+            provider_pilot_approved=True,
+            **(common | {"provider_budget_ttl_seconds": 3_600}),
+        )
+    with pytest.raises(ValidationError, match="between 1 and 30"):
+        Settings(
+            app_env="staging",
+            provider_pilot_approved=True,
+            **(common | {"provider_budget_max_requests": 31}),
+        )
+    settings = Settings(app_env="staging", provider_pilot_approved=True, **common)
+    assert settings.provider_budget_max_requests == 30
+    assert settings.provider_budget_ttl_seconds == 86_400
+
+
 def test_live_agent_timeout_budget_is_bounded() -> None:
     settings = Settings()
     assert settings.llm_timeout_seconds == 25

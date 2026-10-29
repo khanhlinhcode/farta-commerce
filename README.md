@@ -6,11 +6,10 @@ and a private Pydantic AI Product Advisor that can access only allowlisted publi
 
 > **Release status:** staging candidate. Core commerce and automated release gates are implemented;
 > production payment-provider delivery, OAuth, transactional email, alerting and production-scale
-> capacity are not yet validated. The Product Advisor source and subsequent grounding and tool
-> argument fixes are deployed to staging, but no live provider has passed the required three
-> consecutive grounded flows. Historical Gemini/Groq canaries failed closed and were rolled back to
-> provider-off. Current effective provider flags must be verified in Northflank before a new canary;
-> deployed code, CI and offline evaluation alone do not establish live Agent readiness.
+> capacity are not yet validated. The Product Advisor passed three consecutive grounded synthetic
+> Groq flows on staging on 2026-10-29. That bounded canary was closed and provider-off restored.
+> Continuous provider-on staging still requires a separate, metered pilot and operational review;
+> the current effective provider flags must be verified in Northflank before rollout.
 
 ## Live staging
 
@@ -118,6 +117,10 @@ cumulative across the two-request run), a 25-second model timeout and a 60-secon
 Redis counter claims before each outbound Groq HTTP request and
 rejects requests beyond the explicit canary ceiling. Automatic provider fallback and retries are
 disabled.
+An explicitly approved staging pilot can use a separate 30-request/24-hour ceiling and an
+additional five-request/minute ceiling. Pilot approval is invalid outside staging, and the
+canary limit remains seven requests per campaign. See
+[staging provider pilot](docs/ai/staging-provider-pilot.md).
 The model cannot answer supported catalog requests from router templates; it must use live Agent
 execution and authoritative tool observations. See [AI API contract](docs/api/ai-agent.md) and
 [evaluation methodology](docs/ai/evaluation-methodology.md).
@@ -136,7 +139,9 @@ requests and rollback restored provider-off. Provider-off requests fail safely w
 The deployed AI source distinguishes exact `MATCHED`, `NOT_FOUND` and `AMBIGUOUS` variant
 resolution, verifies actual model tool arguments against deterministic intent, shapes routed tool
 arguments to the constrained schema, and renders catalog answers from server-validated evidence.
-These later fixes have CI and offline evidence but still need a fresh bounded live canary. The
+The 2026-10-29 bounded Groq canary passed search, ambiguous availability and product RAG on
+AI build `direct-chin-3995` (`4a6240c`) using exactly seven of seven HTTP requests. The canary was
+closed and provider-off was restored. The
 [live staging recovery checkpoint](docs/phase-6/live-staging-recovery.md) records earlier evidence;
 it is not a current deployment snapshot.
 
@@ -274,9 +279,8 @@ current deployed SHA and provider flags before making a new release decision.
   provider work until evidence is recorded.
 - API and AI currently run one staging replica each; shared Redis replay claims are implemented,
   but multi-replica load behavior has not been validated.
-- Live Product Advisor release remains blocked until a new, exactly metered canary proves three
-  consecutive grounded public flows on the deployed AI revision. The later grounding and tool
-  argument fixes have offline/CI evidence; their live behavior is unverified.
+- The 2026-10-29 staging canary passed three grounded public flows. Continuous provider-on staging
+  still requires an isolated pilot budget, provider privacy gate and operational monitoring.
 - A provider-independent RAG ingestion/retrieval and Agent citation boundary exists. It is disabled
   by default. An offline n-gram profile and guarded two-phase rebuild are implemented for explicit
   staging validation only. Source and CI results do not establish the current staging corpus or

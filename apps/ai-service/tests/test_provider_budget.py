@@ -147,6 +147,30 @@ async def test_http_client_rejects_before_network_transmission() -> None:
     assert network_requests == 1
 
 
+async def test_pilot_enforces_minute_and_daily_caps_before_network() -> None:
+    backend = FakeRedis()
+    daily = budget(backend, limit=30, canary_id="groq-pilot-20261029")
+    minute = budget(backend, limit=5, canary_id="groq-pilot-20261029.minute")
+    network_requests = 0
+
+    async def handler(_request: httpx.Request) -> httpx.Response:
+        nonlocal network_requests
+        network_requests += 1
+        return httpx.Response(200, json={"ok": True})
+
+    async with BudgetedGroqHttpClient(
+        daily, minute_budget=minute, transport=httpx.MockTransport(handler)
+    ) as client:
+        for _ in range(5):
+            assert (await client.get("https://api.groq.com/openai/v1/models")).status_code == 200
+        with pytest.raises(ProviderBudgetExceeded):
+            await client.get("https://api.groq.com/openai/v1/models")
+
+    assert network_requests == 5
+    assert (await daily.snapshot()).consumed == 5
+    assert (await minute.snapshot()).consumed == 5
+
+
 async def test_sdk_wraps_budget_exhaustion_without_losing_safe_error_mapping() -> None:
     backend = FakeRedis()
     provider_budget = budget(backend, limit=1)

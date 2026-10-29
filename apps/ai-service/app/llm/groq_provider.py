@@ -16,11 +16,19 @@ from app.observability import AiObservability
 class BudgetedGroqHttpClient(DefaultAsyncHttpxClient):
     """Claims a durable budget unit immediately before every Groq HTTP send."""
 
-    def __init__(self, budget: ProviderRequestBudget, **kwargs: Any) -> None:
+    def __init__(
+        self,
+        budget: ProviderRequestBudget,
+        minute_budget: ProviderRequestBudget | None = None,
+        **kwargs: Any,
+    ) -> None:
         self._budget = budget
+        self._minute_budget = minute_budget
         super().__init__(**kwargs)
 
     async def send(self, request: httpx.Request, **kwargs: Any) -> httpx.Response:
+        if self._minute_budget is not None:
+            await self._minute_budget.claim()
         await self._budget.claim()
         return await super().send(request, **kwargs)
 
@@ -69,8 +77,21 @@ class GroqModelProvider:
         )
 
     def create_client(self) -> AsyncGroq:
+        minute_budget = None
+        if self._settings.provider_pilot_approved:
+            minute_budget = ProviderRequestBudget(
+                redis_url=self._settings.provider_budget_redis_url.get_secret_value(),
+                environment=self._settings.app_env,
+                provider="groq",
+                model=self._settings.groq_model,
+                canary_id=f"{self._settings.provider_budget_canary_id}.minute",
+                limit=5,
+                ttl_seconds=60,
+                observability=self._observability,
+            )
         http_client = BudgetedGroqHttpClient(
             self.create_budget(),
+            minute_budget=minute_budget,
             timeout=self._settings.llm_timeout_seconds,
         )
         return AsyncGroq(

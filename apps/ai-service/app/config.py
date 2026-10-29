@@ -30,6 +30,7 @@ class Settings(BaseSettings):
     rag_staging_approved: bool = False
 
     provider_budget_enabled: bool = False
+    provider_pilot_approved: bool = False
     provider_budget_redis_url: SecretStr = SecretStr("")
     provider_budget_canary_id: str = ""
     provider_budget_max_requests: int = 7
@@ -93,12 +94,23 @@ class Settings(BaseSettings):
             )
             if not re.fullmatch(r"[a-zA-Z0-9][a-zA-Z0-9._-]{7,79}", self.provider_budget_canary_id):
                 raise ValueError("Provider budget canary ID is invalid.")
-            if not 1 <= self.provider_budget_max_requests <= 7:
+            if self.provider_pilot_approved:
+                if self.app_env != "staging":
+                    raise ValueError("Provider pilot is restricted to staging.")
+                if not self.provider_budget_canary_id.startswith("groq-pilot-"):
+                    raise ValueError("Provider pilot requires a dedicated budget ID.")
+                if self.provider_budget_ttl_seconds != 86_400:
+                    raise ValueError("Provider pilot budget must last 86400 seconds.")
+                if not 1 <= self.provider_budget_max_requests <= 30:
+                    raise ValueError("Provider pilot budget must be between 1 and 30.")
+            elif not 1 <= self.provider_budget_max_requests <= 7:
                 raise ValueError("Provider request budget must be between 1 and 7.")
             if not 300 <= self.provider_budget_ttl_seconds <= 86_400:
                 raise ValueError(
                     "Provider request budget TTL must be between 300 and 86400 seconds."
                 )
+        elif self.provider_pilot_approved:
+            raise ValueError("Provider pilot requires the durable budget.")
         if self.groq_enabled:
             if self.primary_provider != "groq":
                 raise ValueError("Groq canary requires Groq as the primary provider.")
