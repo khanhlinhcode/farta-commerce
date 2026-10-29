@@ -75,3 +75,13 @@ The specific model-behavior category was not present in the existing safe teleme
 The next revision adds fixed, non-sensitive diagnostic categories for token exhaustion,
 output retries and other model behavior. Do not infer a root cause or enable a standing
 pilot from this result alone.
+
+The fourth isolated pilot on `faithful-jelly-4712` (`321a81b`) returned a safe
+`clarification` for a product-material question whose retrieved product excerpt did not
+state the material. A shipping-policy question also returned `clarification` with zero
+citations. A direct read-only `search_knowledge` call for `SHIPPING_POLICY` returned zero
+citations, matching the currently indexed product-only staging corpus. Groq was disabled
+and the original provider-off configuration restored. This is a content-source gate:
+shipping, returns, size-guide and FAQ evaluation fixtures are synthetic and must not be
+published as business policy. Obtain approved public policy sources, build and review a
+separate ingestion path, then rerun RAG acceptance before keeping the Agent live.
