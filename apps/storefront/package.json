@@ -17,6 +17,7 @@
     "test": "vitest run"
   },
   "dependencies": {
+    "@farta/staging-knowledge": "workspace:*",
     "@farta/design-tokens": "workspace:*",
     "@farta/types": "workspace:*",
     "@farta/ui": "workspace:*",

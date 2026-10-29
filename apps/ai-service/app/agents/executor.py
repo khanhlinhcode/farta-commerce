@@ -49,6 +49,19 @@ from app.tools.registry import AgentDependencies, ToolPolicyViolation, approved_
 from app.tools.schemas import SearchKnowledgeArgs
 
 FINAL_OUTPUT_TOOL_NAME = "final_result"
+STAGING_SUPPORT_SOURCES = {
+    "SHIPPING_POLICY": ("staging-shipping", "/help/shipping"),
+    "RETURN_POLICY": ("staging-returns", "/help/returns"),
+    "SIZE_GUIDE": ("staging-size-guide", "/help/size-guide"),
+    "FAQ": ("staging-faq", "/help/faq"),
+}
+STAGING_SUPPORT_VERSION = re.compile(r"^rag-staging-support-v1:[a-f0-9]{64}$")
+UNSAFE_SUPPORT_EXCERPT = re.compile(
+    r"ignore (?:all |the )?previous|bỏ qua (?:mọi |các )?chỉ dẫn|"
+    r"reveal (?:the |all )?secrets?|tiết lộ (?:bí mật|khóa)|"
+    r"(?:api[ _-]?key|access[ _-]?token|password)\s*[:=]",
+    re.IGNORECASE,
+)
 
 
 class AgentExecutor:
@@ -659,6 +672,26 @@ class AgentExecutor:
             if slug in dependencies.products_by_slug
         ]
         citations = [current_citations[citation_id] for citation_id in output_citation_ids]
+        staging_support_route = (
+            knowledge_used
+            and self._settings.app_env == "staging"
+            and self._settings.rag_policy_corpus_approved
+            and isinstance(dependencies.routed_arguments, SearchKnowledgeArgs)
+            and any(source != "PRODUCT" for source in dependencies.routed_arguments.source_types)
+        )
+        if staging_support_route and (
+            not citations
+            or any(
+                STAGING_SUPPORT_SOURCES.get(citation.source_type)
+                != (citation.source_id, citation.canonical_path)
+                or not STAGING_SUPPORT_VERSION.fullmatch(citation.source_version)
+                or UNSAFE_SUPPORT_EXCERPT.search(citation.excerpt)
+                for citation in citations
+            )
+        ):
+            return self._reject_unverified_citation(
+                request, dependencies, "STAGING_SUPPORT_SOURCE_MISMATCH"
+            )
         self._observability.emit(
             "ai.response.validated",
             request_id=request.request_id,
@@ -670,6 +703,10 @@ class AgentExecutor:
             message = self._render_catalog_search(products)
         elif output.availability_claims:
             message = self._render_exact_availability(output, dependencies)
+        elif staging_support_route:
+            # Policy answers must be extractive. The model selects a current
+            # citation, but cannot add a deadline, fee or promise absent from it.
+            message = citations[0].excerpt
         else:
             message = output.message
         if message is None:

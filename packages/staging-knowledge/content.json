@@ -1,0 +1,53 @@
+[
+  {
+    "sourceType": "SHIPPING_POLICY",
+    "sourceId": "staging-shipping",
+    "title": "Thông tin giao hàng trên staging",
+    "canonicalPath": "/help/shipping",
+    "sections": [
+      "FARTA hiện hiển thị lựa chọn giao hàng tiêu chuẩn tại bước xác nhận đơn.",
+      "Phí vận chuyển và tổng thanh toán của từng giỏ hàng được tính và hiển thị trước khi khách đặt hàng. Hãy kiểm tra báo giá tại checkout; trang này không đưa ra mức phí cố định hoặc ngưỡng miễn phí giao hàng.",
+      "Sau khi đặt hàng, khách có thể xem trạng thái trong trang chi tiết đơn hàng khi có quyền truy cập đơn. Trạng thái Đang giao không xác nhận ngày nhận hàng cụ thể.",
+      "FARTA chưa công bố trong thông tin staging này khu vực phục vụ, đơn vị vận chuyển hoặc thời gian giao dự kiến."
+    ],
+    "approvedAt": "2026-10-29T00:00:00.000Z"
+  },
+  {
+    "sourceType": "RETURN_POLICY",
+    "sourceId": "staging-returns",
+    "title": "Thông tin đổi trả trên staging",
+    "canonicalPath": "/help/returns",
+    "sections": [
+      "Ứng dụng hiện chưa có luồng tự phục vụ để khách tạo yêu cầu đổi trả cho đơn đã giao.",
+      "FARTA chưa công bố trong thông tin staging này điều kiện, thời hạn, quy trình gửi hàng, chi phí vận chuyển hoàn, phương thức hoặc thời gian hoàn tiền. Trang này không đưa ra cam kết về các điều khoản đó.",
+      "Kênh hỗ trợ chính thức để tiếp nhận yêu cầu đổi trả chưa được công bố trong bộ nội dung này."
+    ],
+    "approvedAt": "2026-10-29T00:00:00.000Z"
+  },
+  {
+    "sourceType": "SIZE_GUIDE",
+    "sourceId": "staging-size-guide",
+    "title": "Hướng dẫn chọn size trên staging",
+    "canonicalPath": "/help/size-guide",
+    "sections": [
+      "Trang sản phẩm có thể hiển thị nhãn size theo từng biến thể. Hãy kiểm tra lựa chọn của đúng sản phẩm đang xem.",
+      "FARTA chưa công bố bảng số đo chuẩn, cách đo hoặc sai số trong bộ nội dung staging này. Nhãn size không đủ để suy ra số đo cơ thể, số đo thành phẩm hoặc khẳng định độ vừa vặn.",
+      "Tình trạng còn hàng có thể thay đổi; hãy kiểm tra lại trong giỏ hàng và checkout."
+    ],
+    "approvedAt": "2026-10-29T00:00:00.000Z"
+  },
+  {
+    "sourceType": "FAQ",
+    "sourceId": "staging-faq",
+    "title": "Câu hỏi thường gặp trên staging",
+    "canonicalPath": "/help/faq",
+    "sections": [
+      "Câu hỏi thường gặp FAQ của FARTA trên staging: phí giao hàng, tình trạng đơn hàng, size và đổi trả.",
+      "Phí giao hàng ở đâu? Phí vận chuyển và tổng thanh toán của giỏ hàng được hiển thị tại bước xác nhận đơn; thông tin này không ấn định mức phí cố định.",
+      "Xem tình trạng đơn ở đâu? Khách có quyền truy cập đơn có thể xem trạng thái trong trang chi tiết đơn hàng. Trợ lý AI công khai không đọc đơn hàng hoặc thông tin cá nhân.",
+      "Trợ lý có thể giúp gì về size và hàng còn bán? Trợ lý có thể tìm sản phẩm và xem nhãn size hoặc tình trạng bán công khai qua catalog khi AI được bật. Chưa có bảng số đo chuẩn để khẳng định size phù hợp với một người cụ thể.",
+      "Đổi trả thế nào? Quy trình và kênh tiếp nhận chính thức chưa được công bố trong bộ nội dung staging này."
+    ],
+    "approvedAt": "2026-10-29T00:00:00.000Z"
+  }
+]

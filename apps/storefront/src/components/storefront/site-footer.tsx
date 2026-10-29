@@ -1,6 +1,10 @@
 import Link from "next/link";
+import supportContent from "@farta/staging-knowledge";
 
 export function SiteFooter() {
+  const showStagingSupport =
+    process.env.NODE_ENV !== "production" ||
+    process.env.NEXT_PUBLIC_SITE_URL === "https://staging.fartacommerce.me";
   return (
     <footer className="site-footer">
       <div className="site-footer__lead">
@@ -31,6 +35,16 @@ export function SiteFooter() {
           <Link href="/account" prefetch={false}>
             Tài khoản
           </Link>
+          {showStagingSupport &&
+            supportContent.map((entry) => (
+              <Link
+                href={entry.canonicalPath}
+                prefetch={false}
+                key={entry.sourceId}
+              >
+                {entry.title}
+              </Link>
+            ))}
         </div>
         <div>
           <h2>FARTA</h2>

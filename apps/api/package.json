@@ -16,12 +16,14 @@
     "rag:indexes:staging": "node dist/scripts/create-staging-rag-indexes.js",
     "rag:rebuild:local": "pnpm build && node --env-file=.env dist/scripts/rebuild-local-rag-index.js",
     "rag:rebuild:staging": "node dist/scripts/rebuild-staging-rag-index.js",
+    "rag:support:staging": "node dist/scripts/rebuild-staging-support-index.js",
     "rag:evaluate:local": "pnpm build && node dist/scripts/evaluate-local-rag.js",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "test": "vitest run",
     "test:e2e": "vitest run --config vitest.e2e.config.mts"
   },
   "dependencies": {
+    "@farta/staging-knowledge": "workspace:*",
     "@farta/types": "workspace:*",
     "@nestjs/common": "12.1.2",
     "@nestjs/config": "12.0.1",

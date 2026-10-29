@@ -2356,6 +2356,20 @@ img {
   }
 }
 
+.help-content {
+  display: grid;
+  gap: 1.25rem;
+  max-width: 48rem;
+  margin: 0 auto;
+  padding: 3rem var(--page-gutter) 6rem;
+}
+
+.help-content p {
+  color: var(--color-text-secondary, #555);
+  font-size: 1rem;
+  line-height: 1.8;
+}
+
 @media (max-width: 600px) {
   :root {
     --page-gutter: 1rem;

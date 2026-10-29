@@ -12,12 +12,14 @@ COPY apps/api/package.json apps/api/package.json
 COPY packages/config/package.json packages/config/package.json
 COPY packages/eslint-config/package.json packages/eslint-config/package.json
 COPY packages/types/package.json packages/types/package.json
+COPY packages/staging-knowledge/package.json packages/staging-knowledge/package.json
 
 RUN pnpm --filter @farta/api... install --frozen-lockfile
 
 COPY apps/api apps/api
 COPY packages/config packages/config
 COPY packages/types packages/types
+COPY packages/staging-knowledge packages/staging-knowledge
 
 RUN pnpm --filter @farta/api build
 RUN pnpm --config.strict-peer-dependencies=false \

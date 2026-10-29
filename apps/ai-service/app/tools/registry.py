@@ -159,6 +159,8 @@ class AgentDependencies:
         existing_ids = {evidence.citation.citation_id for evidence in self.state.citations}
         if len(existing_ids | set(citation_ids)) > 8:
             raise ToolPolicyViolation("CITATION_EVIDENCE_LIMIT_EXCEEDED")
+        if any(citation.source_type not in request.source_types for citation in response.citations):
+            raise ToolPolicyViolation("CITATION_SOURCE_TYPE_MISMATCH")
         for citation in response.citations:
             if citation.citation_id not in existing_ids:
                 self.state.citations.append(
