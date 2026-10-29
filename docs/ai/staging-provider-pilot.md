@@ -45,3 +45,16 @@ Groq's current account limits and data controls are visible in the Groq Console.
 differ by organization; the [data controls documentation](https://console.groq.com/docs/your-data)
 describes Inference APIs Zero Data Retention. Account-level settings must be verified at the
 time of each rollout.
+
+## 2026-10-29 first pilot attempt
+
+AI build `main-radiance-4665` (`19eeee8`) passed CI and was deployed with providers off.
+The first public Groq search consumed one of 30 budget units and failed safely with
+`AI_COMMERCE_TOOL_UNAVAILABLE`: the model's search arguments differed from the router's
+fixed arguments (`ARGUMENT_MISMATCH`). Groq and the pilot budget were then disabled and the
+original provider-off configuration restored. No second provider request was sent.
+
+The next code change makes a routed `search_products` call execute the router's trusted
+filters even if the model proposes different valid filters. Availability, product details
+and knowledge calls continue to reject argument mismatches. A fresh live pilot must use
+a new budget ID and verify the deployed build before enabling Groq again.

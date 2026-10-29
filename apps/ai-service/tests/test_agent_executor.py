@@ -312,6 +312,29 @@ async def test_simple_product_search_uses_pydantic_agent_and_authoritative_tool(
     assert "http" not in result.message
 
 
+async def test_routed_search_ignores_model_filters_and_uses_router_arguments() -> None:
+    class RecordingCommerce(FakeCommerce):
+        received: SearchProductsArgs | None = None
+
+        async def search_products(self, arguments: SearchProductsArgs) -> ToolResponse:
+            self.received = arguments
+            return await super().search_products(arguments)
+
+    commerce = RecordingCommerce()
+    model = two_step_model(
+        "search_products",
+        {"keyword": "unrelated item", "limit": 12},
+        {"product_slugs": [PRODUCT.slug], "requires_clarification": False},
+    )
+
+    result = await AgentExecutor(Settings(), commerce, models=[model]).execute(
+        request("Tìm áo màu đen size M")
+    )
+
+    assert result.status == "completed"
+    assert commerce.received == SearchProductsArgs(**SEARCH_BLACK_M)
+
+
 async def test_catalog_search_rejects_a_free_form_model_claim_field() -> None:
     model = two_step_model(
         "search_products",

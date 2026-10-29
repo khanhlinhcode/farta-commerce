@@ -48,6 +48,7 @@ class AgentDependencies:
     conversation_digest: str
     provider: str
     model: str
+    routed_arguments: BaseModel | None = None
     products_by_slug: dict[str, ProductReference] = field(default_factory=dict)
 
     def observe(
@@ -269,6 +270,18 @@ async def _invoke[ArgsT](
     try:
         if not isinstance(request, BaseModel):
             raise ToolPolicyViolation("TOOL_ARGUMENT_TYPE_MISMATCH")
+        if (
+            tool == "search_products"
+            and context.deps.state.expected_tool == tool
+            and context.deps.routed_arguments is not None
+        ):
+            # The router owns a search's filters. Groq may produce different,
+            # still-valid JSON despite the constrained tool schema; never let
+            # that change the catalog search we actually execute. Other routed
+            # tools retain exact-argument rejection for identity and scope.
+            if type(context.deps.routed_arguments) is not type(request):
+                raise ToolPolicyViolation("ROUTED_TOOL_ARGUMENT_TYPE_MISMATCH")
+            request = context.deps.routed_arguments
         context.deps.assert_expected_tool_call(tool, request)
         telemetry.emit("ai.tool.started", **fields)
         response = await operation(request)

@@ -218,6 +218,7 @@ class AgentExecutor:
                 conversation_digest=conversation_digest,
                 provider=provider,
                 model=model_name,
+                routed_arguments=decision.arguments,
             )
             agent = Agent(
                 model,
